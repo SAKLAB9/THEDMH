@@ -41,7 +41,8 @@
           }
         },
         "NSPhotoLibraryUsageDescription": "게시글에 사진을 첨부하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
-        "NSPhotoLibraryAddUsageDescription": "게시글에 사진을 저장하기 위해 사진 라이브러리 저장 권한이 필요합니다."
+        "NSPhotoLibraryAddUsageDescription": "게시글에 사진을 저장하기 위해 사진 라이브러리 저장 권한이 필요합니다.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -64,7 +65,11 @@
     "extra": {
       "EXPO_PUBLIC_SUPABASE_URL": "https://qgtwkhkmdsaypnsnrpbf.supabase.co",
       "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndHdraGttZHNheXBuc25ycGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTU1MzAsImV4cCI6MjA4MzA3MTUzMH0.mE1BGCOCMNza2ixbC-lrVXRdCmmL5n_YCPaMcqy-mcs",
-      "EXPO_PUBLIC_API_BASE_URL": "https://thedmh.vercel.app"
-    }
+      "EXPO_PUBLIC_API_BASE_URL": "https://thedmh.vercel.app",
+      "eas": {
+        "projectId": "46def0eb-7c05-4095-8756-3a010adfc59b"
+      }
+    },
+    "owner": "bobi_1030"
   }
 }
