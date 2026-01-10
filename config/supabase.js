@@ -1,0 +1,30 @@
+import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
+
+// Supabase 설정
+// app.json의 extra 섹션 또는 환경 변수에서 가져옵니다
+const SUPABASE_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Supabase URL과 키가 유효한 경우에만 클라이언트 생성
+let supabase = null;
+
+if (SUPABASE_URL && SUPABASE_URL !== '' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== '') {
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (error) {
+    supabase = null;
+  }
+} else {
+  // Supabase 설정이 없으면 클라이언트를 초기화하지 않음
+}
+
+export { supabase };
+
+// 이메일에서 @ 앞부분만 추출하는 헬퍼 함수
+export const getEmailPrefix = (email) => {
+  if (!email) return '';
+  const parts = email.split('@');
+  return parts[0] || '';
+};
+

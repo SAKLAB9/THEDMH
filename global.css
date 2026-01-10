@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TextInput 포커스 스타일 제거 (특정 입력창만 - className으로 구분) */
+
+

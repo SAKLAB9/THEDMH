@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "THE동문회",
+    "slug": "the-dongmunhoi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "thedongmunhoi",
+    "description": "THE동문회는 동문들을 위한 커뮤니티 플랫폼입니다. 공지사항, 경조사, 소모임, 게시판 등 다양한 서비스를 제공합니다.",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "fonts": [
+      "assets/fonts/Cafe24 ClassicType_Regular.ttf",
+      "assets/fonts/continuous.ttf"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.thedongmunhoi.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "CFBundleDisplayName": "THE동문회",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsArbitraryLoadsInWebContent": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            },
+            "172.30.1.11": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        },
+        "NSPhotoLibraryUsageDescription": "게시글에 사진을 첨부하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
+        "NSPhotoLibraryAddUsageDescription": "게시글에 사진을 저장하기 위해 사진 라이브러리 저장 권한이 필요합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.thedongmunhoi.app",
+      "versionCode": 1,
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ],
+      "contentRating": {
+        "rating": "EVERYONE"
+      }
+    },
+    "web": {},
+    "extra": {
+      "EXPO_PUBLIC_SUPABASE_URL": "https://qgtwkhkmdsaypnsnrpbf.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndHdraGttZHNheXBuc25ycGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTU1MzAsImV4cCI6MjA4MzA3MTUzMH0.mE1BGCOCMNza2ixbC-lrVXRdCmmL5n_YCPaMcqy-mcs"
+    }
+  }
+}
