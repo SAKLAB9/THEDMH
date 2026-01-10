@@ -138,43 +138,58 @@ export default function BoardScreen({ navigation, route }) {
     return partnersSlotImageNames.join(',');
   }, [partnersSlotImageNames]);
 
-  // Supabase Storage에서 Partners 모달 이미지 URL 가져오기 (모든 이미지를 동일하게 병렬 로드)
+  // Supabase Storage에서 Partners 모달 이미지 URL 가져오기 (배치 API 사용 - 성능 최적화)
   useEffect(() => {
     if (slotsCount <= 0) return;
     
     const loadPartnersImageUrls = async () => {
-      const urls = {};
-      // 모든 이미지를 병렬로 동시에 로드
-      const loadPromises = [];
+      // 모든 이미지 파일명 수집
+      const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`select_uni_slot_${i}_image`, '');
         if (imageName) {
-          // 모든 이미지를 Supabase Storage에서 동일하게 로드
-          loadPromises.push(
-            fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageName)}`)
-              .then(response => {
-                if (response.ok) {
-                  return response.json().then(data => {
-                    if (data.success && data.url) {
-                      urls[imageName] = { uri: data.url };
-                    }
-                  });
-                }
-              })
-              .catch(() => {
-                // 이미지 로드 실패 시 무시
-              })
-          );
+          imageNames.push(imageName);
         }
       }
-      // 모든 이미지를 동시에 로드하고 완료 대기
-      await Promise.all(loadPromises);
-      // 모든 이미지가 로드된 후 한 번에 상태 업데이트
-      setPartnersImageUrls(urls);
+      
+      if (imageNames.length === 0) {
+        setPartnersImageUrls({});
+        return;
+      }
+      
+      try {
+        // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
+        const response = await fetch(`${API_BASE_URL}/api/supabase-image-urls`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ filenames: imageNames }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.urls) {
+            // URL 객체로 변환
+            const urls = {};
+            Object.keys(data.urls).forEach(imageName => {
+              urls[imageName] = { uri: data.urls[imageName] };
+            });
+            setPartnersImageUrls(urls);
+          } else {
+            setPartnersImageUrls({});
+          }
+        } else {
+          setPartnersImageUrls({});
+        }
+      } catch (error) {
+        // 에러 발생 시 빈 객체로 설정
+        setPartnersImageUrls({});
+      }
     };
     
     loadPartnersImageUrls();
-  }, [slotsCount, partnersSlotImageNamesString]);
+  }, [slotsCount, partnersSlotImageNamesString, getConfig]);
 
   // Partners 모달 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
   const slotImages = [];
