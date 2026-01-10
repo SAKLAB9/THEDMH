@@ -330,8 +330,13 @@ export default function HomeScreen({ navigation }) {
           try {
             const universityCode = university.toLowerCase();
             
-            // 공지사항 불러오기
-            const noticesResponse = await fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`);
+            // 공지사항과 경조사를 병렬로 불러오기 (성능 개선)
+            const [noticesResponse, lifeEventsResponse] = await Promise.all([
+              fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
+              fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+            ]);
+            
+            // 공지사항 처리
             if (noticesResponse.ok) {
               const noticesData = await noticesResponse.json();
               if (noticesData.success && noticesData.notices) {
@@ -339,8 +344,7 @@ export default function HomeScreen({ navigation }) {
               }
             }
 
-            // 경조사 불러오기
-            const lifeEventsResponse = await fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`);
+            // 경조사 처리
             if (lifeEventsResponse.ok) {
               const lifeEventsData = await lifeEventsResponse.json();
               if (lifeEventsData.success && lifeEventsData.lifeEvents) {

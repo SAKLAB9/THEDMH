@@ -2954,40 +2954,35 @@ app.get('/api/posts', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        let query = `SELECT * FROM ${tableName}`;
+        // 댓글 테이블 이름 가져오기
+        const commentsTableName = getBoardCommentsTableName(universityCode);
+        
+        // JOIN을 사용하여 댓글 개수를 한 번에 가져오기 (N+1 쿼리 문제 해결)
+        let query = `
+          SELECT 
+            p.*,
+            COALESCE(COUNT(c.id), 0) as comment_count
+          FROM ${tableName} p
+          LEFT JOIN ${commentsTableName} c ON p.id = c.post_id
+        `;
         const params = [];
         let paramIndex = 1;
         
         if (category && category !== '전체') {
-          query += ` WHERE category = $${paramIndex}`;
+          query += ` WHERE p.category = $${paramIndex}`;
           params.push(category);
           paramIndex++;
         }
         
-        query += ` ORDER BY created_at DESC`;
+        query += ` GROUP BY p.id ORDER BY p.created_at DESC`;
         
         const result = await pool.query(query, params);
         
-        // 댓글 테이블 이름 가져오기
-        const commentsTableName = getBoardCommentsTableName(universityCode);
-        
-        // 각 post에 대해 댓글 개수 조회 (댓글 + 대댓글 모두 포함)
-        const posts = await Promise.all(result.rows.map(async (post) => {
-          let commentCount = 0;
-          try {
-            const commentResult = await pool.query(
-              `SELECT COUNT(*) as count FROM ${commentsTableName} WHERE post_id = $1`,
-              [post.id]
-            );
-            commentCount = parseInt(commentResult.rows[0].count) || 0;
-          } catch (error) {
-            commentCount = 0;
-          }
-          
-          return {
-            ...post,
-            commentCount: commentCount
-          };
+        // comment_count를 commentCount로 변환
+        const posts = result.rows.map(post => ({
+          ...post,
+          commentCount: parseInt(post.comment_count) || 0,
+          comment_count: undefined // 원본 필드 제거
         }));
         
         if (universityCode === 'miuhub') {
