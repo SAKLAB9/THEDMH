@@ -481,8 +481,8 @@ export default function BoardScreen({ navigation, route }) {
     }));
   };
 
-  // 필터링 로직 (카테고리, 제목 검색, 내용 검색)
-  const filteredAndSortedPosts = useCallback(() => {
+  // 필터링 로직 (카테고리, 제목 검색, 내용 검색) - useMemo로 변경하여 activeTab 변경 시 즉시 재계산
+  const filteredPosts = useMemo(() => {
     // 카테고리 필터
     let filtered = activeTab === '전체'
       ? allPosts
@@ -518,8 +518,6 @@ export default function BoardScreen({ navigation, route }) {
     
     return filtered;
   }, [allPosts, activeTab, titleSearch, contentSearch, showFavoritesOnly, favoritePosts, getConfig]);
-
-  const filteredPosts = filteredAndSortedPosts();
 
   // MIUHub일 때 Featured로 사용될 post ID 수집 (페이지네이션 전에 제외하기 위해)
   let featuredContentIds = new Set();

@@ -517,8 +517,8 @@ export default function CirclesScreen({ navigation, route }) {
     }));
   };
 
-  // 필터링 및 정렬 로직
-  const filteredAndSortedCircles = useCallback(() => {
+  // 필터링 및 정렬 로직 (useMemo로 변경하여 activeTab 변경 시 즉시 재계산)
+  const filteredCircles = useMemo(() => {
     let filtered = activeTab === '전체' 
     ? allCircles 
     : allCircles.filter(circle => circle.category === activeTab);
@@ -659,8 +659,6 @@ export default function CirclesScreen({ navigation, route }) {
     
     return filtered;
   }, [allCircles, activeTab, selectedRegion, keywordSearch, excludeClosed, sortBy, showFavoritesOnly, favoriteCircles]);
-
-  const filteredCircles = filteredAndSortedCircles();
 
   // MIUHub일 때 Featured로 사용될 circle ID 수집 (페이지네이션 전에 제외하기 위해)
   let featuredContentIds = new Set();
