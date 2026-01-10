@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal, Alert, ActivityIndicator, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -128,13 +128,27 @@ function RememberMeCheckbox({ loginColors, getConfig }) {
 export default function LoginScreen() {
   const navigation = useNavigation();
   const { updateUniversity } = useUniversity();
-  const { getConfig, getConfigNumber, loadConfig } = useAppConfig();
-  const LOGIN_COLORS = getLoginColors(getConfig);
+  const { getConfig, getConfigNumber, loadConfig, loading: configLoading } = useAppConfig();
   
   // 화면이 포커스될 때마다 설정 강제 새로고침
   useEffect(() => {
     loadConfig(null, true);
   }, [loadConfig]);
+  
+  // config가 로드된 후에만 LOGIN_COLORS 계산 (성능 최적화)
+  const LOGIN_COLORS = useMemo(() => {
+    if (configLoading) {
+      // 로딩 중일 때는 기본값 반환
+      return {
+        iconBackground: '#3b3c36',
+        iconBorder: '#3b3c36',
+        get primary() {
+          return this.iconBackground;
+        },
+      };
+    }
+    return getLoginColors(getConfig);
+  }, [getConfig, configLoading]);
 
   // 딥링크 처리: 비밀번호 재설정 링크 감지
   useEffect(() => {
