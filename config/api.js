@@ -13,7 +13,8 @@ const getApiBaseUrl = () => {
 
   // 프로덕션 환경
   if (!__DEV__) {
-    return 'https://your-app-name.railway.app';
+    // Vercel 배포 URL 사용 (환경 변수에서 가져오거나 기본값 사용)
+    return process.env.EXPO_PUBLIC_API_BASE_URL || 'https://thedmh.vercel.app';
   }
 
   // 개발 환경

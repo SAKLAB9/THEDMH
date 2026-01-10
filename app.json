@@ -63,7 +63,8 @@
     "web": {},
     "extra": {
       "EXPO_PUBLIC_SUPABASE_URL": "https://qgtwkhkmdsaypnsnrpbf.supabase.co",
-      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndHdraGttZHNheXBuc25ycGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTU1MzAsImV4cCI6MjA4MzA3MTUzMH0.mE1BGCOCMNza2ixbC-lrVXRdCmmL5n_YCPaMcqy-mcs"
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFndHdraGttZHNheXBuc25ycGJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0OTU1MzAsImV4cCI6MjA4MzA3MTUzMH0.mE1BGCOCMNza2ixbC-lrVXRdCmmL5n_YCPaMcqy-mcs",
+      "EXPO_PUBLIC_API_BASE_URL": "https://thedmh.vercel.app"
     }
   }
 }
