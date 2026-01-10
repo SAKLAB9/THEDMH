@@ -161,44 +161,6 @@ export default function HomeScreen({ navigation }) {
     loadAdminImageUrls();
   }, [adminSlotsCount, adminSlotImageNames.join(',')]);
 
-  // 로고 이미지 URL 로드 (학교 이름 기반)
-  useEffect(() => {
-    const loadLogoImage = async () => {
-      if (!university) {
-        setLogoImageUrl(null);
-        return;
-      }
-
-      // 학교 이름을 소문자로 변환하여 display_name 확인
-      const universityLower = university.toLowerCase();
-      const displayName = getConfig(`${universityLower}_display_name`, '');
-      
-      // display_name이 있으면 그것을 사용, 없으면 university 그대로 사용
-      const universityDisplayName = displayName || university;
-      
-      // 이미지 파일명 생성 (예: Cornell.png)
-      const imageFileName = `${universityDisplayName}.png`;
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.url) {
-            setLogoImageUrl({ uri: data.url });
-          } else {
-            setLogoImageUrl(null);
-          }
-        } else {
-          setLogoImageUrl(null);
-        }
-      } catch (error) {
-        setLogoImageUrl(null);
-      }
-    };
-    
-    loadLogoImage();
-  }, [university, getConfig]);
-
   const adminSlotWidth = 100;
   const adminSlotHeight = 100;
   const adminSlotGap = 24;
@@ -270,24 +232,49 @@ export default function HomeScreen({ navigation }) {
     }, [university, loadConfig])
   );
 
-  // university가 변경될 때마다 공지사항과 경조사 데이터 불러오기
+  // university가 변경될 때마다 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
   useEffect(() => {
-    const loadData = async () => {
+    const loadAllData = async () => {
       if (!university) {
+        setLogoImageUrl(null);
         setSavedNotices([]);
         setSavedLifeEvents([]);
         return;
       }
 
       try {
-        // university는 display name으로 저장되어 있을 수 있음 (예: "Cornell")
-        // API 호출 시에는 소문자 코드가 필요 (예: "cornell")
-        // display name을 소문자로 변환하면 대부분의 경우 코드가 됨
-        // 예: "Cornell" -> "cornell", "NYU" -> "nyu"
         const universityCode = university.toLowerCase();
         
-        // 공지사항 불러오기
-        const noticesResponse = await fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`);
+        // 학교 이름을 소문자로 변환하여 display_name 확인
+        const universityLower = university.toLowerCase();
+        const displayName = getConfig(`${universityLower}_display_name`, '');
+        
+        // display_name이 있으면 그것을 사용, 없으면 university 그대로 사용
+        const universityDisplayName = displayName || university;
+        
+        // 이미지 파일명 생성 (예: Cornell.png)
+        const imageFileName = `${universityDisplayName}.png`;
+        
+        // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기
+        const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
+          fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
+          fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+        ]);
+        
+        // 로고 이미지 처리
+        if (logoResponse.ok) {
+          const logoData = await logoResponse.json();
+          if (logoData.success && logoData.url) {
+            setLogoImageUrl({ uri: logoData.url });
+          } else {
+            setLogoImageUrl(null);
+          }
+        } else {
+          setLogoImageUrl(null);
+        }
+        
+        // 공지사항 처리
         if (noticesResponse.ok) {
           const noticesData = await noticesResponse.json();
           if (noticesData.success && noticesData.notices) {
@@ -299,8 +286,7 @@ export default function HomeScreen({ navigation }) {
           setSavedNotices([]);
         }
 
-        // 경조사 불러오기
-        const lifeEventsResponse = await fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`);
+        // 경조사 처리
         if (lifeEventsResponse.ok) {
           const lifeEventsData = await lifeEventsResponse.json();
           if (lifeEventsData.success && lifeEventsData.lifeEvents) {
@@ -312,30 +298,50 @@ export default function HomeScreen({ navigation }) {
           setSavedLifeEvents([]);
         }
       } catch (error) {
+        setLogoImageUrl(null);
         setSavedNotices([]);
         setSavedLifeEvents([]);
       }
     };
 
-    loadData();
-  }, [university]);
+    loadAllData();
+  }, [university, getConfig]);
 
-  // 화면이 포커스될 때마다 데이터 새로고침
+  // 화면이 포커스될 때마다 데이터 새로고침 (로고 이미지, 공지사항, 경조사 모두 병렬 로드)
   const intervalRef = useRef(null);
   
   useFocusEffect(
     React.useCallback(() => {
       if (university) {
-        const loadData = async () => {
+        const loadAllData = async () => {
           try {
             const universityCode = university.toLowerCase();
             
-            // 공지사항과 경조사를 병렬로 불러오기 (성능 개선)
-            const [noticesResponse, lifeEventsResponse] = await Promise.all([
+            // 학교 이름을 소문자로 변환하여 display_name 확인
+            const universityLower = university.toLowerCase();
+            const displayName = getConfig(`${universityLower}_display_name`, '');
+            
+            // display_name이 있으면 그것을 사용, 없으면 university 그대로 사용
+            const universityDisplayName = displayName || university;
+            
+            // 이미지 파일명 생성 (예: Cornell.png)
+            const imageFileName = `${universityDisplayName}.png`;
+            
+            // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
+            const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all([
+              fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
               fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
               fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
             ]);
             
+            // 로고 이미지 처리
+            if (logoResponse.ok) {
+              const logoData = await logoResponse.json();
+              if (logoData.success && logoData.url) {
+                setLogoImageUrl({ uri: logoData.url });
+              }
+            }
+
             // 공지사항 처리
             if (noticesResponse.ok) {
               const noticesData = await noticesResponse.json();
@@ -357,11 +363,11 @@ export default function HomeScreen({ navigation }) {
         };
         
         // 즉시 새로고침
-        loadData();
+        loadAllData();
         
         // 2분(120초)마다 자동 새로고침 (새 글 확인)
         intervalRef.current = setInterval(() => {
-          loadData();
+          loadAllData();
         }, 2 * 60 * 1000); // 2분마다
         
         return () => {
@@ -371,7 +377,7 @@ export default function HomeScreen({ navigation }) {
           }
         };
       }
-    }, [university])
+    }, [university, getConfig])
   );
 
   // API에서 불러온 공지사항만 사용
