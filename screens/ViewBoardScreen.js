@@ -312,11 +312,11 @@ export default function ViewBoardScreen({ route, navigation }) {
           if (data.success && data.post) {
             setBoard(data.post);
             
-            // 댓글도 함께 로드
-            await loadComments();
-          
-          // 관심리스트 확인
-          await checkFavorite();
+            // 댓글과 관심리스트를 병렬로 로드 (성능 최적화)
+            await Promise.all([
+              loadComments(),
+              checkFavorite()
+            ]);
           } else {
             Alert.alert('오류', '게시글을 찾을 수 없습니다.');
             if (navigation.canGoBack()) {
