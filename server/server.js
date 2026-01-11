@@ -3376,7 +3376,7 @@ app.get('/api/circles/:id/comments', async (req, res) => {
 app.get('/api/circles/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { university } = req.query;
+    const { university, fields } = req.query; // fields 파라미터 추가
     
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
@@ -3401,11 +3401,15 @@ app.get('/api/circles/:id', async (req, res) => {
           return res.status(400).json({ error: '유효하지 않은 ID입니다.' });
         }
         
-        // 뷰수 증가 및 데이터 조회
-        const result = await pool.query(
-          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING *`,
-          [circleId]
-        );
+        // 데이터 조회만 (뷰수 증가는 별도 API로 분리)
+        // fields 쿼리 파라미터로 특정 필드만 조회 가능 (뷰수만 가져올 때)
+        let query = `SELECT * FROM ${tableName} WHERE id = $1`;
+        
+        if (fields === 'views') {
+          query = `SELECT id, views FROM ${tableName} WHERE id = $1`;
+        }
+        
+        const result = await pool.query(query, [circleId]);
         
         if (result.rows.length === 0) {
           return res.status(404).json({ error: '소모임을 찾을 수 없습니다.' });

@@ -108,6 +108,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
   }), [uniColors]);
   const [circle, setCircle] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  const viewsIncrementedRef = useRef(false); // 뷰수 증가 플래그 (한 번만 실행)
   
   // circlePreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
@@ -120,6 +121,74 @@ export default function ViewCirclesScreen({ route, navigation }) {
       });
     }
   }, [circlePreview, circle]);
+  
+  // 뷰수 증가 함수 (별도 호출, 캐시 무관)
+  const incrementViews = React.useCallback(async () => {
+    if (!circleId || !targetUniversity || !targetUniversity.trim()) {
+      return;
+    }
+    
+    // 중복 호출 방지 (호출 전에 즉시 플래그 설정)
+    if (viewsIncrementedRef.current) {
+      if (__DEV__) {
+        console.log('[ViewCirclesScreen] 뷰수 증가 이미 실행됨, 중복 호출 방지');
+      }
+      return;
+    }
+    
+    // 즉시 플래그 설정하여 중복 호출 방지
+    viewsIncrementedRef.current = true;
+    
+    try {
+      const universityCode = targetUniversity.toLowerCase();
+      if (__DEV__) {
+        console.log('[ViewCirclesScreen] 뷰수 증가 요청:', { circleId, universityCode });
+      }
+      
+      // 500ms 지연 후 뷰수 증가 API 호출
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const response = await fetch(
+        `${API_BASE_URL}/api/circles/${circleId}/increment-views?university=${encodeURIComponent(universityCode)}`,
+        { method: 'POST' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          if (__DEV__) {
+            console.log('[ViewCirclesScreen] 뷰수 증가 성공:', data.views);
+          }
+          // 뷰수 업데이트 (캐시 무관)
+          setCircle(prev => prev ? { ...prev, views: data.views } : prev);
+        } else {
+          // 실패 시 플래그 리셋
+          viewsIncrementedRef.current = false;
+        }
+      } else {
+        // 실패 시 플래그 리셋
+        viewsIncrementedRef.current = false;
+        // 404 에러는 조용히 처리 (다른 학교로 넘어갔을 때 발생할 수 있음)
+        if (response.status === 404) {
+          if (__DEV__) {
+            console.log('[ViewCirclesScreen] 소모임을 찾을 수 없음 (다른 학교일 수 있음):', { circleId, universityCode });
+          }
+          // 조용히 처리 (에러 메시지 표시 안 함)
+        } else {
+          if (__DEV__) {
+            console.error('[ViewCirclesScreen] 뷰수 증가 실패:', response.status);
+          }
+        }
+      }
+    } catch (error) {
+      // 실패 시 플래그 리셋
+      viewsIncrementedRef.current = false;
+      // 뷰수 증가 실패는 무시 (로그만 출력)
+      if (__DEV__) {
+        console.error('[ViewCirclesScreen] 뷰수 증가 실패:', error);
+      }
+    }
+  }, [circleId, targetUniversity]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [comments, setComments] = useState([]);
