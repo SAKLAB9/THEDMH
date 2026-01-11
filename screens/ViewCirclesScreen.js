@@ -307,24 +307,26 @@ export default function ViewCirclesScreen({ route, navigation }) {
     }
   }, [circleId, selectedChannel]);
 
-  // 소모임 데이터 로드 함수
-  const loadCircle = React.useCallback(async () => {
+  // 소모임 데이터 로드 함수 (content_blocks와 images만 로드)
+  const loadCircle = React.useCallback(async (forceRefresh = false) => {
       if (!circleId || !targetUniversity || !targetUniversity.trim()) {
         return;
       }
 
-      setLoading(true);
+      // circlePreview가 있으면 기본 정보는 이미 표시되므로 content만 로드
+      if (circlePreview && !forceRefresh) {
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+      
       try {
         const universityCode = targetUniversity.toLowerCase();
         
         if (!universityCode || !universityCode.trim()) {
           Alert.alert('오류', '대학 정보가 없습니다.');
           if (navigation.canGoBack()) {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Main');
-            }
+            navigation.goBack();
           } else {
             navigation.navigate('Main');
           }
@@ -332,8 +334,79 @@ export default function ViewCirclesScreen({ route, navigation }) {
           return;
         }
         
-        const url = `${API_BASE_URL}/api/circles/${circleId}?university=${encodeURIComponent(universityCode)}`;
+        const cacheKey = `circle_${circleId}_${universityCode}`;
+        const contentCacheKey = `circle_content_${circleId}_${universityCode}`;
         
+        // 캐시 확인 (circlePreview가 없을 때만)
+        if (!forceRefresh && !circlePreview) {
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            try {
+              const { circle: cachedCircle, timestamp } = JSON.parse(cachedData);
+              const CACHE_DURATION = 5 * 60 * 1000; // 5분
+              
+              if (Date.now() - timestamp < CACHE_DURATION) {
+                // 캐시된 데이터가 있으면 즉시 표시
+                let parsedCircle = { ...cachedCircle };
+                if (parsedCircle.content_blocks && typeof parsedCircle.content_blocks === 'string') {
+                  try {
+                    parsedCircle.content_blocks = JSON.parse(parsedCircle.content_blocks);
+                  } catch (e) {
+                    parsedCircle.content_blocks = [];
+                  }
+                }
+                if (!Array.isArray(parsedCircle.content_blocks)) {
+                  parsedCircle.content_blocks = [];
+                }
+                setCircle(parsedCircle);
+                setLoading(false);
+                
+                // 백그라운드에서 최신 데이터 확인
+                fetch(`${API_BASE_URL}/api/circles/${circleId}?university=${encodeURIComponent(universityCode)}`)
+                  .then(response => {
+                    if (response.ok) {
+                      return response.json();
+                    }
+                    return null;
+                  })
+                  .then(data => {
+                    if (data && data.success && data.circle) {
+                      let updatedCircle = data.circle;
+                      if (updatedCircle.content_blocks && typeof updatedCircle.content_blocks === 'string') {
+                        try {
+                          updatedCircle.content_blocks = JSON.parse(updatedCircle.content_blocks);
+                        } catch (e) {
+                          updatedCircle.content_blocks = [];
+                        }
+                      }
+                      if (!Array.isArray(updatedCircle.content_blocks)) {
+                        updatedCircle.content_blocks = [];
+                      }
+                      AsyncStorage.setItem(cacheKey, JSON.stringify({
+                        circle: updatedCircle,
+                        timestamp: Date.now()
+                      })).catch(() => {});
+                      setCircle(updatedCircle);
+                    }
+                  })
+                  .catch(() => {});
+                
+                // 댓글과 관심리스트 로드
+                await Promise.all([
+                  loadComments(),
+                  checkFavorite()
+                ]);
+                
+                return; // 캐시가 있으면 여기서 종료
+              }
+            } catch (e) {
+              // 캐시 파싱 실패 시 계속 진행
+            }
+          }
+        }
+        
+        // 캐시가 없거나 만료되었으면 API 호출
+        const url = `${API_BASE_URL}/api/circles/${circleId}?university=${encodeURIComponent(universityCode)}`;
         const response = await fetch(url);
         
         if (response.ok) {
@@ -341,30 +414,47 @@ export default function ViewCirclesScreen({ route, navigation }) {
           
           if (data.success && data.circle) {
             // content_blocks가 JSON 문자열인 경우 파싱
-            let circle = data.circle;
-            if (circle.content_blocks && typeof circle.content_blocks === 'string') {
+            let fullCircle = { ...data.circle };
+            if (fullCircle.content_blocks && typeof fullCircle.content_blocks === 'string') {
               try {
-                circle.content_blocks = JSON.parse(circle.content_blocks);
+                fullCircle.content_blocks = JSON.parse(fullCircle.content_blocks);
               } catch (e) {
                 console.error('[ViewCirclesScreen] content_blocks 파싱 실패:', e);
-                circle.content_blocks = [];
+                fullCircle.content_blocks = [];
               }
             }
-            // content_blocks가 배열이 아니면 빈 배열로 설정
-            if (!Array.isArray(circle.content_blocks)) {
-              circle.content_blocks = [];
+            if (!Array.isArray(fullCircle.content_blocks)) {
+              fullCircle.content_blocks = [];
             }
             
-            console.log('[ViewCirclesScreen] circle 로드 완료:', {
-              id: circle.id,
-              title: circle.title,
-              content_blocks_count: circle.content_blocks?.length || 0,
-              images_count: circle.images?.length || 0,
-              first_image_uri: circle.content_blocks?.find(b => b.type === 'image')?.uri || '없음',
-              content_blocks: JSON.stringify(circle.content_blocks, null, 2)
-            });
-            
-            setCircle(circle);
+            // circlePreview가 있으면 기본 정보는 유지하고 content_blocks와 images만 업데이트
+            if (circlePreview && circle) {
+              setCircle({
+                ...circle,
+                content_blocks: fullCircle.content_blocks,
+                images: fullCircle.images || [],
+                text_content: fullCircle.text_content || ''
+              });
+              
+              // content만 별도 캐시에 저장
+              AsyncStorage.setItem(contentCacheKey, JSON.stringify({
+                content: {
+                  content_blocks: fullCircle.content_blocks,
+                  images: fullCircle.images || [],
+                  text_content: fullCircle.text_content || ''
+                },
+                timestamp: Date.now()
+              })).catch(() => {});
+            } else {
+              // circlePreview가 없으면 전체 데이터 표시
+              setCircle(fullCircle);
+              
+              // 전체 캐시에 저장
+              AsyncStorage.setItem(cacheKey, JSON.stringify({
+                circle: fullCircle,
+                timestamp: Date.now()
+              })).catch(() => {});
+            }
             
             // 댓글과 관심리스트를 병렬로 로드 (성능 최적화)
             await Promise.all([
@@ -372,28 +462,36 @@ export default function ViewCirclesScreen({ route, navigation }) {
               checkFavorite()
             ]);
           } else {
-            Alert.alert('오류', '소모임을 찾을 수 없습니다.');
-            if (navigation.canGoBack()) {
-              if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Main');
+            // 소모임을 찾을 수 없음 (다른 학교일 수 있음)
+            if (__DEV__) {
+              console.log(`[ViewCirclesScreen] 소모임을 찾을 수 없음 (다른 학교일 수 있음)`);
             }
+            // 조용히 뒤로 가기
+            if (navigation.canGoBack()) {
+              navigation.goBack();
             } else {
               navigation.navigate('Main');
             }
           }
         } else {
-          const errorData = await response.json().catch(() => ({ error: '소모임을 불러올 수 없습니다.' }));
-          Alert.alert('오류', errorData.error || '소모임을 불러올 수 없습니다.');
-          if (navigation.canGoBack()) {
+          // 에러 응답 처리 (404는 조용히 처리)
+          if (response.status === 404) {
+            if (__DEV__) {
+              console.log(`[ViewCirclesScreen] 소모임을 찾을 수 없음 (404) - 다른 학교일 수 있음`);
+            }
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
               navigation.navigate('Main');
             }
           } else {
-            navigation.navigate('Main');
+            const errorData = await response.json().catch(() => ({ error: '소모임을 불러올 수 없습니다.' }));
+            Alert.alert('오류', errorData.error || '소모임을 불러올 수 없습니다.');
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main');
+            }
           }
         }
       } catch (error) {
@@ -406,7 +504,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
       } finally {
         setLoading(false);
       }
-  }, [circleId, targetUniversity, navigation, getConfig, loadComments, checkFavorite]);
+  }, [circleId, targetUniversity, navigation, circlePreview, circle, loadComments, checkFavorite]);
 
   // 토스트 메시지 표시
   const showToast = (message) => {
