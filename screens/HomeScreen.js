@@ -316,9 +316,19 @@ export default function HomeScreen({ navigation }) {
           if (noticesData.success && noticesData.notices) {
             setSavedNotices(noticesData.notices);
           } else {
+            if (__DEV__) {
+              console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+            }
             setSavedNotices([]);
           }
         } else {
+          if (__DEV__) {
+            console.error(`[HomeScreen] 공지사항 로드 실패: ${noticesResponse.status} ${noticesResponse.statusText}`, {
+              url: `${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`,
+              university,
+              universityCode
+            });
+          }
           setSavedNotices([]);
         }
 
@@ -328,12 +338,29 @@ export default function HomeScreen({ navigation }) {
           if (lifeEventsData.success && lifeEventsData.lifeEvents) {
             setSavedLifeEvents(lifeEventsData.lifeEvents);
           } else {
+            if (__DEV__) {
+              console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+            }
             setSavedLifeEvents([]);
           }
         } else {
+          if (__DEV__) {
+            console.error(`[HomeScreen] 경조사 로드 실패: ${lifeEventsResponse.status} ${lifeEventsResponse.statusText}`, {
+              url: `${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`,
+              university,
+              universityCode
+            });
+          }
           setSavedLifeEvents([]);
         }
       } catch (error) {
+        if (__DEV__) {
+          console.error('[HomeScreen] 데이터 로드 오류:', error, {
+            university,
+            universityCode: university ? university.toLowerCase() : null,
+            API_BASE_URL
+          });
+        }
         setLogoImageUrl(null);
         setSavedNotices([]);
         setSavedLifeEvents([]);
@@ -505,9 +532,19 @@ export default function HomeScreen({ navigation }) {
               }
               setSavedNotices(noticesData.notices);
             } else {
+              if (__DEV__) {
+                console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+              }
               setSavedNotices([]);
             }
           } else {
+            if (__DEV__) {
+              console.error(`[HomeScreen] 공지사항 로드 실패: ${noticesResponse.status} ${noticesResponse.statusText}`, {
+                url: `${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`,
+                university,
+                universityCode
+              });
+            }
             // 오류 시 캐시된 데이터가 있으면 사용
             if (cachedNotices) {
               setSavedNotices(cachedNotices);
@@ -529,9 +566,19 @@ export default function HomeScreen({ navigation }) {
               }
               setSavedLifeEvents(lifeEventsData.lifeEvents);
             } else {
+              if (__DEV__) {
+                console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+              }
               setSavedLifeEvents([]);
             }
           } else {
+            if (__DEV__) {
+              console.error(`[HomeScreen] 경조사 로드 실패: ${lifeEventsResponse.status} ${lifeEventsResponse.statusText}`, {
+                url: `${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`,
+                university,
+                universityCode
+              });
+            }
             // 오류 시 캐시된 데이터가 있으면 사용
             if (cachedLifeEvents) {
               setSavedLifeEvents(cachedLifeEvents);
@@ -540,6 +587,13 @@ export default function HomeScreen({ navigation }) {
             }
           }
         } catch (error) {
+          if (__DEV__) {
+            console.error('[HomeScreen] 데이터 로드 오류:', error, {
+              university,
+              universityCode: university ? university.toLowerCase() : null,
+              API_BASE_URL
+            });
+          }
           // 에러 발생 시 빈 배열로 설정하여 UI가 깨지지 않도록 함
           setSavedNotices([]);
           setSavedLifeEvents([]);
