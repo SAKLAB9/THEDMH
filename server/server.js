@@ -2894,46 +2894,52 @@ app.get('/api/circles', async (req, res) => {
           console.warn('[Circles 목록 조회] 컬럼 확인/추가 실패:', colError.message);
         }
         
-        // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
-        // 컬럼이 없어도 에러가 발생하지 않도록 COALESCE 사용
-        let query = `SELECT 
-          id,
-          title,
-          category,
-          author,
-          created_at,
-          COALESCE(nickname, NULL) as nickname,
-          COALESCE(views, 0) as views,
-          COALESCE(url, NULL) as url,
-          COALESCE(event_date, NULL) as event_date,
-          COALESCE(region, NULL) as region,
-          COALESCE(location, NULL) as location,
-          COALESCE(keywords, NULL) as keywords,
-          COALESCE(participants, NULL) as participants,
-          COALESCE(fee, NULL) as fee,
-          COALESCE(contact, NULL) as contact,
-          COALESCE(account_number, NULL) as account_number,
-          COALESCE(report_count, 0) as report_count,
-          COALESCE(is_closed, false) as is_closed,
-          COALESCE(closed_at, NULL) as closed_at
-        FROM ${tableName}`;
+        // 댓글 테이블 이름 가져오기
+        const commentsTableName = getCirclesCommentsTableName(universityCode);
+        
+        // JOIN을 사용하여 댓글 개수를 한 번에 가져오기 (N+1 쿼리 문제 해결)
+        let query = `
+          SELECT 
+            c.id,
+            c.title,
+            c.category,
+            c.author,
+            c.created_at,
+            COALESCE(c.nickname, NULL) as nickname,
+            COALESCE(c.views, 0) as views,
+            COALESCE(c.url, NULL) as url,
+            COALESCE(c.event_date, NULL) as event_date,
+            COALESCE(c.region, NULL) as region,
+            COALESCE(c.location, NULL) as location,
+            COALESCE(c.keywords, NULL) as keywords,
+            COALESCE(c.participants, NULL) as participants,
+            COALESCE(c.fee, NULL) as fee,
+            COALESCE(c.contact, NULL) as contact,
+            COALESCE(c.account_number, NULL) as account_number,
+            COALESCE(c.report_count, 0) as report_count,
+            COALESCE(c.is_closed, false) as is_closed,
+            COALESCE(c.closed_at, NULL) as closed_at,
+            COALESCE(COUNT(com.id), 0) as comment_count
+          FROM ${tableName} c
+          LEFT JOIN ${commentsTableName} com ON c.id = com.post_id
+        `;
         const params = [];
         let paramIndex = 1;
         
         if (category && category !== '전체') {
-          query += ` WHERE category = $${paramIndex}`;
+          query += ` WHERE c.category = $${paramIndex}`;
           params.push(category);
           paramIndex++;
         }
         
-        query += ` ORDER BY created_at DESC`;
+        query += ` GROUP BY c.id, c.title, c.category, c.author, c.created_at, c.nickname, c.views, c.url, c.event_date, c.region, c.location, c.keywords, c.participants, c.fee, c.contact, c.account_number, c.report_count, c.is_closed, c.closed_at ORDER BY c.created_at DESC`;
         
         let result;
         try {
           result = await pool.query(query, params);
         } catch (queryError) {
-          // 컬럼이 없는 경우를 대비해 간단한 쿼리로 재시도
-          console.warn('[Circles 목록 조회] 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
+          // JOIN 쿼리 실패 시 간단한 쿼리로 재시도
+          console.warn('[Circles 목록 조회] JOIN 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
           let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
           if (category && category !== '전체') {
             simpleQuery += ` WHERE category = $1`;
@@ -2958,36 +2964,13 @@ app.get('/api/circles', async (req, res) => {
             account_number: null,
             report_count: 0,
             is_closed: false,
-            closed_at: null
+            closed_at: null,
+            comment_count: 0
           }));
         }
         
-        // 댓글 테이블 이름 가져오기
-        const commentsTableName = getCirclesCommentsTableName(universityCode);
-        
-        // JOIN을 사용하여 댓글 개수를 한 번에 가져오기 (N+1 쿼리 문제 해결)
-        let finalQuery = `
-          SELECT 
-            c.*,
-            COALESCE(COUNT(com.id), 0) as comment_count
-          FROM (${query}) c
-          LEFT JOIN ${commentsTableName} com ON c.id = com.post_id
-          GROUP BY c.id, c.title, c.category, c.author, c.created_at, c.nickname, c.views, c.url, c.event_date, c.region, c.location, c.keywords, c.participants, c.fee, c.contact, c.account_number, c.report_count, c.is_closed, c.closed_at
-          ORDER BY c.created_at DESC
-        `;
-        
-        let finalResult;
-        try {
-          finalResult = await pool.query(finalQuery, params);
-        } catch (joinError) {
-          // JOIN 실패 시 기존 방식으로 fallback
-          console.warn('[Circles 목록 조회] JOIN 쿼리 실패, 개별 조회로 fallback:', joinError.message);
-          finalResult = result;
-          // 개별 조회는 나중에 처리
-        }
-        
-        // JOIN이 성공했으면 변환만 수행
-        const circles = finalResult.rows.map((circle) => {
+        // 변환 수행
+        const circles = result.rows.map((circle) => {
           const transformed = {
             ...circle,
             eventDate: circle.event_date,
@@ -3006,44 +2989,6 @@ app.get('/api/circles', async (req, res) => {
           
           return transformed;
         });
-        
-        // JOIN이 실패했으면 개별 조회 (fallback)
-        if (finalResult === result) {
-          const circlesWithComments = await Promise.all(result.rows.map(async (circle) => {
-            let commentCount = 0;
-            try {
-              const commentResult = await pool.query(
-                `SELECT COUNT(*) as count FROM ${commentsTableName} WHERE post_id = $1`,
-                [circle.id]
-              );
-              commentCount = parseInt(commentResult.rows[0].count) || 0;
-            } catch (error) {
-              commentCount = 0;
-            }
-            
-            const transformed = {
-              ...circle,
-              eventDate: circle.event_date,
-              region: circle.region,
-              location: circle.location,
-              keywords: circle.keywords,
-              participants: circle.participants,
-              fee: circle.fee,
-              contact: circle.contact,
-              accountNumber: circle.account_number,
-              reportCount: circle.report_count || 0,
-              isClosed: circle.is_closed || false,
-              closedAt: circle.closed_at,
-              commentCount: commentCount
-            };
-            
-            return transformed;
-          }));
-          
-          // circles 배열 교체
-          circles.length = 0;
-          circles.push(...circlesWithComments);
-        }
         
         if (universityCode === 'miuhub') {
           try {
