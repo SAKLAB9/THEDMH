@@ -135,20 +135,11 @@ export default function LoginScreen() {
     loadConfig(null, true);
   }, [loadConfig]);
   
-  // config가 로드된 후에만 LOGIN_COLORS 계산 (성능 최적화)
+  // LOGIN_COLORS 계산 - getLoginColors 내부에서 기본값 처리
+  // iOS에서 config 로딩이 느릴 수 있으므로 항상 getLoginColors를 호출
   const LOGIN_COLORS = useMemo(() => {
-    if (configLoading) {
-      // 로딩 중일 때는 기본값 반환
-      return {
-        iconBackground: '#3b3c36',
-        iconBorder: '#3b3c36',
-        get primary() {
-          return this.iconBackground;
-        },
-      };
-    }
     return getLoginColors(getConfig);
-  }, [getConfig, configLoading]);
+  }, [getConfig, config]);
 
   // 딥링크 처리: 비밀번호 재설정 링크 감지
   useEffect(() => {
