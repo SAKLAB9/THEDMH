@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/supabase';
+import API_BASE_URL from '../config/api';
 import { useUniversity } from '../contexts/UniversityContext';
 import { useAppConfig } from '../contexts/AppConfigContext';
 import { getUniColors } from '../utils/uniColors';
@@ -397,13 +398,30 @@ export default function CirclesScreen({ navigation, route }) {
           const circlesData = await circlesResponse.json();
           if (circlesData.success && circlesData.circles) {
             setSavedCircles(circlesData.circles);
+            if (__DEV__) {
+              console.log('[CirclesScreen] Circles 로드 성공:', circlesData.circles.length);
+            }
           } else {
+            if (__DEV__) {
+              console.log('[CirclesScreen] Circles 데이터 없음 또는 실패:', circlesData);
+            }
             setSavedCircles([]);
           }
         } else {
+          const errorText = await circlesResponse.text().catch(() => '');
+          if (__DEV__) {
+            console.error('[CirclesScreen] Circles API 오류:', {
+              status: circlesResponse.status,
+              statusText: circlesResponse.statusText,
+              error: errorText
+            });
+          }
           setSavedCircles([]);
         }
       } catch (error) {
+        if (__DEV__) {
+          console.error('[CirclesScreen] Circles 로드 실패:', error);
+        }
         setSavedCircles([]);
       }
   }, [university, selectedChannel]);

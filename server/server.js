@@ -2855,8 +2855,23 @@ app.get('/api/circles', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        
-        let query = `SELECT * FROM ${tableName}`;
+        // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
+        // 컬럼이 없어도 에러가 발생하지 않도록 COALESCE 사용
+        let query = `SELECT 
+          id,
+          title,
+          category,
+          author,
+          created_at,
+          COALESCE(nickname, NULL) as nickname,
+          COALESCE(views, 0) as views,
+          COALESCE(url, NULL) as url,
+          COALESCE(event_date, NULL) as event_date,
+          COALESCE(account_number, NULL) as account_number,
+          COALESCE(report_count, 0) as report_count,
+          COALESCE(is_closed, false) as is_closed,
+          COALESCE(closed_at, NULL) as closed_at
+        FROM ${tableName}`;
         const params = [];
         let paramIndex = 1;
         
@@ -2868,7 +2883,33 @@ app.get('/api/circles', async (req, res) => {
         
         query += ` ORDER BY created_at DESC`;
         
-        const result = await pool.query(query, params);
+        let result;
+        try {
+          result = await pool.query(query, params);
+        } catch (queryError) {
+          // 컬럼이 없는 경우를 대비해 간단한 쿼리로 재시도
+          console.warn('[Circles 목록 조회] 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
+          let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
+          if (category && category !== '전체') {
+            simpleQuery += ` WHERE category = $1`;
+            result = await pool.query(simpleQuery, [category]);
+          } else {
+            result = await pool.query(simpleQuery);
+          }
+          
+          // 기본값 추가
+          result.rows = result.rows.map(row => ({
+            ...row,
+            nickname: null,
+            views: 0,
+            url: null,
+            event_date: null,
+            account_number: null,
+            report_count: 0,
+            is_closed: false,
+            closed_at: null
+          }));
+        }
         
         // 댓글 테이블 이름 가져오기
         const commentsTableName = getCirclesCommentsTableName(universityCode);
