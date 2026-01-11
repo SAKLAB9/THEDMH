@@ -436,53 +436,51 @@ export default function LoginScreen() {
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
         
-        try {
-          // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filenames: imageNames }),
-          });
+        // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ filenames: imageNames }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
           
-          if (response.ok) {
-            const data = await response.json();
+          if (data.success && data.urls) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
             
-            if (data.success && data.urls) {
-              // 캐시에 저장 (24시간 유효)
-              await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
-              
-              // URL 객체로 변환
-              const urls = {};
-              Object.keys(data.urls).forEach(imageName => {
-                urls[imageName] = { uri: data.urls[imageName] };
-              });
-              setAdminImageUrls(urls);
-            } else {
-              // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
-              setAdminImageUrls({});
-            }
+            // URL 객체로 변환
+            const urls = {};
+            Object.keys(data.urls).forEach(imageName => {
+              urls[imageName] = { uri: data.urls[imageName] };
+            });
+            setAdminImageUrls(urls);
           } else {
-            // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
-            // 개발 모드에서만 로그 출력
-            if (__DEV__) {
-              const errorText = await response.text();
-              console.warn(`[LoginScreen] Admin 이미지 API HTTP 에러 (${Platform.OS}):`, {
-                status: response.status,
-                statusText: response.statusText
-              });
-            }
+            // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
             setAdminImageUrls({});
           }
-        } catch (error) {
-          // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        } else {
+          // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
           // 개발 모드에서만 로그 출력
           if (__DEV__) {
-            console.warn(`[LoginScreen] Admin 이미지 로드 실패 (${Platform.OS}):`, error.message);
+            console.warn(`[LoginScreen] Admin 이미지 API HTTP 에러 (${Platform.OS}):`, {
+              status: response.status,
+              statusText: response.statusText
+            });
           }
           setAdminImageUrls({});
         }
+      } catch (error) {
+        // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        // 개발 모드에서만 로그 출력
+        if (__DEV__) {
+          console.warn(`[LoginScreen] Admin 이미지 로드 실패 (${Platform.OS}):`, error.message);
+        }
+        setAdminImageUrls({});
+      }
     };
     
     loadAdminImageUrls();
