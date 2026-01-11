@@ -350,6 +350,7 @@ export default function SelectUniScreen() {
                   elevation: 12,
                 }}
                 resizeMode="contain"
+                cache="force-cache"
               />
             )
           )}
@@ -393,6 +394,7 @@ export default function SelectUniScreen() {
                     elevation: 8,
                   }}
                   resizeMode="contain"
+                  cache="force-cache"
                 />
               </TouchableOpacity>
             </TouchableOpacity>
