@@ -103,51 +103,50 @@ export default function SelectUniScreen() {
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
         
-        try {
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filenames: imageNames }),
-          });
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ filenames: imageNames }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
           
-          if (response.ok) {
-            const data = await response.json();
+          if (data.success && data.urls) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
             
-            if (data.success && data.urls) {
-              // 캐시에 저장 (24시간 유효)
-              await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
-              
-              // URL 객체로 변환
-              const urls = {};
-              Object.keys(data.urls).forEach(imageName => {
-                urls[imageName] = { uri: data.urls[imageName] };
-              });
-              setImageUrls(urls);
-            } else {
-              // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
-              setImageUrls({});
-            }
+            // URL 객체로 변환
+            const urls = {};
+            Object.keys(data.urls).forEach(imageName => {
+              urls[imageName] = { uri: data.urls[imageName] };
+            });
+            setImageUrls(urls);
           } else {
-            // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
-            // 개발 모드에서만 로그 출력
-            if (__DEV__) {
-              console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
-                status: response.status,
-                statusText: response.statusText
-              });
-            }
+            // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
             setImageUrls({});
           }
-        } catch (error) {
-          // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        } else {
+          // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
           // 개발 모드에서만 로그 출력
           if (__DEV__) {
-            console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error.message);
+            console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
+              status: response.status,
+              statusText: response.statusText
+            });
           }
           setImageUrls({});
         }
+      } catch (error) {
+        // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        // 개발 모드에서만 로그 출력
+        if (__DEV__) {
+          console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error.message);
+        }
+        setImageUrls({});
+      }
     };
     
     if (slotsCount > 0) {
