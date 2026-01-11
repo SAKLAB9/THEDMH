@@ -3,10 +3,9 @@
 -- 슬래시 중복 제거: // -> /
 
 -- ============================================
--- 학교별 테이블 (7개) - 각 학교마다 실행 필요
+-- 헬퍼 함수: 테이블 존재 여부 확인
 -- ============================================
 
--- 헬퍼 함수: 테이블 존재 여부 확인
 CREATE OR REPLACE FUNCTION table_exists(p_table_name TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -17,6 +16,10 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================
+-- 학교별 테이블 (5개 학교 × 7개 테이블 = 35개)
+-- ============================================
 
 -- 1. 공지사항 테이블 (content_blocks, images)
 DO $$
@@ -29,7 +32,6 @@ BEGIN
     LOOP
         table_name := uni || '_notices';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
@@ -129,7 +131,6 @@ BEGIN
     LOOP
         table_name := uni || '_life_events';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
@@ -229,7 +230,6 @@ BEGIN
     LOOP
         table_name := uni || '_board_posts';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
@@ -329,7 +329,6 @@ BEGIN
     LOOP
         table_name := uni || '_circles';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
@@ -418,7 +417,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 5. 추첨 테이블 (raffles) - 이미지가 있을 수 있음
+-- 5. 추첨 테이블 (raffles) - image_url, images
 DO $$
 DECLARE
     uni TEXT;
@@ -429,13 +428,12 @@ BEGIN
     LOOP
         table_name := uni || '_raffles';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
         END IF;
         
-        -- image_url 컬럼이 있으면 수정
+        -- image_url 컬럼 수정
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -464,7 +462,7 @@ BEGIN
             RAISE NOTICE 'Error updating % (image_url): %', table_name, SQLERRM;
         END;
         
-        -- images 배열이 있으면 수정
+        -- images 배열 수정
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -504,7 +502,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 6. 게시판 댓글 테이블 (댓글에 이미지가 있을 수 있음)
+-- 6. 게시판 댓글 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -515,13 +513,12 @@ BEGIN
     LOOP
         table_name := uni || '_board_comments';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
         END IF;
         
-        -- content_blocks 또는 image_url 컬럼이 있으면 수정
+        -- content_blocks의 이미지 URL 수정
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -565,10 +562,12 @@ BEGIN
         WHEN OTHERS THEN
             RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
         END;
+        
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
--- 7. 소모임 댓글 테이블 (댓글에 이미지가 있을 수 있음)
+-- 7. 소모임 댓글 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -579,13 +578,12 @@ BEGIN
     LOOP
         table_name := uni || '_circles_comments';
         
-        -- 테이블 존재 여부 확인
         IF NOT table_exists(table_name) THEN
             RAISE NOTICE 'Table % does not exist, skipping', table_name;
             CONTINUE;
         END IF;
         
-        -- content_blocks 또는 image_url 컬럼이 있으면 수정
+        -- content_blocks의 이미지 URL 수정
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -629,17 +627,18 @@ BEGIN
         WHEN OTHERS THEN
             RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
         END;
+        
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
 -- ============================================
--- MIUHub 전용 테이블 (5개)
+-- MIUHub 전용 테이블
 -- ============================================
 
--- 8. MIUHub Featured 테이블
+-- 8. MIUHub Featured 테이블 (content_blocks, image_url)
 DO $$
 BEGIN
-    -- 테이블 존재 여부 확인
     IF NOT table_exists('miuhub_featured') THEN
         RAISE NOTICE 'Table miuhub_featured does not exist, skipping';
         RETURN;
@@ -686,7 +685,7 @@ BEGIN
         RAISE NOTICE 'Error updating miuhub_featured (content_blocks): %', SQLERRM;
     END;
     
-    -- image_url 컬럼이 있으면 수정
+    -- image_url 컬럼 수정
     BEGIN
         UPDATE miuhub_featured 
         SET image_url = regexp_replace(
@@ -715,13 +714,12 @@ BEGIN
 END $$;
 
 -- ============================================
--- 개별 테이블 (3개)
+-- 공통 테이블
 -- ============================================
 
--- 9. 팝업 테이블 (popups)
+-- 9. 팝업 테이블 (popups) - content_blocks
 DO $$
 BEGIN
-    -- 테이블 존재 여부 확인
     IF NOT table_exists('popups') THEN
         RAISE NOTICE 'Table popups does not exist, skipping';
         RETURN;
@@ -763,16 +761,15 @@ BEGIN
             OR content_blocks::text LIKE '%//%'
         );
         
-        RAISE NOTICE 'Updated popups';
+        RAISE NOTICE 'Updated popups (content_blocks)';
     EXCEPTION WHEN OTHERS THEN
         RAISE NOTICE 'Error updating popups: %', SQLERRM;
     END;
 END $$;
 
--- 10. app_config 테이블 (설정 값에 이미지 URL이 있을 수 있음)
+-- 10. app_config 테이블 (value에 URL이 포함될 수 있음)
 DO $$
 BEGIN
-    -- 테이블 존재 여부 확인
     IF NOT table_exists('app_config') THEN
         RAISE NOTICE 'Table app_config does not exist, skipping';
         RETURN;
@@ -804,17 +801,15 @@ BEGIN
     END;
 END $$;
 
--- 11. 기타 공통 테이블 (필요시 추가)
--- 예: users 테이블의 profile_image_url 등
+-- 11. users 테이블 (profile_image_url 등)
 DO $$
 BEGIN
-    -- 테이블 존재 여부 확인
     IF NOT table_exists('users') THEN
         RAISE NOTICE 'Table users does not exist, skipping';
         RETURN;
     END IF;
     
-    -- users 테이블의 profile_image_url 수정 (테이블이 있는 경우)
+    -- profile_image_url 컬럼 수정
     BEGIN
         UPDATE users 
         SET profile_image_url = regexp_replace(
@@ -842,12 +837,19 @@ BEGIN
     END;
 END $$;
 
+-- ============================================
+-- 정리
+-- ============================================
+
 -- 헬퍼 함수 삭제
 DROP FUNCTION IF EXISTS table_exists(TEXT);
 
 -- 완료 메시지
 DO $$
 BEGIN
-    RAISE NOTICE 'Supabase URL fix completed!';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Supabase URL 변경 완료!';
+    RAISE NOTICE 'qgtwkhkmdsaypnsnrpbf.supabase.co -> waumfxamhuvhsblehsuf.supabase.co';
+    RAISE NOTICE '슬래시 중복 제거 완료 (// -> /)';
+    RAISE NOTICE '========================================';
 END $$;
-
