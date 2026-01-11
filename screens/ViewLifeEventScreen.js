@@ -36,6 +36,9 @@ function ImageBlock({ uri }) {
       fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/board_images\//g, '/images/$1/');
       fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/circle_images\//g, '/images/$1/');
       
+      // 중복된 슬래시 제거 (// -> /)
+      fixedUri = fixedUri.replace(/\/+/g, '/');
+      
       // 파일명에서 접두사 확인 및 경로 재구성
       // URL에서 파일명 추출
       const urlMatch = fixedUri.match(/\/([^\/]+)\/([^\/]+)$/);
