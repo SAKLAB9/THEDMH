@@ -349,12 +349,15 @@ export default function LoginScreen() {
             const data = await response.json();
             if (data.success && data.url) {
               setIconImageUrl({ uri: data.url });
+              return;
             }
           }
         } catch (error) {
-          // 이미지 로드 실패 시 무시 (빈칸으로 표시됨)
+          console.error('[LoginScreen] 아이콘 로드 실패:', error);
         }
       }
+      // Supabase Storage에서 로드 실패 시 기본 아이콘 사용
+      setIconImageUrl(require('../assets/icon.png'));
     };
     
     loadLoginIconImage();
@@ -582,7 +585,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="items-center mb-6">
-          {/* 앱 아이콘 - Supabase Storage에서 로드 */}
+          {/* 앱 아이콘 - Supabase Storage에서 로드, 실패 시 기본 아이콘 사용 */}
           {iconImageUrl && (
             Platform.OS === 'web' ? (
               <TouchableOpacity
