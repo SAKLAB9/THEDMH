@@ -336,6 +336,30 @@ export default function LoginScreen() {
     adminSlotImageNames.push(getConfig(`login_admin_slot_${i}_image`, ''));
   }
 
+  // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기
+  useEffect(() => {
+    if (!fontsLoaded || configLoading) return;
+    
+    const loadLoginIconImage = async () => {
+      const iconImageName = getConfig('login_icon_image', 'icon.png');
+      if (iconImageName) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.url) {
+              setIconImageUrl({ uri: data.url });
+            }
+          }
+        } catch (error) {
+          // 이미지 로드 실패 시 무시 (빈칸으로 표시됨)
+        }
+      }
+    };
+    
+    loadLoginIconImage();
+  }, [fontsLoaded, configLoading, getConfig]);
+
   // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (모든 이미지를 동일하게 병렬 로드)
   // 모든 hooks는 early return 전에 호출해야 함
   useEffect(() => {

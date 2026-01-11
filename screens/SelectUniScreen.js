@@ -20,6 +20,7 @@ export default function SelectUniScreen() {
   const [selectedUniversity, setSelectedUniversity] = useState(null);
   const [showUniSelection, setShowUniSelection] = useState(false);
   const [imageUrls, setImageUrls] = useState({}); // Supabase Storage 이미지 URL 캐시
+  const [iconImageUrl, setIconImageUrl] = useState(null); // 메인 아이콘 이미지 URL
 
   // 폰트 로드
   const [fontsLoaded] = useFonts({
@@ -229,14 +230,38 @@ export default function SelectUniScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="items-center mb-6">
-          {/* 앱 아이콘 - 이미지 파일 사용 */}
-          {Platform.OS === 'web' ? (
-            <TouchableOpacity
-              onPress={() => setIconModalVisible(true)}
-              activeOpacity={0.8}
-            >
+          {/* 앱 아이콘 - Supabase Storage에서 로드 */}
+          {iconImageUrl && (
+            Platform.OS === 'web' ? (
+              <TouchableOpacity
+                onPress={() => setIconModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={iconImageUrl}
+                  style={{
+                    width: 100,
+                    height: 100,
+                    marginBottom: 12,
+                    borderRadius: 20,
+                    // 그림자 효과 (iOS)
+                    shadowColor: LOGIN_COLORS.iconBackground,
+                    shadowOffset: {
+                      width: 0,
+                      height: 8,
+                    },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 12,
+                    // 그림자 효과 (Android)
+                    elevation: 12,
+                    cursor: 'pointer',
+                  }}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            ) : (
               <Image
-                source={require('../assets/icon.png')}
+                source={iconImageUrl}
                 style={{
                   width: 100,
                   height: 100,
@@ -252,37 +277,15 @@ export default function SelectUniScreen() {
                   shadowRadius: 12,
                   // 그림자 효과 (Android)
                   elevation: 12,
-                  cursor: 'pointer',
                 }}
                 resizeMode="contain"
               />
-            </TouchableOpacity>
-          ) : (
-            <Image
-              source={require('../assets/icon.png')}
-              style={{
-                width: 100,
-                height: 100,
-                marginBottom: 12,
-                borderRadius: 20,
-                // 그림자 효과 (iOS)
-                shadowColor: LOGIN_COLORS.iconBackground,
-                shadowOffset: {
-                  width: 0,
-                  height: 8,
-                },
-                shadowOpacity: 0.3,
-                shadowRadius: 12,
-                // 그림자 효과 (Android)
-                elevation: 12,
-              }}
-              resizeMode="contain"
-            />
+            )
           )}
         </View>
 
         {/* 웹에서만 아이콘 확대 모달 */}
-        {Platform.OS === 'web' && (
+        {Platform.OS === 'web' && iconImageUrl && (
           <Modal
             visible={iconModalVisible}
             transparent={false}
@@ -304,7 +307,7 @@ export default function SelectUniScreen() {
                 onPress={(e) => e.stopPropagation()}
               >
                 <Image
-                  source={require('../assets/icon.png')}
+                  source={iconImageUrl}
                   style={{
                     width: 400,
                     height: 400,
