@@ -2362,6 +2362,92 @@ app.get('/api/life-events/:id', async (req, res) => {
   }
 });
 
+// 경조사 뷰수 증가 API (별도 엔드포인트)
+app.post('/api/life-events/:id/increment-views', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { university } = req.query;
+    
+    if (!university) {
+      return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+    }
+    
+    if (USE_DATABASE && pool) {
+      try {
+        const universityCode = await normalizeUniversityFromRequest(university, pool);
+        if (!universityCode) {
+          return res.status(400).json({ error: '유효하지 않은 university입니다.' });
+        }
+        
+        const tableName = getLifeEventsTableName(universityCode);
+        const lifeEventId = parseInt(id, 10);
+        
+        if (isNaN(lifeEventId)) {
+          return res.status(400).json({ error: '유효하지 않은 경조사 ID입니다.' });
+        }
+        
+        // 중복 증가 방지: 캐시 키 생성
+        const cacheKey = `${tableName}_${lifeEventId}`;
+        const now = Date.now();
+        const cached = viewIncrementCache.get(cacheKey);
+        
+        // 1분 이내에 같은 요청이 있으면 무시
+        if (cached && (now - cached) < VIEW_INCREMENT_CACHE_DURATION) {
+          console.log(`[경조사 뷰수 증가] 중복 요청 무시: ${cacheKey} (${now - cached}ms 전)`);
+          // 현재 뷰수만 반환 (증가하지 않음)
+          const currentResult = await pool.query(
+            `SELECT views FROM ${tableName} WHERE id = $1`,
+            [lifeEventId]
+          );
+          if (currentResult.rows.length > 0) {
+            return res.json({
+              success: true,
+              views: currentResult.rows[0].views,
+              skipped: true // 중복 요청으로 증가하지 않았음을 표시
+            });
+          }
+        }
+        
+        // 캐시에 저장
+        viewIncrementCache.set(cacheKey, now);
+        
+        // 오래된 캐시 정리 (메모리 누수 방지)
+        if (viewIncrementCache.size > 1000) {
+          for (const [key, timestamp] of viewIncrementCache.entries()) {
+            if (now - timestamp > VIEW_INCREMENT_CACHE_DURATION) {
+              viewIncrementCache.delete(key);
+            }
+          }
+        }
+        
+        // 뷰수만 증가 (데이터 조회 없음)
+        const result = await pool.query(
+          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING views`,
+          [lifeEventId]
+        );
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: '경조사를 찾을 수 없습니다.' });
+        }
+        
+        console.log(`[경조사 뷰수 증가] 성공: ${tableName} id=${lifeEventId}, views=${result.rows[0].views}`);
+        
+        res.json({
+          success: true,
+          views: result.rows[0].views
+        });
+      } catch (error) {
+        console.error('[경조사 뷰수 증가] 오류:', error);
+        res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
+      }
+    } else {
+      res.status(500).json({ error: '데이터베이스가 설정되지 않았습니다.' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
+  }
+});
+
 // 경조사 조회수 증가 API
 // 경조사 등록 API
 app.post('/api/life-events', async (req, res) => {

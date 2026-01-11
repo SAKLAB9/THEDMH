@@ -587,9 +587,11 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     // 뷰수는 초기 로드 시에만 증가
     viewsIncrementedRef.current = false; // lifeEventId가 변경되면 리셋
     loadLifeEvent(false);
-    incrementViews(); // 뷰수 증가는 별도로 호출 (캐시 무관)
-    loadViews(); // 뷰수 최신 데이터 가져오기 (캐시 무관)
-  }, [lifeEventId, university, loadLifeEvent, incrementViews, loadViews]);
+    // 뷰수 증가는 약간의 지연 후 실행 (데이터 로드 완료 후)
+    setTimeout(() => {
+      incrementViews();
+    }, 500);
+  }, [lifeEventId, university, loadLifeEvent, incrementViews]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 경조사 데이터는 로드하지 않음 (중복 호출 방지)
