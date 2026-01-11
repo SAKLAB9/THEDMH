@@ -5,7 +5,9 @@ const { saveImageToSupabase } = require('../supabaseStorage');
 const { getUniversityPrefix } = require('../dbTableHelpers');
 require('dotenv').config();
 
-// 이미지 업로드 API
+// 이미지 업로드 API (공지사항 및 게시판 통합)
+const { saveBoardImageToSupabase } = require('../supabaseStorage');
+
 module.exports = async (req, res) => {
   try {
     // CORS 헤더 설정
@@ -21,7 +23,7 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: 'Method not allowed' });
     }
     
-    const { imageData, filename, university } = req.body;
+    const { imageData, filename, university, type } = req.body; // type: 'notice' | 'board'
     
     if (!imageData) {
       return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
@@ -37,12 +39,16 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: '유효하지 않은 university입니다.' });
     }
     
-    // 파일명 생성 (notice_ 접두사 자동 추가)
-    const imageFilename = filename || `notice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+    // 타입에 따라 파일명 및 저장 함수 결정
+    const isBoard = type === 'board';
+    const prefix = isBoard ? 'board_' : 'notice_';
+    const imageFilename = filename || `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
     
     try {
       // Supabase Storage에 이미지 저장
-      const imageUrl = await saveImageToSupabase(imageData, imageFilename, universityCode);
+      const imageUrl = isBoard 
+        ? await saveBoardImageToSupabase(imageData, imageFilename, universityCode)
+        : await saveImageToSupabase(imageData, imageFilename, universityCode);
       
       return res.json({
         success: true,

@@ -14,20 +14,12 @@
       "dest": "/api/cleanup-unused-images.js"
     },
     {
-      "src": "/api/notices",
-      "dest": "/api/notices.js"
-    },
-    {
-      "src": "/api/life-events",
-      "dest": "/api/life-events.js"
-    },
-    {
       "src": "/api/upload-image",
       "dest": "/api/upload-image.js"
     },
     {
       "src": "/api/upload-board-image",
-      "dest": "/api/upload-board-image.js"
+      "dest": "/api/upload-image.js"
     },
     {
       "src": "/api/(.*)",
