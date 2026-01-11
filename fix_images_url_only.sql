@@ -307,27 +307,46 @@ END $$;
 -- 결과 출력
 -- ============================================
 
+-- 1. 업데이트 성공한 테이블 목록 (행 수가 0보다 큰 경우만)
+SELECT 
+    table_name as "✅ 업데이트된 테이블",
+    updated_rows as "변경된 행 수"
+FROM update_results
+WHERE status = 'Success' AND updated_rows > 0
+ORDER BY updated_rows DESC, table_name;
+
+-- 2. 모든 테이블 상태 (상세 정보)
 SELECT 
     table_name as "테이블명",
     updated_rows as "업데이트된 행 수",
-    status as "상태"
+    CASE 
+        WHEN status = 'Success' AND updated_rows > 0 THEN '✅ 성공'
+        WHEN status = 'Success' AND updated_rows = 0 THEN '⚠️ 변경 없음'
+        WHEN status = 'No images column' THEN '⚠️ images 컬럼 없음'
+        WHEN status = 'Table does not exist' THEN '⚠️ 테이블 없음'
+        ELSE '❌ 에러: ' || status
+    END as "상태"
 FROM update_results
 ORDER BY 
     CASE 
-        WHEN status = 'Success' THEN 1
-        WHEN status = 'No images column' THEN 2
-        WHEN status = 'Table does not exist' THEN 3
-        ELSE 4
+        WHEN status = 'Success' AND updated_rows > 0 THEN 1
+        WHEN status = 'Success' AND updated_rows = 0 THEN 2
+        WHEN status = 'No images column' THEN 3
+        WHEN status = 'Table does not exist' THEN 4
+        ELSE 5
     END,
+    updated_rows DESC,
     table_name;
 
--- 전체 요약
+-- 3. 전체 요약 통계
 SELECT 
-    COUNT(*) FILTER (WHERE status = 'Success') as "성공한 테이블 수",
+    '📊 업데이트 요약' as "구분",
+    COUNT(*) FILTER (WHERE status = 'Success' AND updated_rows > 0) as "성공한 테이블 수",
+    SUM(updated_rows) FILTER (WHERE status = 'Success') as "총 변경된 행 수",
+    COUNT(*) FILTER (WHERE status = 'Success' AND updated_rows = 0) as "변경 없음 테이블 수",
     COUNT(*) FILTER (WHERE status = 'No images column') as "images 컬럼 없는 테이블 수",
     COUNT(*) FILTER (WHERE status = 'Table does not exist') as "존재하지 않는 테이블 수",
-    COUNT(*) FILTER (WHERE status LIKE 'Error:%') as "에러 발생 테이블 수",
-    SUM(updated_rows) FILTER (WHERE status = 'Success') as "총 업데이트된 행 수"
+    COUNT(*) FILTER (WHERE status LIKE 'Error:%') as "에러 발생 테이블 수"
 FROM update_results;
 
 -- ============================================
