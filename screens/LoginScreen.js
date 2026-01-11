@@ -128,15 +128,15 @@ function RememberMeCheckbox({ loginColors, getConfig }) {
 export default function LoginScreen() {
   const navigation = useNavigation();
   const { updateUniversity } = useUniversity();
-  const { getConfig, getConfigNumber, loadConfig, loading: configLoading } = useAppConfig();
+  const { getConfig, getConfigNumber, loadConfig, loading: configLoading, config } = useAppConfig();
   
   // 화면이 포커스될 때마다 설정 강제 새로고침
   useEffect(() => {
     loadConfig(null, true);
   }, [loadConfig]);
   
-  // LOGIN_COLORS 계산 - getLoginColors 내부에서 기본값 처리
-  // iOS에서 config 로딩이 느릴 수 있으므로 항상 getLoginColors를 호출
+  // LOGIN_COLORS 계산 - config가 변경될 때마다 재계산
+  // 기본값 없이 무조건 config에서 불러와야 함
   const LOGIN_COLORS = useMemo(() => {
     return getLoginColors(getConfig);
   }, [getConfig, config]);
