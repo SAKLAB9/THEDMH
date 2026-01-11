@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API_BASE_URL from '../config/api';
 
@@ -16,9 +16,17 @@ export const AppConfigProvider = ({ children }) => {
   const [config, setConfig] = useState({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const loadingRef = useRef(false); // 중복 로딩 방지
 
   // 설정값 가져오기
   const loadConfig = useCallback(async (university, forceRefresh = false) => {
+    // 이미 로딩 중이면 스킵
+    if (loadingRef.current && !forceRefresh) {
+      return;
+    }
+
+    loadingRef.current = true;
+
     try {
       // 캐시된 설정 확인 (강제 새로고침이 아니면)
       if (!forceRefresh) {
@@ -33,6 +41,7 @@ export const AppConfigProvider = ({ children }) => {
             setConfig(parsedConfig);
             setLastUpdated(parseInt(cachedTime));
             setLoading(false);
+            loadingRef.current = false;
             return;
           }
         }
@@ -81,13 +90,16 @@ export const AppConfigProvider = ({ children }) => {
       }
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
   }, []);
 
-  // 초기 마운트 시 config 로드
+  // 초기 마운트 시 config 로드 (한 번만)
   useEffect(() => {
-    loadConfig(null, false);
-  }, [loadConfig]);
+    if (!loadingRef.current) {
+      loadConfig(null, false);
+    }
+  }, []);
 
   // 설정값 가져오기 (헬퍼 함수)
   const getConfig = useCallback((key, defaultValue = '') => {
