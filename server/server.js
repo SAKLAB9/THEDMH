@@ -1622,29 +1622,17 @@ app.get('/api/notices', async (req, res) => {
         }
         
         // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
-        // 컬럼 존재 여부 확인 후 쿼리 구성
-        let selectColumns = ['id', 'title', 'category', 'author', 'created_at'];
-        const optionalColumns = ['nickname', 'views', 'url'];
-        
-        // 선택적 컬럼 존재 여부 확인
-        try {
-          const columnCheckResult = await pool.query(
-            `SELECT column_name FROM information_schema.columns 
-             WHERE table_schema = 'public' AND table_name = $1`,
-            [tableName]
-          );
-          const existingColumns = columnCheckResult.rows.map(row => row.column_name);
-          
-          optionalColumns.forEach(col => {
-            if (existingColumns.includes(col)) {
-              selectColumns.push(col);
-            }
-          });
-        } catch (colCheckError) {
-          console.warn('[공지사항 목록 조회] 컬럼 확인 실패, 기본 컬럼만 사용:', colCheckError.message);
-        }
-        
-        let query = `SELECT ${selectColumns.join(', ')} FROM ${tableName}`;
+        // 컬럼이 없어도 에러가 발생하지 않도록 COALESCE 사용
+        let query = `SELECT 
+          id, 
+          title, 
+          category, 
+          COALESCE(nickname, NULL) as nickname,
+          author, 
+          COALESCE(views, 0) as views, 
+          created_at, 
+          COALESCE(url, NULL) as url 
+        FROM ${tableName}`;
         const params = [];
         let paramIndex = 1;
         
@@ -1657,13 +1645,36 @@ app.get('/api/notices', async (req, res) => {
         query += ` ORDER BY created_at DESC`;
         
         console.log('[공지사항 목록 조회] 쿼리 실행:', query, params);
-        const result = await pool.query(query, params);
+        
+        let result;
+        try {
+          result = await pool.query(query, params);
+        } catch (queryError) {
+          // 컬럼이 없는 경우를 대비해 간단한 쿼리로 재시도
+          console.warn('[공지사항 목록 조회] 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
+          let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
+          if (category && category !== '전체') {
+            simpleQuery += ` WHERE category = $1`;
+            result = await pool.query(simpleQuery, [category]);
+          } else {
+            result = await pool.query(simpleQuery);
+          }
+          
+          // 기본값 추가
+          result.rows = result.rows.map(row => ({
+            ...row,
+            views: 0,
+            nickname: null,
+            url: null
+          }));
+        }
+        
         console.log('[공지사항 목록 조회] 결과:', result.rows.length, '개');
         
         // 결과에 기본값 추가 (컬럼이 없는 경우)
         const processedRows = result.rows.map(row => ({
           ...row,
-          views: row.views !== undefined ? row.views : 0,
+          views: row.views !== undefined && row.views !== null ? row.views : 0,
           nickname: row.nickname !== undefined ? row.nickname : null,
           url: row.url !== undefined ? row.url : null
         }));
@@ -2178,29 +2189,17 @@ app.get('/api/life-events', async (req, res) => {
         }
         
         // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
-        // 컬럼 존재 여부 확인 후 쿼리 구성
-        let selectColumns = ['id', 'title', 'category', 'author', 'created_at'];
-        const optionalColumns = ['nickname', 'views', 'url'];
-        
-        // 선택적 컬럼 존재 여부 확인
-        try {
-          const columnCheckResult = await pool.query(
-            `SELECT column_name FROM information_schema.columns 
-             WHERE table_schema = 'public' AND table_name = $1`,
-            [tableName]
-          );
-          const existingColumns = columnCheckResult.rows.map(row => row.column_name);
-          
-          optionalColumns.forEach(col => {
-            if (existingColumns.includes(col)) {
-              selectColumns.push(col);
-            }
-          });
-        } catch (colCheckError) {
-          console.warn('[경조사 목록 조회] 컬럼 확인 실패, 기본 컬럼만 사용:', colCheckError.message);
-        }
-        
-        let query = `SELECT ${selectColumns.join(', ')} FROM ${tableName}`;
+        // 컬럼이 없어도 에러가 발생하지 않도록 COALESCE 사용
+        let query = `SELECT 
+          id, 
+          title, 
+          category, 
+          COALESCE(nickname, NULL) as nickname,
+          author, 
+          COALESCE(views, 0) as views, 
+          created_at, 
+          COALESCE(url, NULL) as url 
+        FROM ${tableName}`;
         const params = [];
         let paramIndex = 1;
         
@@ -2213,13 +2212,36 @@ app.get('/api/life-events', async (req, res) => {
         query += ` ORDER BY created_at DESC`;
         
         console.log('[경조사 목록 조회] 쿼리 실행:', query, params);
-        const result = await pool.query(query, params);
+        
+        let result;
+        try {
+          result = await pool.query(query, params);
+        } catch (queryError) {
+          // 컬럼이 없는 경우를 대비해 간단한 쿼리로 재시도
+          console.warn('[경조사 목록 조회] 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
+          let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
+          if (category && category !== '전체') {
+            simpleQuery += ` WHERE category = $1`;
+            result = await pool.query(simpleQuery, [category]);
+          } else {
+            result = await pool.query(simpleQuery);
+          }
+          
+          // 기본값 추가
+          result.rows = result.rows.map(row => ({
+            ...row,
+            views: 0,
+            nickname: null,
+            url: null
+          }));
+        }
+        
         console.log('[경조사 목록 조회] 결과:', result.rows.length, '개');
         
         // 결과에 기본값 추가 (컬럼이 없는 경우)
         const processedRows = result.rows.map(row => ({
           ...row,
-          views: row.views !== undefined ? row.views : 0,
+          views: row.views !== undefined && row.views !== null ? row.views : 0,
           nickname: row.nickname !== undefined ? row.nickname : null,
           url: row.url !== undefined ? row.url : null
         }));
