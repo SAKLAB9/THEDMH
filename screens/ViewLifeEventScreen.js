@@ -160,6 +160,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   const { lifeEventId, lifeEventPreview } = route.params || {};
   const [lifeEvent, setLifeEvent] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  const [viewsUpdated, setViewsUpdated] = useState(false); // 서버에서 뷰수가 업데이트되었는지 추적
   
   // lifeEventPreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
