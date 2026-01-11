@@ -567,5 +567,8 @@ END $$;
 --        WHERE img LIKE '%/images/%/images/%'
 --    );
 
-RAISE NOTICE 'Image URL fix completed!';
+DO $$
+BEGIN
+    RAISE NOTICE 'Image URL fix completed!';
+END $$;
 
