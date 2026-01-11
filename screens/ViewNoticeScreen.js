@@ -158,9 +158,21 @@ export default function ViewNoticeScreen({ route, navigation }) {
     primary: uniColors.primary || '#000000',
     buttonTextColor: uniColors.buttonTextColor || '#FFFFFF',
   }), [uniColors]);
-  const { noticeId } = route.params;
+  const { noticeId, noticePreview } = route.params || {};
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  
+  // noticePreview가 있으면 즉시 표시 (성능 최적화)
+  useEffect(() => {
+    if (noticePreview && !notice) {
+      // 기본 정보만 있는 preview 데이터로 즉시 표시
+      setNotice({
+        ...noticePreview,
+        content_blocks: [], // 내용은 아직 없음
+        images: [] // 이미지도 아직 없음
+      });
+    }
+  }, [noticePreview, notice]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
@@ -195,7 +207,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
     loadCurrentUser();
   }, [loadCurrentUser]);
 
-  // 공지사항 데이터 로드 함수
+  // 공지사항 데이터 로드 함수 (content_blocks와 images만 로드)
   const loadNotice = React.useCallback(async (forceRefresh = false) => {
     if (!noticeId || !university || !university.trim()) {
       return;
@@ -203,19 +215,49 @@ export default function ViewNoticeScreen({ route, navigation }) {
     try {
       const universityCode = university.toLowerCase();
       const cacheKey = `notice_${noticeId}_${universityCode}`;
+      const contentCacheKey = `notice_content_${noticeId}_${universityCode}`;
       
       // 강제 새로고침이면 캐시 무효화
       if (forceRefresh) {
         try {
           await AsyncStorage.removeItem(cacheKey);
+          await AsyncStorage.removeItem(contentCacheKey);
         } catch (e) {
           // 캐시 삭제 실패는 무시
         }
       }
       
-      // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
-      let cachedNotice = null;
+      // content_blocks와 images 캐시 확인
+      let cachedContent = null;
       let cacheTimestamp = null;
+      try {
+        const cachedData = await AsyncStorage.getItem(contentCacheKey);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          cacheTimestamp = parsedData.timestamp || 0;
+          const cacheAge = Date.now() - cacheTimestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5분
+          
+          if (cacheAge < CACHE_DURATION && parsedData.content) {
+            cachedContent = parsedData.content;
+            // 캐시된 내용으로 업데이트 (기본 정보는 유지)
+            if (notice) {
+              setNotice({
+                ...notice,
+                content_blocks: cachedContent.content_blocks || [],
+                images: cachedContent.images || [],
+                text_content: cachedContent.text_content || ''
+              });
+            }
+            return; // 캐시가 있으면 여기서 종료
+          }
+        }
+      } catch (cacheError) {
+        // 캐시 읽기 오류는 무시
+      }
+      
+      // 전체 캐시 확인 (하위 호환성)
+      let cachedNotice = null;
       try {
         const cachedData = await AsyncStorage.getItem(cacheKey);
         if (cachedData) {
@@ -232,7 +274,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
         // 캐시 읽기 오류는 무시
       }
       
-      // 캐시가 있고 강제 새로고침이 아니면 즉시 표시하고 백그라운드 업데이트
+      // 전체 캐시가 있고 강제 새로고침이 아니면 즉시 표시하고 백그라운드 업데이트
       if (cachedNotice && !forceRefresh) {
         // content_blocks 파싱 확인 (캐시에서 가져온 데이터도 파싱 필요)
         let notice = { ...cachedNotice };
@@ -302,52 +344,90 @@ export default function ViewNoticeScreen({ route, navigation }) {
           try {
             const data = JSON.parse(responseText);
             if (data.success && data.notice) {
-              let notice = { ...data.notice };
+              let fullNotice = { ...data.notice };
               
-              // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
-              if (notice.content_blocks && typeof notice.content_blocks === 'string') {
-                try {
-                  const parsedBlocks = JSON.parse(notice.content_blocks);
-                  // 텍스트 블록만 먼저 표시
-                  const textBlocks = Array.isArray(parsedBlocks) 
-                    ? parsedBlocks.filter(block => block.type === 'text')
-                    : [];
+              // noticePreview가 있으면 기본 정보는 유지하고 content_blocks와 images만 업데이트
+              if (noticePreview && notice) {
+                // content_blocks 파싱
+                let contentBlocks = [];
+                if (fullNotice.content_blocks) {
+                  if (typeof fullNotice.content_blocks === 'string') {
+                    try {
+                      contentBlocks = JSON.parse(fullNotice.content_blocks);
+                    } catch (e) {
+                      contentBlocks = [];
+                    }
+                  } else if (Array.isArray(fullNotice.content_blocks)) {
+                    contentBlocks = fullNotice.content_blocks;
+                  }
+                }
+                
+                // 기본 정보는 유지하고 내용만 업데이트
+                setNotice({
+                  ...notice,
+                  content_blocks: contentBlocks,
+                  images: fullNotice.images || [],
+                  text_content: fullNotice.text_content || ''
+                });
+                
+                // content만 별도 캐시에 저장
+                AsyncStorage.setItem(contentCacheKey, JSON.stringify({
+                  content: {
+                    content_blocks: contentBlocks,
+                    images: fullNotice.images || [],
+                    text_content: fullNotice.text_content || ''
+                  },
+                  timestamp: Date.now()
+                })).catch(() => {});
+              } else {
+                // noticePreview가 없으면 전체 데이터 표시
+                let notice = { ...fullNotice };
+                
+                // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
+                if (notice.content_blocks && typeof notice.content_blocks === 'string') {
+                  try {
+                    const parsedBlocks = JSON.parse(notice.content_blocks);
+                    // 텍스트 블록만 먼저 표시
+                    const textBlocks = Array.isArray(parsedBlocks) 
+                      ? parsedBlocks.filter(block => block.type === 'text')
+                      : [];
+                    notice.content_blocks = textBlocks;
+                    // 텍스트만 먼저 표시
+                    setNotice(notice);
+                    
+                    // 이미지 블록 추가 (백그라운드에서)
+                    setTimeout(() => {
+                      if (Array.isArray(parsedBlocks)) {
+                        notice.content_blocks = parsedBlocks;
+                        setNotice({ ...notice });
+                      }
+                    }, 0);
+                  } catch (e) {
+                    notice.content_blocks = [];
+                    setNotice(notice);
+                  }
+                } else if (Array.isArray(notice.content_blocks)) {
+                  // 이미 배열이면 텍스트 블록만 먼저 표시
+                  const textBlocks = notice.content_blocks.filter(block => block.type === 'text');
                   notice.content_blocks = textBlocks;
-                  // 텍스트만 먼저 표시
                   setNotice(notice);
                   
-                  // 이미지 블록 추가 (백그라운드에서)
+                  // 전체 블록 추가 (백그라운드에서)
                   setTimeout(() => {
-                    if (Array.isArray(parsedBlocks)) {
-                      notice.content_blocks = parsedBlocks;
-                      setNotice({ ...notice });
-                    }
+                    notice.content_blocks = fullNotice.content_blocks;
+                    setNotice({ ...notice });
                   }, 0);
-                } catch (e) {
+                } else {
                   notice.content_blocks = [];
                   setNotice(notice);
                 }
-              } else if (Array.isArray(notice.content_blocks)) {
-                // 이미 배열이면 텍스트 블록만 먼저 표시
-                const textBlocks = notice.content_blocks.filter(block => block.type === 'text');
-                notice.content_blocks = textBlocks;
-                setNotice(notice);
                 
-                // 전체 블록 추가 (백그라운드에서)
-                setTimeout(() => {
-                  notice.content_blocks = data.notice.content_blocks;
-                  setNotice({ ...notice });
-                }, 0);
-              } else {
-                notice.content_blocks = [];
-                setNotice(notice);
+                // 전체 캐시에 저장 (비동기, 블로킹하지 않음)
+                AsyncStorage.setItem(cacheKey, JSON.stringify({
+                  notice: fullNotice,
+                  timestamp: Date.now()
+                })).catch(() => {});
               }
-              
-              // 캐시에 저장 (비동기, 블로킹하지 않음)
-              AsyncStorage.setItem(cacheKey, JSON.stringify({
-                notice: data.notice,
-                timestamp: Date.now()
-              })).catch(() => {});
             } else {
               if (__DEV__) {
                 console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음`);
@@ -428,6 +508,8 @@ export default function ViewNoticeScreen({ route, navigation }) {
 
   // 초기 로드
   useEffect(() => {
+    // noticePreview가 있으면 이미 기본 정보가 표시되므로 content만 로드
+    // 없으면 전체 데이터 로드
     loadNotice(false);
   }, [noticeId, university, loadNotice]);
 

@@ -819,7 +819,10 @@ export default function HomeScreen({ navigation }) {
                 key={notice.id} 
                 className={`bg-gray-50 rounded-lg ${index < notices.length - 1 ? 'mb-3' : ''}`}
                 style={{ padding: 16 }}
-                onPress={() => navigation.navigate('ViewNotice', { noticeId: notice.id })}
+                onPress={() => navigation.navigate('ViewNotice', { 
+                  noticeId: notice.id,
+                  noticePreview: notice // 기본 정보를 미리 전달 (성능 최적화)
+                })}
               >
                 {/* 제목 */}
                 <View style={{ marginBottom: 8 }}>
