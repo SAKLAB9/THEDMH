@@ -273,12 +273,17 @@ export default function ViewCirclesScreen({ route, navigation }) {
     loadCurrentUser();
   }, [loadCurrentUser]);
 
-  // 초기 로드
+  // 초기 로드 (뷰수 증가 포함)
   useEffect(() => {
+    viewsIncrementedRef.current = false; // circleId나 targetUniversity가 변경되면 리셋
     if (circleId) {
       loadCircle(false); // 캐시 확인 후 로드
+      // 뷰수 증가는 약간의 지연 후 실행 (데이터 로드 완료 후)
+      setTimeout(() => {
+        incrementViews();
+      }, 500);
     }
-  }, [circleId, targetUniversity, loadCircle]);
+  }, [circleId, targetUniversity, loadCircle, incrementViews]);
   
   // 화면이 포커스될 때마다 currentUser와 관심리스트 다시 로드
   useFocusEffect(
@@ -290,6 +295,15 @@ export default function ViewCirclesScreen({ route, navigation }) {
       }
     }, [loadCurrentUser, circleId, loadCircle])
   );
+  
+  // targetUniversity가 변경되면 데이터 초기화 (다른 학교로 넘어갔을 때)
+  useEffect(() => {
+    if (targetUniversity && targetUniversity.trim()) {
+      // targetUniversity가 변경되면 이전 데이터 초기화
+      setCircle(null);
+      viewsIncrementedRef.current = false;
+    }
+  }, [targetUniversity]);
 
 
   // 댓글 로드 함수
