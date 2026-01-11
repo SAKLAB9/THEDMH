@@ -3372,6 +3372,92 @@ app.get('/api/circles/:id/comments', async (req, res) => {
   }
 });
 
+// Circles 뷰수 증가 API (별도 엔드포인트) - GET /api/circles/:id보다 먼저 정의해야 함
+app.post('/api/circles/:id/increment-views', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { university } = req.query;
+    
+    if (!university) {
+      return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+    }
+    
+    if (USE_DATABASE && pool) {
+      try {
+        const universityCode = await normalizeUniversityFromRequest(university, pool);
+        if (!universityCode) {
+          return res.status(400).json({ error: '유효하지 않은 university입니다.' });
+        }
+        
+        const tableName = getCirclesTableName(universityCode);
+        const circleId = parseInt(id, 10);
+        
+        if (isNaN(circleId)) {
+          return res.status(400).json({ error: '유효하지 않은 소모임 ID입니다.' });
+        }
+        
+        // 중복 증가 방지: 캐시 키 생성
+        const cacheKey = `${tableName}_${circleId}`;
+        const now = Date.now();
+        const cached = viewIncrementCache.get(cacheKey);
+        
+        // 1분 이내에 같은 요청이 있으면 무시
+        if (cached && (now - cached) < VIEW_INCREMENT_CACHE_DURATION) {
+          console.log(`[소모임 뷰수 증가] 중복 요청 무시: ${cacheKey} (${now - cached}ms 전)`);
+          // 현재 뷰수만 반환 (증가하지 않음)
+          const currentResult = await pool.query(
+            `SELECT views FROM ${tableName} WHERE id = $1`,
+            [circleId]
+          );
+          if (currentResult.rows.length > 0) {
+            return res.json({
+              success: true,
+              views: currentResult.rows[0].views,
+              skipped: true // 중복 요청으로 증가하지 않았음을 표시
+            });
+          }
+        }
+        
+        // 캐시에 저장
+        viewIncrementCache.set(cacheKey, now);
+        
+        // 오래된 캐시 정리 (메모리 누수 방지)
+        if (viewIncrementCache.size > 1000) {
+          for (const [key, timestamp] of viewIncrementCache.entries()) {
+            if (now - timestamp > VIEW_INCREMENT_CACHE_DURATION) {
+              viewIncrementCache.delete(key);
+            }
+          }
+        }
+        
+        // 뷰수만 증가 (데이터 조회 없음)
+        const result = await pool.query(
+          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING views`,
+          [circleId]
+        );
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: '소모임을 찾을 수 없습니다.' });
+        }
+        
+        console.log(`[소모임 뷰수 증가] 성공: ${tableName} id=${circleId}, views=${result.rows[0].views}`);
+        
+        res.json({
+          success: true,
+          views: result.rows[0].views
+        });
+      } catch (error) {
+        console.error('[소모임 뷰수 증가] 오류:', error);
+        res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
+      }
+    } else {
+      res.status(500).json({ error: '데이터베이스가 설정되지 않았습니다.' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
+  }
+});
+
 // Circles 상세 조회 API
 app.get('/api/circles/:id', async (req, res) => {
   try {
