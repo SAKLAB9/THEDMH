@@ -1155,7 +1155,8 @@ export default function LoginScreen() {
 
                             // Supabase Auth로 비밀번호 재설정 이메일 전송
                             // 이메일 링크는 웹 페이지로 리다이렉트하고, 그 페이지에서 앱 딥링크로 이동
-                            const resetPasswordUrl = `${API_BASE_URL}/reset-password`;
+                            // Supabase URL Configuration에 등록된 URL 사용
+                            const resetPasswordUrl = 'https://miuhub.up.railway.app/reset-password';
                             const { data, error: resetError } = await supabase.auth.resetPasswordForEmail(
                               findEmail.trim(),
                               {
