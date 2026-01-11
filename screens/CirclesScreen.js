@@ -577,9 +577,13 @@ export default function CirclesScreen({ navigation, route }) {
       const refreshData = async () => {
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
         let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
-      if (route?.params?.selectedChannel) {
+      if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
         setSelectedChannel(route.params.selectedChannel);
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
+        } else {
+          // route.params가 없거나 동일하면 현재 selectedChannel 사용
+          // selectedChannel이 변경 중이면 refreshData를 스킵 (loadCirclesData가 처리함)
+          currentChannel = selectedChannel;
         }
         
         // currentChannel에 따라 targetUni 결정
