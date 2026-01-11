@@ -312,72 +312,119 @@ export default function HomeScreen({ navigation }) {
   
   useFocusEffect(
     React.useCallback(() => {
-      if (university) {
-        const loadAllData = async () => {
+      if (!university || configLoading) return; // config가 로드되기 전에는 실행하지 않음
+      
+      const loadAllData = async () => {
+        try {
+          const universityCode = university.toLowerCase();
+          
+          // 학교 이름을 소문자로 변환하여 display_name 확인
+          const universityLower = university.toLowerCase();
+          const displayName = getConfig(`${universityLower}_display_name`, '');
+          
+          // display_name이 있으면 그것을 사용, 없으면 university 그대로 사용
+          const universityDisplayName = displayName || university;
+          
+          // 이미지 파일명 생성 (예: Cornell.png)
+          const imageFileName = `${universityDisplayName}.png`;
+          
+          // 로고 이미지 캐싱 확인
+          const logoCacheKey = `home_logo_url_${imageFileName}`;
+          let logoUrl = null;
+          
           try {
-            const universityCode = university.toLowerCase();
-            
-            // 학교 이름을 소문자로 변환하여 display_name 확인
-            const universityLower = university.toLowerCase();
-            const displayName = getConfig(`${universityLower}_display_name`, '');
-            
-            // display_name이 있으면 그것을 사용, 없으면 university 그대로 사용
-            const universityDisplayName = displayName || university;
-            
-            // 이미지 파일명 생성 (예: Cornell.png)
-            const imageFileName = `${universityDisplayName}.png`;
-            
-            // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
-            const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all([
-              fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
-              fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
-              fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
-            ]);
-            
-            // 로고 이미지 처리
+            const cachedLogoUrl = await AsyncStorage.getItem(logoCacheKey);
+            if (cachedLogoUrl) {
+              logoUrl = cachedLogoUrl;
+              setLogoImageUrl({ uri: cachedLogoUrl });
+            }
+          } catch (cacheError) {
+            console.error('[HomeScreen] 로고 캐시 읽기 오류:', cacheError);
+          }
+          
+          // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
+          const promises = [
+            // 로고는 캐시가 없을 때만 API 호출
+            logoUrl 
+              ? Promise.resolve(null)
+              : fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
+            fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
+            fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+          ];
+          
+          const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all(promises);
+          
+          // 로고 이미지 처리
+          if (logoResponse) {
             if (logoResponse.ok) {
               const logoData = await logoResponse.json();
               if (logoData.success && logoData.url) {
+                // 캐시에 저장
+                try {
+                  await AsyncStorage.setItem(logoCacheKey, logoData.url);
+                } catch (cacheError) {
+                  console.error('[HomeScreen] 로고 캐시 저장 오류:', cacheError);
+                }
                 setLogoImageUrl({ uri: logoData.url });
+              } else {
+                setLogoImageUrl(null);
               }
+            } else {
+              console.error('[HomeScreen] 로고 이미지 로드 실패:', logoResponse.status);
+              setLogoImageUrl(null);
             }
-
-            // 공지사항 처리
-            if (noticesResponse.ok) {
-              const noticesData = await noticesResponse.json();
-              if (noticesData.success && noticesData.notices) {
-                setSavedNotices(noticesData.notices);
-              }
-            }
-
-            // 경조사 처리
-            if (lifeEventsResponse.ok) {
-              const lifeEventsData = await lifeEventsResponse.json();
-              if (lifeEventsData.success && lifeEventsData.lifeEvents) {
-                setSavedLifeEvents(lifeEventsData.lifeEvents);
-              }
-            }
-          } catch (error) {
-            // 에러 처리
           }
-        };
-        
-        // 즉시 새로고침
+
+          // 공지사항 처리
+          if (noticesResponse.ok) {
+            const noticesData = await noticesResponse.json();
+            if (noticesData.success && noticesData.notices) {
+              setSavedNotices(noticesData.notices);
+            } else {
+              console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+              setSavedNotices([]);
+            }
+          } else {
+            console.error('[HomeScreen] 공지사항 로드 실패:', noticesResponse.status);
+            setSavedNotices([]);
+          }
+
+          // 경조사 처리
+          if (lifeEventsResponse.ok) {
+            const lifeEventsData = await lifeEventsResponse.json();
+            if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+              setSavedLifeEvents(lifeEventsData.lifeEvents);
+            } else {
+              console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+              setSavedLifeEvents([]);
+            }
+          } else {
+            console.error('[HomeScreen] 경조사 로드 실패:', lifeEventsResponse.status);
+            setSavedLifeEvents([]);
+          }
+        } catch (error) {
+          console.error('[HomeScreen] 데이터 로드 오류:', error);
+          // 에러 발생 시 빈 배열로 설정하여 UI가 깨지지 않도록 함
+          setSavedNotices([]);
+          setSavedLifeEvents([]);
+        }
+      };
+      
+      // 즉시 새로고침
+      loadAllData();
+      
+      // 2분(120초)마다 자동 새로고침 (새 글 확인)
+      intervalRef.current = setInterval(() => {
         loadAllData();
-        
-        // 2분(120초)마다 자동 새로고침 (새 글 확인)
-        intervalRef.current = setInterval(() => {
-          loadAllData();
-        }, 2 * 60 * 1000); // 2분마다
-        
-        return () => {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        };
-      }
-    }, [university, getConfig])
+      }, 2 * 60 * 1000); // 2분마다
+      
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      };
+    }, [university, getConfig, configLoading])
   );
 
   // API에서 불러온 공지사항만 사용
@@ -439,6 +486,7 @@ export default function HomeScreen({ navigation }) {
             source={logoImageUrl}
             style={{ width: 256, height: 60 }}
             resizeMode="contain"
+            cache="force-cache"
           />
         ) : null}
         {/* admin일 때만 제어판 이모티콘 표시 */}
