@@ -140,14 +140,14 @@ export default function SelectUniScreen() {
             
             setImageUrls(urls);
           } else {
-            // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
+            // API 응답 실패 시 조용히 처리 (기존 imageUrls 유지)
             if (__DEV__ && Platform.OS === 'ios') {
               console.warn(`[SelectUniScreen] iOS API 응답 실패:`, data);
             }
-            setImageUrls({});
+            // setImageUrls({}) 제거 - 기존 이미지 유지
           }
         } else {
-          // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+          // HTTP 에러 시 조용히 처리 (기존 imageUrls 유지)
           // 개발 모드에서만 로그 출력
           if (__DEV__) {
             console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
@@ -155,15 +155,15 @@ export default function SelectUniScreen() {
               statusText: response.statusText
             });
           }
-          setImageUrls({});
+          // setImageUrls({}) 제거 - 기존 이미지 유지
         }
       } catch (error) {
-        // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        // 네트워크 에러 시 조용히 처리 (기존 imageUrls 유지)
         // 개발 모드에서만 로그 출력
         if (__DEV__) {
           console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error.message);
         }
-        setImageUrls({});
+        // setImageUrls({}) 제거 - 기존 이미지 유지
       }
     };
     
@@ -208,11 +208,11 @@ export default function SelectUniScreen() {
             await AsyncStorage.setItem(cacheKey, data.url);
             setIconImageUrl({ uri: data.url });
           } else {
-            // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
-            setIconImageUrl(null);
+            // API 응답 실패 시 조용히 처리 (기존 iconImageUrl 유지)
+            // setIconImageUrl(null) 제거 - 기존 이미지 유지
           }
         } else {
-          // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+          // HTTP 에러 시 조용히 처리 (기존 iconImageUrl 유지)
           // 개발 모드에서만 로그 출력
           if (__DEV__) {
             console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
@@ -220,15 +220,15 @@ export default function SelectUniScreen() {
               statusText: response.statusText
             });
           }
-          setIconImageUrl(null);
+          // setIconImageUrl(null) 제거 - 기존 이미지 유지
         }
       } catch (error) {
-        // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        // 네트워크 에러 시 조용히 처리 (기존 iconImageUrl 유지)
         // 개발 모드에서만 로그 출력
         if (__DEV__) {
           console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error.message);
         }
-        setIconImageUrl(null);
+        // setIconImageUrl(null) 제거 - 기존 이미지 유지
       }
     };
     

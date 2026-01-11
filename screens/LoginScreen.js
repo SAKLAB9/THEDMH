@@ -459,11 +459,11 @@ export default function LoginScreen() {
             });
             setAdminImageUrls(urls);
           } else {
-            // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
-            setAdminImageUrls({});
+            // API 응답 실패 시 조용히 처리 (기존 imageUrls 유지)
+            // setAdminImageUrls({}) 제거 - 기존 이미지 유지
           }
         } else {
-          // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+          // HTTP 에러 시 조용히 처리 (기존 imageUrls 유지)
           // 개발 모드에서만 로그 출력
           if (__DEV__) {
             console.warn(`[LoginScreen] Admin 이미지 API HTTP 에러 (${Platform.OS}):`, {
@@ -471,15 +471,15 @@ export default function LoginScreen() {
               statusText: response.statusText
             });
           }
-          setAdminImageUrls({});
+          // setAdminImageUrls({}) 제거 - 기존 이미지 유지
         }
       } catch (error) {
-        // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        // 네트워크 에러 시 조용히 처리 (기존 imageUrls 유지)
         // 개발 모드에서만 로그 출력
         if (__DEV__) {
           console.warn(`[LoginScreen] Admin 이미지 로드 실패 (${Platform.OS}):`, error.message);
         }
-        setAdminImageUrls({});
+        // setAdminImageUrls({}) 제거 - 기존 이미지 유지
       }
     };
     
