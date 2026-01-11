@@ -20,12 +20,20 @@ export const AppConfigProvider = ({ children }) => {
 
   // 설정값 가져오기
   const loadConfig = useCallback(async (university, forceRefresh = false) => {
+    if (__DEV__) {
+      console.log('[AppConfigContext] loadConfig 호출:', { university, forceRefresh });
+    }
+    
     // 이미 로딩 중이면 스킵
     if (loadingRef.current && !forceRefresh) {
+      if (__DEV__) {
+        console.log('[AppConfigContext] 이미 로딩 중이므로 스킵');
+      }
       return;
     }
 
     loadingRef.current = true;
+    setLoading(true);
 
     try {
       // 캐시된 설정 확인 (강제 새로고침이 아니면)
@@ -37,6 +45,9 @@ export const AppConfigProvider = ({ children }) => {
           const timeDiff = Date.now() - parseInt(cachedTime);
           // 5분 이내면 캐시 사용
           if (timeDiff < 5 * 60 * 1000) {
+            if (__DEV__) {
+              console.log('[AppConfigContext] 캐시 사용 (5분 이내)');
+            }
             const parsedConfig = JSON.parse(cachedConfig);
             setConfig(parsedConfig);
             setLastUpdated(parseInt(cachedTime));
@@ -49,6 +60,9 @@ export const AppConfigProvider = ({ children }) => {
       
       // 강제 새로고침이면 캐시 삭제
       if (forceRefresh) {
+        if (__DEV__) {
+          console.log('[AppConfigContext] 강제 새로고침 - 캐시 삭제');
+        }
         await AsyncStorage.removeItem('app_config');
         await AsyncStorage.removeItem('app_config_updated');
       }
@@ -88,28 +102,12 @@ export const AppConfigProvider = ({ children }) => {
       
       if (result.success && result.config) {
         if (__DEV__) {
-          const allKeys = Object.keys(result.config);
-          const selectUniKeys = allKeys.filter(k => k.includes('select_uni'));
-          const loginAdminKeys = allKeys.filter(k => k.includes('login_admin'));
-          
+          const selectUniKeys = Object.keys(result.config).filter(k => k.includes('select_uni'));
           console.log('[AppConfigContext] Config 로드 성공:', {
-            totalKeys: allKeys.length,
+            totalKeys: Object.keys(result.config).length,
             selectUniKeys: selectUniKeys.length,
-            loginAdminKeys: loginAdminKeys.length,
             selectUniKeysList: selectUniKeys,
-            loginAdminKeysList: loginAdminKeys.slice(0, 5),
           });
-          
-          // select_uni_slot_1_image부터 4까지 직접 확인
-          for (let i = 1; i <= 4; i++) {
-            const key = `select_uni_slot_${i}_image`;
-            const value = result.config[key];
-            console.log(`[AppConfigContext] ${key}:`, {
-              exists: key in result.config,
-              value: value || '(undefined)',
-              type: typeof value,
-            });
-          }
         }
         setConfig(result.config);
         setLastUpdated(Date.now());
@@ -158,10 +156,17 @@ export const AppConfigProvider = ({ children }) => {
 
   // 초기 마운트 시 config 로드 (한 번만)
   useEffect(() => {
+    if (__DEV__) {
+      console.log('[AppConfigContext] 초기 마운트 - config 로드 시작');
+    }
     if (!loadingRef.current) {
       loadConfig(null, false);
+    } else {
+      if (__DEV__) {
+        console.log('[AppConfigContext] 이미 로딩 중이므로 초기 로드 스킵');
+      }
     }
-  }, []);
+  }, [loadConfig]);
 
   // 설정값 가져오기 (헬퍼 함수)
   const getConfig = useCallback((key, defaultValue = '') => {
