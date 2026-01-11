@@ -433,6 +433,7 @@ export default function CirclesScreen({ navigation, route }) {
         const cacheKey = `circles_${channelPrefix}_${universityCode}`;
         const cacheTimestampKey = `circles_timestamp_${channelPrefix}_${universityCode}`;
         const CACHE_DURATION = 2 * 60 * 1000; // 2분
+        const now = Date.now();
         
         console.log('[DEBUG loadCirclesData] 캐시 확인:', { selectedChannel, universityCode, cacheKey, forceRefresh });
         
@@ -444,60 +445,60 @@ export default function CirclesScreen({ navigation, route }) {
           // 현재 채널의 캐시만 확인 (다른 채널의 캐시는 확인하지 않음)
           const cachedData = await AsyncStorage.getItem(cacheKey);
           const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
-          const now = Date.now();
           
           // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
           if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
-          const cachedCircles = JSON.parse(cachedData);
-          console.log('[DEBUG loadCirclesData] 캐시 사용:', { universityCode, count: cachedCircles.length });
-          
-          // 캐시된 데이터를 즉시 표시 (빠른 응답)
-          setSavedCircles(cachedCircles);
-          
-          // 백그라운드에서 뷰수/댓글수만 최신 데이터로 업데이트
-          fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
-            headers: { 'Cache-Control': 'no-cache' }
-          })
-            .then(async response => {
-              if (response.ok) {
-                const responseText = await response.text();
-                try {
-                  return JSON.parse(responseText);
-                } catch (e) {
-                  return null;
-                }
-              }
-              return null;
+            const cachedCircles = JSON.parse(cachedData);
+            console.log('[DEBUG loadCirclesData] 캐시 사용:', { universityCode, count: cachedCircles.length });
+            
+            // 캐시된 데이터를 즉시 표시 (빠른 응답)
+            setSavedCircles(cachedCircles);
+            
+            // 백그라운드에서 뷰수/댓글수만 최신 데이터로 업데이트
+            fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
+              headers: { 'Cache-Control': 'no-cache' }
             })
-            .then(circlesData => {
-              if (circlesData && circlesData.success && circlesData.circles) {
-                // 캐시된 데이터와 최신 데이터를 병합 (뷰수와 마감 상태 업데이트, 댓글수는 캐시 사용)
-                const updatedCircles = cachedCircles.map(cachedCircle => {
-                  const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
-                  if (latestCircle) {
-                    return {
-                      ...cachedCircle,
-                      views: latestCircle.views,
-                      isClosed: latestCircle.isClosed || false,
-                      closedAt: latestCircle.closedAt
-                      // commentCount는 캐시된 값 유지 (공지사항과 동일하게)
-                    };
+              .then(async response => {
+                if (response.ok) {
+                  const responseText = await response.text();
+                  try {
+                    return JSON.parse(responseText);
+                  } catch (e) {
+                    return null;
                   }
-                  return cachedCircle;
-                });
-                setSavedCircles(updatedCircles);
-                // 업데이트된 데이터를 캐시에 저장
-                AsyncStorage.setItem(cacheKey, JSON.stringify(updatedCircles)).catch(() => {});
-              }
-            })
-            .catch(() => {
-              // 백그라운드 업데이트 실패는 무시 (이미 캐시된 데이터 표시됨)
-            });
-          
-          return; // 캐시 사용 시 여기서 종료
+                }
+                return null;
+              })
+              .then(circlesData => {
+                if (circlesData && circlesData.success && circlesData.circles) {
+                  // 캐시된 데이터와 최신 데이터를 병합 (뷰수와 마감 상태 업데이트, 댓글수는 캐시 사용)
+                  const updatedCircles = cachedCircles.map(cachedCircle => {
+                    const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
+                    if (latestCircle) {
+                      return {
+                        ...cachedCircle,
+                        views: latestCircle.views,
+                        isClosed: latestCircle.isClosed || false,
+                        closedAt: latestCircle.closedAt
+                        // commentCount는 캐시된 값 유지 (공지사항과 동일하게)
+                      };
+                    }
+                    return cachedCircle;
+                  });
+                  setSavedCircles(updatedCircles);
+                  // 업데이트된 데이터를 캐시에 저장
+                  AsyncStorage.setItem(cacheKey, JSON.stringify(updatedCircles)).catch(() => {});
+                }
+              })
+              .catch(() => {
+                // 백그라운드 업데이트 실패는 무시 (이미 캐시된 데이터 표시됨)
+              });
+            
+            return; // 캐시 사용 시 여기서 종료
+          }
         }
         
-        // 캐시가 없거나 만료되었으면 새로 로드
+        // 캐시가 없거나 만료되었거나 forceRefresh이면 새로 로드
         console.log('[DEBUG loadCirclesData] API 호출:', { universityCode });
         const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
         if (circlesResponse.ok) {
@@ -520,9 +521,7 @@ export default function CirclesScreen({ navigation, route }) {
         } else {
           await circlesResponse.text().catch(() => '');
           // 오류 시 현재 채널의 캐시된 데이터가 있으면 사용
-          const channelPrefix = selectedChannel === 'MIUHub' ? 'miuhub' : 'school';
-          const errorCacheKey = `circles_${channelPrefix}_${universityCode}`;
-          const errorCachedData = await AsyncStorage.getItem(errorCacheKey);
+          const errorCachedData = await AsyncStorage.getItem(cacheKey);
           if (errorCachedData) {
             setSavedCircles(JSON.parse(errorCachedData));
           } else {
