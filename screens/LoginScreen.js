@@ -1057,16 +1057,6 @@ export default function LoginScreen() {
                                 }}
                                 resizeMode="contain"
                                 {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
-                                onError={(error) => {
-                                  if (__DEV__) {
-                                    console.error(`[LoginScreen] Admin 이미지 로드 실패 (slot ${index + 1}):`, error.nativeEvent.error);
-                                  }
-                                }}
-                                onLoad={() => {
-                                  if (__DEV__) {
-                                    console.log(`[LoginScreen] Admin 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
-                                  }
-                                }}
                               />
                             ) : null}
                         </View>

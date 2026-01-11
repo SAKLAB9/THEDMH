@@ -269,7 +269,7 @@ export default function HomeScreen({ navigation }) {
   // university가 변경될 때마다 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
   useEffect(() => {
     const loadAllData = async () => {
-      if (!university) {
+      if (!university || !university.trim()) {
         setLogoImageUrl(null);
         setSavedNotices([]);
         setSavedLifeEvents([]);
@@ -351,6 +351,13 @@ export default function HomeScreen({ navigation }) {
       if (!university || configLoading) return; // config가 로드되기 전에는 실행하지 않음
       
       const loadAllData = async () => {
+        if (!university || !university.trim()) {
+          setLogoImageUrl(null);
+          setSavedNotices([]);
+          setSavedLifeEvents([]);
+          return;
+        }
+        
         try {
           const universityCode = university.toLowerCase();
           
@@ -375,7 +382,7 @@ export default function HomeScreen({ navigation }) {
               setLogoImageUrl({ uri: cachedLogoUrl });
             }
           } catch (cacheError) {
-            console.error('[HomeScreen] 로고 캐시 읽기 오류:', cacheError);
+            // 캐시 읽기 오류는 무시
           }
           
           // 공지사항과 경조사 캐시 확인
@@ -471,7 +478,7 @@ export default function HomeScreen({ navigation }) {
               try {
                 await AsyncStorage.setItem(logoCacheKey, urlData.publicUrl);
               } catch (cacheError) {
-                console.error('[HomeScreen] 로고 캐시 저장 오류:', cacheError);
+                // 캐시 저장 실패는 무시
               }
               setLogoImageUrl({ uri: urlData.publicUrl });
             } else {
@@ -498,16 +505,9 @@ export default function HomeScreen({ navigation }) {
               }
               setSavedNotices(noticesData.notices);
             } else {
-              if (__DEV__) {
-                console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
-              }
               setSavedNotices([]);
             }
           } else {
-            // 오류는 개발 모드에서만 로그
-            if (__DEV__) {
-              console.error('[HomeScreen] 공지사항 로드 실패:', noticesResponse.status);
-            }
             // 오류 시 캐시된 데이터가 있으면 사용
             if (cachedNotices) {
               setSavedNotices(cachedNotices);
@@ -529,16 +529,9 @@ export default function HomeScreen({ navigation }) {
               }
               setSavedLifeEvents(lifeEventsData.lifeEvents);
             } else {
-              if (__DEV__) {
-                console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
-              }
               setSavedLifeEvents([]);
             }
           } else {
-            // 오류는 개발 모드에서만 로그
-            if (__DEV__) {
-              console.error('[HomeScreen] 경조사 로드 실패:', lifeEventsResponse.status);
-            }
             // 오류 시 캐시된 데이터가 있으면 사용
             if (cachedLifeEvents) {
               setSavedLifeEvents(cachedLifeEvents);
@@ -547,7 +540,6 @@ export default function HomeScreen({ navigation }) {
             }
           }
         } catch (error) {
-          console.error('[HomeScreen] 데이터 로드 오류:', error);
           // 에러 발생 시 빈 배열로 설정하여 UI가 깨지지 않도록 함
           setSavedNotices([]);
           setSavedLifeEvents([]);
