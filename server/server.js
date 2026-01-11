@@ -2168,13 +2168,32 @@ app.get('/api/life-events/:id', async (req, res) => {
 // 경조사 등록 API
 app.post('/api/life-events', async (req, res) => {
   try {
+    console.log('[경조사 등록 API] 요청 받음 - 전체 req.body:', JSON.stringify(req.body, null, 2));
+    
     const { title, contentBlocks, textContent, images, category, nickname, author, url, university } = req.body;
+
+    console.log('[경조사 등록 API] 파싱된 값:', {
+      title: !!title,
+      contentBlocks: !!contentBlocks,
+      category: category,
+      university: university,
+      universityType: typeof university,
+      reqBodyKeys: Object.keys(req.body || {}),
+      reqBodyUniversity: req.body?.university
+    });
 
     if (!title || !contentBlocks || !category) {
       return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
     }
 
-    if (!university) {
+    // university가 없거나 빈 문자열인 경우 체크
+    if (!university || (typeof university === 'string' && university.trim() === '')) {
+      console.error('[경조사 등록 API] university 파라미터 누락 또는 빈 값:', {
+        university: university,
+        universityType: typeof university,
+        reqBody: JSON.stringify(req.body, null, 2),
+        reqBodyUniversity: req.body?.university
+      });
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
     }
 

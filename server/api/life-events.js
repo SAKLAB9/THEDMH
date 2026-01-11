@@ -25,7 +25,7 @@ if (USE_DATABASE) {
   }
 }
 
-// 경조사 목록 조회 API
+// 경조사 목록 조회 및 등록 API
 module.exports = async (req, res) => {
   try {
     // CORS 헤더 설정
@@ -37,6 +37,37 @@ module.exports = async (req, res) => {
       return res.status(200).end();
     }
     
+    // POST 요청 처리 (경조사 등록)
+    if (req.method === 'POST') {
+      console.log('[API Life Events POST] 요청 받음');
+      console.log('[API Life Events POST] req.body:', {
+        title: req.body?.title,
+        university: req.body?.university,
+        category: req.body?.category,
+        hasContentBlocks: !!req.body?.contentBlocks,
+        contentBlocksLength: req.body?.contentBlocks?.length
+      });
+      
+      const { title, contentBlocks, textContent, images, category, nickname, author, url, university } = req.body;
+      
+      if (!title || !contentBlocks || !category) {
+        console.error('[API Life Events POST] 필수 필드 누락:', { title: !!title, contentBlocks: !!contentBlocks, category: !!category });
+        return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
+      }
+      
+      if (!university) {
+        console.error('[API Life Events POST] university 파라미터 누락');
+        console.error('[API Life Events POST] req.body 전체:', JSON.stringify(req.body, null, 2));
+        return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+      }
+      
+      // server.js의 POST 엔드포인트로 리다이렉트하지 않고 여기서 처리
+      // 하지만 실제로는 server.js가 처리하도록 하는 것이 좋음
+      // 이 파일은 GET만 처리하고 POST는 server.js로 위임
+      return res.status(404).json({ error: 'POST 요청은 server.js에서 처리됩니다.' });
+    }
+    
+    // GET 요청 처리 (경조사 목록 조회)
     const { university, category } = req.query;
     
     if (!university) {
