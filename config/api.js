@@ -41,6 +41,14 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// 디버깅: API URL 확인
+if (__DEV__) {
+  console.log('[config/api.js] API_BASE_URL:', API_BASE_URL);
+  console.log('[config/api.js] Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL:', Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL);
+  console.log('[config/api.js] process.env.EXPO_PUBLIC_API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL);
+  console.log('[config/api.js] __DEV__:', __DEV__);
+}
+
 // 서버 연결 테스트 함수
 export const testServerConnection = async () => {
   try {

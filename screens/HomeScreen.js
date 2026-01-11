@@ -327,12 +327,25 @@ export default function HomeScreen({ navigation }) {
             // 이미지 파일명 생성 (예: Cornell.png)
             const imageFileName = `${universityDisplayName}.png`;
             
+            // 디버깅: API URL 확인
+            console.log('[HomeScreen] API_BASE_URL:', API_BASE_URL);
+            console.log('[HomeScreen] universityCode:', universityCode);
+            
             // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
+            const noticesUrl = `${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`;
+            const lifeEventsUrl = `${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`;
+            
+            console.log('[HomeScreen] 공지사항 요청 URL:', noticesUrl);
+            console.log('[HomeScreen] 경조사 요청 URL:', lifeEventsUrl);
+            
             const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all([
               fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
-              fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
-              fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+              fetch(noticesUrl),
+              fetch(lifeEventsUrl)
             ]);
+            
+            console.log('[HomeScreen] 공지사항 응답 상태:', noticesResponse.status);
+            console.log('[HomeScreen] 경조사 응답 상태:', lifeEventsResponse.status);
             
             // 로고 이미지 처리
             if (logoResponse.ok) {
@@ -345,17 +358,31 @@ export default function HomeScreen({ navigation }) {
             // 공지사항 처리
             if (noticesResponse.ok) {
               const noticesData = await noticesResponse.json();
+              console.log('[HomeScreen] 공지사항 데이터:', noticesData);
               if (noticesData.success && noticesData.notices) {
+                console.log('[HomeScreen] 공지사항 개수:', noticesData.notices.length);
                 setSavedNotices(noticesData.notices);
+              } else {
+                console.log('[HomeScreen] 공지사항 데이터 없음 또는 success=false');
               }
+            } else {
+              const errorText = await noticesResponse.text();
+              console.error('[HomeScreen] 공지사항 요청 실패:', noticesResponse.status, errorText);
             }
 
             // 경조사 처리
             if (lifeEventsResponse.ok) {
               const lifeEventsData = await lifeEventsResponse.json();
+              console.log('[HomeScreen] 경조사 데이터:', lifeEventsData);
               if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+                console.log('[HomeScreen] 경조사 개수:', lifeEventsData.lifeEvents.length);
                 setSavedLifeEvents(lifeEventsData.lifeEvents);
+              } else {
+                console.log('[HomeScreen] 경조사 데이터 없음 또는 success=false');
               }
+            } else {
+              const errorText = await lifeEventsResponse.text();
+              console.error('[HomeScreen] 경조사 요청 실패:', lifeEventsResponse.status, errorText);
             }
           } catch (error) {
             // 에러 처리
