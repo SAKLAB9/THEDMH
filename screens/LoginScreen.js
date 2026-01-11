@@ -340,13 +340,7 @@ export default function LoginScreen() {
       // config가 로드되지 않았어도 기본값 사용
       const iconImageName = getConfig('login_icon_image') || 'icon.png';
       
-      if (__DEV__) {
-        console.log('[LoginScreen] 아이콘 이미지 이름:', iconImageName);
-        console.log('[LoginScreen] config에서 login_icon_image:', getConfig('login_icon_image'));
-      }
-      
       if (!iconImageName) {
-        if (__DEV__) console.log('[LoginScreen] 아이콘 이미지 이름이 없음');
         setIconImageUrl(null);
         return;
       }
@@ -358,55 +352,30 @@ export default function LoginScreen() {
         // 캐시에서 먼저 확인
         const cachedUrl = await AsyncStorage.getItem(cacheKey);
         if (cachedUrl) {
-          if (__DEV__) console.log('[LoginScreen] 캐시에서 아이콘 URL 로드:', cachedUrl);
           setIconImageUrl({ uri: cachedUrl });
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
-        if (__DEV__) {
-          console.log('[LoginScreen] API 호출 URL:', apiUrl);
-        }
-        
         const response = await fetch(apiUrl);
-        
-        if (__DEV__) {
-          console.log('[LoginScreen] API 응답 상태:', response.status);
-        }
         
         // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
         let data;
         try {
           const responseText = await response.text();
-          if (__DEV__) {
-            console.log('[LoginScreen] API 응답 본문:', responseText);
-          }
           data = JSON.parse(responseText);
         } catch (parseError) {
-          if (__DEV__) {
-            console.error('[LoginScreen] JSON 파싱 오류:', parseError);
-          }
           setIconImageUrl(null);
           return;
-        }
-        
-        if (__DEV__) {
-          console.log('[LoginScreen] API 응답 데이터:', data);
         }
         
         // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
         if (data.success && data.url) {
           // 캐시에 저장 (24시간 유효)
           await AsyncStorage.setItem(cacheKey, data.url);
-          if (__DEV__) {
-            console.log('[LoginScreen] 아이콘 URL 로드 성공:', data.url);
-          }
           setIconImageUrl({ uri: data.url });
         } else {
-          if (__DEV__) {
-            console.error('[LoginScreen] API 응답에 URL이 없음:', data);
-          }
           setIconImageUrl(null);
         }
       } catch (error) {
@@ -729,17 +698,6 @@ export default function LoginScreen() {
                   elevation: 12,
                 }}
                 resizeMode="contain"
-                onError={(error) => {
-                  console.error('[LoginScreen] 이미지 로드 오류:', error.nativeEvent?.error || error);
-                  if (__DEV__) {
-                    console.error('[LoginScreen] 이미지 URL:', iconImageUrl?.uri);
-                  }
-                }}
-                onLoad={() => {
-                  if (__DEV__) {
-                    console.log('[LoginScreen] 이미지 로드 성공');
-                  }
-                }}
               />
             )
           )}
