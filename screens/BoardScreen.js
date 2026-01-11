@@ -128,7 +128,7 @@ export default function BoardScreen({ navigation, route }) {
   const partnersSlotImageNames = useMemo(() => {
     const names = [];
     for (let i = 1; i <= slotsCount; i++) {
-      names.push(getConfig(`select_uni_slot_${i}_image`, ''));
+      names.push(getConfig(`select_uni_slot_${i}`, ''));
     }
     return names;
   }, [slotsCount, appConfig, getConfig]);
@@ -146,7 +146,7 @@ export default function BoardScreen({ navigation, route }) {
       // 모든 이미지 파일명 수집
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
-        const imageName = getConfig(`select_uni_slot_${i}_image`, '');
+        const imageName = getConfig(`select_uni_slot_${i}`, '');
         if (imageName) {
           imageNames.push(imageName);
         }
