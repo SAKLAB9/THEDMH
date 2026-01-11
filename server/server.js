@@ -1626,14 +1626,54 @@ app.put('/api/notices/:id', async (req, res) => {
           });
         }
 
+        // 새로운 이미지 저장 및 URL 수집
+        const savedImageUrls = [...oldImages];
+        if (images && images.length > 0) {
+          for (let i = 0; i < images.length; i++) {
+            const imageData = images[i];
+            if (imageData && imageData.startsWith('data:image')) {
+              const timestamp = Date.now();
+              const filename = `notice_${timestamp}_${i}.jpg`;
+              try {
+                const imageUrl = await saveImage(imageData, filename, universityCode);
+                savedImageUrls.push(imageUrl);
+              } catch (error) {
+                console.error(`[공지사항 수정] 이미지 저장 실패:`, error);
+              }
+            } else if (imageData && imageData.startsWith('http')) {
+              if (!savedImageUrls.includes(imageData)) {
+                savedImageUrls.push(imageData);
+              }
+            }
+          }
+        }
+
+        // contentBlocks의 이미지도 업로드 및 업데이트
+        const updatedContentBlocks = await Promise.all((contentBlocks || []).map(async (block, index) => {
+          if (block.type === 'image' && block.uri) {
+            if (block.uri.startsWith('data:image')) {
+              const timestamp = Date.now();
+              const filename = `notice_${timestamp}_block_${index}.jpg`;
+              try {
+                const imageUrl = await saveImage(block.uri, filename, universityCode);
+                return { ...block, uri: imageUrl };
+              } catch (error) {
+                console.error(`[공지사항 수정] contentBlocks 이미지 저장 실패:`, error);
+                return block;
+              }
+            }
+          }
+          return block;
+        }));
+
         // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
         const newImageUrls = new Set();
-        (images || []).forEach(url => {
+        savedImageUrls.forEach(url => {
           if (url) {
             newImageUrls.add(url);
           }
         });
-        contentBlocks.forEach(block => {
+        updatedContentBlocks.forEach(block => {
           if (block.type === 'image' && block.uri) {
             newImageUrls.add(block.uri);
           }
@@ -1645,23 +1685,6 @@ app.put('/api/notices/:id', async (req, res) => {
             deleteImageFile(url);
           }
         });
-
-        // VARCHAR(255) 제한을 제거하기 위해 컬럼 타입을 TEXT로 변경
-        try {
-          await pool.query(`ALTER TABLE ${tableName} ALTER COLUMN title TYPE TEXT`);
-        } catch (alterError) {
-          // 이미 TEXT이거나 변경 실패해도 계속 진행
-        }
-        try {
-          await pool.query(`ALTER TABLE ${tableName} ALTER COLUMN category TYPE TEXT`);
-        } catch (alterError) {
-          // 이미 TEXT이거나 변경 실패해도 계속 진행
-        }
-        try {
-          await pool.query(`ALTER TABLE ${tableName} ALTER COLUMN author TYPE TEXT`);
-        } catch (alterError) {
-          // 이미 TEXT이거나 변경 실패해도 계속 진행
-        }
         
         // 공지사항 업데이트
         const result = await pool.query(
