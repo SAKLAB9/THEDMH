@@ -391,25 +391,6 @@ export default function HomeScreen({ navigation }) {
   // 화면이 포커스될 때마다 데이터 새로고침 (로고 이미지, 공지사항, 경조사 모두 병렬 로드)
   const intervalRef = useRef(null);
   
-  // route.params에서 뷰수 업데이트 정보 확인 및 적용
-  useEffect(() => {
-    const params = navigation.getState()?.routes?.find(r => r.name === 'Home')?.params;
-    if (params?.updateViews) {
-      const { type, id, views } = params.updateViews;
-      if (type === 'notice' && id && views !== undefined) {
-        setSavedNotices(prev => prev.map(notice => 
-          notice.id === id ? { ...notice, views } : notice
-        ));
-      } else if (type === 'lifeEvent' && id && views !== undefined) {
-        setSavedLifeEvents(prev => prev.map(lifeEvent => 
-          lifeEvent.id === id ? { ...lifeEvent, views } : lifeEvent
-        ));
-      }
-      // params 초기화
-      navigation.setParams({ updateViews: undefined });
-    }
-  }, [navigation]);
-  
   useFocusEffect(
     React.useCallback(() => {
       if (!university || configLoading) return; // config가 로드되기 전에는 실행하지 않음
