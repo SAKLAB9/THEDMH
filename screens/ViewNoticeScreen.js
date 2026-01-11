@@ -40,9 +40,6 @@ function ImageBlock({ uri }) {
       // 슬래시 중복 제거 (// -> /)
       fixedUri = fixedUri.replace(/\/+/g, '/');
       
-      // Supabase URL 변경 처리 (qgtwkhkmdsaypnsnrpbf -> waumfxamhuvhsblehsuf)
-      fixedUri = fixedUri.replace(/qgtwkhkmdsaypnsnrpbf\.supabase\.co/g, 'waumfxamhuvhsblehsuf.supabase.co');
-      
       return fixedUri;
     }
     
