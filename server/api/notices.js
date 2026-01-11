@@ -3,7 +3,7 @@ process.env.TZ = 'Asia/Seoul';
 
 const { Pool } = require('pg');
 const {
-  normalizeUniversityFromRequest,
+  normalizeUniversityCode,
   getNoticesTableName
 } = require('../dbTableHelpers');
 require('dotenv').config();
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
     
     if (USE_DATABASE && pool) {
       try {
-        const universityCode = await normalizeUniversityFromRequest(university, pool);
+        const universityCode = await normalizeUniversityCode(university, pool);
         
         if (!universityCode) {
           return res.status(400).json({ error: '유효하지 않은 university입니다.' });
