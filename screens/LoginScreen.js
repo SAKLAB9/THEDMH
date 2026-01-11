@@ -1022,13 +1022,14 @@ export default function LoginScreen() {
                             {imageSource && (
                               <Image
                                 source={imageSource}
-                            style={{
+                                style={{
                                   width: '100%',
                                   height: '100%',
-                            }}
+                                }}
                                 resizeMode="contain"
+                                cache="force-cache"
                               />
-                          )}
+                            )}
                         </View>
                       </TouchableOpacity>
                       );
