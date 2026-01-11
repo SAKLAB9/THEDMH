@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { supabase } from '../config/supabase';
+import API_BASE_URL from '../config/api';
 import { useUniversity } from '../contexts/UniversityContext';
 import { getLoginColors } from '../utils/uniColors';
 import { getCategoryPassword } from './categoryPasswords';
