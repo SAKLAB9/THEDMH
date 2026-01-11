@@ -130,9 +130,20 @@ export default function LoginScreen() {
   const { updateUniversity } = useUniversity();
   const { getConfig, getConfigNumber, loadConfig, loading: configLoading, config } = useAppConfig();
   
-  // 화면이 포커스될 때마다 설정 강제 새로고침
+  // 화면이 포커스될 때마다 설정 강제 새로고침 (최적화: 5분 이내면 스킵)
   useEffect(() => {
-    loadConfig(null, true);
+    const refreshConfig = async () => {
+      const cachedTime = await AsyncStorage.getItem('app_config_updated');
+      if (cachedTime) {
+        const timeDiff = Date.now() - parseInt(cachedTime);
+        // 5분 이내면 새로고침 스킵
+        if (timeDiff < 5 * 60 * 1000) {
+          return;
+        }
+      }
+      loadConfig(null, true);
+    };
+    refreshConfig();
   }, [loadConfig]);
   
   // LOGIN_COLORS 계산 - config가 변경될 때마다 재계산
