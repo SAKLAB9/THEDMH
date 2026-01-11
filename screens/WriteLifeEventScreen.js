@@ -68,6 +68,14 @@ function ImageBlock({ uri }) {
 
 export default function WriteLifeEventScreen({ navigation, route }) {
   const { university } = useUniversity();
+  
+  // university 디버깅
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[WriteLifeEventScreen] university:', university);
+    }
+  }, [university]);
+  
   const { getConfig, getColorConfig, config: appConfig } = useAppConfig();
   const config = { getColorConfig };
   const uniColors = useMemo(() => getUniColors(university, config), [university, getColorConfig, appConfig]);
@@ -313,12 +321,11 @@ export default function WriteLifeEventScreen({ navigation, route }) {
         throw new Error('이미지 데이터가 없습니다.');
       }
       
-      
-      // 서버에 업로드
       if (!university) {
         throw new Error('university 정보가 없습니다.');
       }
       
+      // 서버에 업로드
       const response = await fetch(`${API_BASE_URL}/api/upload-image`, {
         method: 'POST',
         headers: {
@@ -352,6 +359,12 @@ export default function WriteLifeEventScreen({ navigation, route }) {
   const handleSubmit = async () => {
     // 중복 제출 방지
     if (isSubmitting) {
+      return;
+    }
+    
+    // university 확인
+    if (!university) {
+      Alert.alert('오류', '학교 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
       return;
     }
 
@@ -414,7 +427,24 @@ export default function WriteLifeEventScreen({ navigation, route }) {
       
       if (!author || author === 'guest') {
         Alert.alert('오류', '로그인이 필요합니다.');
+        setIsSubmitting(false);
         return;
+      }
+
+      // university 확인 및 로깅
+      if (!university) {
+        Alert.alert('오류', '학교 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const universityValue = university.toLowerCase();
+      if (__DEV__) {
+        console.log('[WriteLifeEventScreen] 저장 요청:', {
+          university: universityValue,
+          isEditMode,
+          editNoticeId
+        });
       }
 
       // API 서버로 전송 (수정 모드면 PUT, 아니면 POST)
@@ -423,22 +453,32 @@ export default function WriteLifeEventScreen({ navigation, route }) {
         : `${API_BASE_URL}/api/life-events`;
       const method = isEditMode ? 'PUT' : 'POST';
       
+      const requestBody = {
+        title: title.trim(),
+        contentBlocks: updatedContentBlocks,
+        textContent: textContent,
+        images: images,
+        category: selectedCategory,
+        nickname: (nickname && nickname.trim()) ? nickname.trim() : null,
+        author: author, // 실제 작성자 이메일/ID 저장
+        url: url && url.trim() ? url.trim() : null,
+        university: universityValue,
+      };
+      
+      if (__DEV__) {
+        console.log('[WriteLifeEventScreen] 요청 본문:', {
+          ...requestBody,
+          contentBlocks: requestBody.contentBlocks.length,
+          images: requestBody.images.length
+        });
+      }
+      
       const response = await fetch(apiUrl, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: title.trim(),
-          contentBlocks: updatedContentBlocks,
-          textContent: textContent,
-          images: images,
-          category: selectedCategory,
-          nickname: (nickname && nickname.trim()) ? nickname.trim() : null,
-          author: author, // 실제 작성자 이메일/ID 저장
-          url: url && url.trim() ? url.trim() : null,
-          university: university.toLowerCase(),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       // 응답이 JSON인지 확인
