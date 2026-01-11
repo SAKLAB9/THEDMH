@@ -142,11 +142,13 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         
         // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
         let cachedLifeEvent = null;
+        let cacheTimestamp = null;
         try {
           const cachedData = await AsyncStorage.getItem(cacheKey);
           if (cachedData) {
             const parsedData = JSON.parse(cachedData);
-            const cacheAge = Date.now() - (parsedData.timestamp || 0);
+            cacheTimestamp = parsedData.timestamp || 0;
+            const cacheAge = Date.now() - cacheTimestamp;
             const CACHE_DURATION = 5 * 60 * 1000; // 5분
             
             if (cacheAge < CACHE_DURATION && parsedData.lifeEvent) {
@@ -175,7 +177,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           setLoading(false);
           
           // 백그라운드에서 새 데이터 가져오기 (캐시가 오래되었을 때만)
-          const cacheAge = Date.now() - (JSON.parse(await AsyncStorage.getItem(cacheKey) || '{}').timestamp || 0);
+          const cacheAge = Date.now() - (cacheTimestamp || 0);
           if (cacheAge > 2 * 60 * 1000) { // 2분 이상 지났을 때만 업데이트
             fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
               .then(response => {
