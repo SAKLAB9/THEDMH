@@ -462,7 +462,10 @@ export default function WriteNoticeScreen({ navigation, route }) {
       );
 
       // 공지사항 데이터 준비
-      const images = updatedContentBlocks.filter(block => block.type === 'image').map(block => block.uri);
+      // 이미지가 없어도 빈 배열로 명시적으로 전달 (빈 배열도 유효한 데이터)
+      const images = updatedContentBlocks
+        .filter(block => block.type === 'image' && block.uri)
+        .map(block => block.uri);
       const textContent = updatedContentBlocks.filter(block => block.type === 'text').map(block => block.content).join('\n');
       
       // 현재 로그인한 사용자 정보 가져오기

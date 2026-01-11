@@ -1835,7 +1835,7 @@ app.put('/api/notices/:id', async (req, res) => {
           // 이미 TEXT이거나 변경 실패해도 계속 진행
         }
         
-        // 먼저 기존 공지사항 정보 가져오기
+        // 먼저 기존 공지사항 정보 가져오기 (삭제할 이미지 찾기용)
         const oldNoticeResult = await pool.query(`SELECT images, content_blocks FROM ${tableName} WHERE id = $1`, [id]);
       
         if (oldNoticeResult.rows.length === 0) {
@@ -1848,7 +1848,7 @@ app.put('/api/notices/:id', async (req, res) => {
           ? JSON.parse(oldNotice.content_blocks) 
           : oldNotice.content_blocks;
 
-        // 기존 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
+        // 기존 이미지 URL 수집 (삭제할 이미지 찾기용)
         const oldImageUrls = new Set();
         oldImages.forEach(url => {
           if (url) {
@@ -1863,7 +1863,7 @@ app.put('/api/notices/:id', async (req, res) => {
           });
         }
 
-        // contentBlocks의 이미지도 업로드 및 업데이트
+        // contentBlocks의 이미지도 업로드 및 업데이트 (base64만 업로드)
         const updatedContentBlocks = await Promise.all((contentBlocks || []).map(async (block, index) => {
           if (block.type === 'image' && block.uri) {
             if (block.uri.startsWith('data:image')) {
@@ -1881,45 +1881,50 @@ app.put('/api/notices/:id', async (req, res) => {
           return block;
         }));
 
-        // 새로운 이미지 URL 수집 (실제 사용되는 이미지만 수집)
-        const newImageUrls = new Set();
+        // 새로운 이미지 URL 수집 (전달된 images 배열과 contentBlocks에서 실제 사용되는 이미지만)
+        const newImageUrls = [];
         
-        // images 배열에서 새로운 이미지 저장 및 수집
-        if (images && images.length > 0) {
-          for (let i = 0; i < images.length; i++) {
-            const imageData = images[i];
-            if (imageData && imageData.startsWith('data:image')) {
-              const timestamp = Date.now();
-              const filename = `notice_${timestamp}_${i}.jpg`;
-              try {
-                const imageUrl = await saveImage(imageData, filename, universityCode);
-                newImageUrls.add(imageUrl);
-              } catch (error) {
-                console.error(`[공지사항 수정] 이미지 저장 실패:`, error);
-              }
-            } else if (imageData && imageData.startsWith('http')) {
-              newImageUrls.add(imageData);
+        // images 배열 처리 (빈 배열도 유효한 값으로 처리)
+        // 클라이언트에서 전달된 images 배열을 그대로 사용 (없으면 빈 배열)
+        const finalImages = Array.isArray(images) ? images : [];
+        for (let i = 0; i < finalImages.length; i++) {
+          const imageData = finalImages[i];
+          if (imageData && imageData.startsWith('data:image')) {
+            // base64 이미지 업로드
+            const timestamp = Date.now();
+            const filename = `notice_${timestamp}_${i}.jpg`;
+            try {
+              const imageUrl = await saveImage(imageData, filename, universityCode);
+              newImageUrls.push(imageUrl);
+            } catch (error) {
+              console.error(`[공지사항 수정] 이미지 저장 실패:`, error);
             }
+          } else if (imageData && imageData.startsWith('http')) {
+            // 이미 업로드된 이미지 URL
+            newImageUrls.push(imageData);
           }
         }
         
-        // contentBlocks의 이미지 URL 수집
+        // contentBlocks의 이미지 URL도 추가
         updatedContentBlocks.forEach(block => {
-          if (block.type === 'image' && block.uri) {
-            newImageUrls.add(block.uri);
+          if (block.type === 'image' && block.uri && block.uri.startsWith('http')) {
+            if (!newImageUrls.includes(block.uri)) {
+              newImageUrls.push(block.uri);
+            }
           }
         });
 
-        // 삭제된 이미지 찾기 및 삭제
+        // 삭제된 이미지 찾기 (storage 삭제는 나중에 처리)
+        const deletedImageUrls = [];
         oldImageUrls.forEach(url => {
-          if (!newImageUrls.has(url)) {
-            console.log(`[공지사항 수정] 삭제할 이미지: ${url}`);
-            deleteImageFile(url);
+          if (!newImageUrls.includes(url)) {
+            deletedImageUrls.push(url);
+            console.log(`[공지사항 수정] 삭제할 이미지 (나중에 처리): ${url}`);
           }
         });
         
-        // 최종 이미지 배열 (실제 사용되는 이미지만 포함)
-        const savedImageUrls = Array.from(newImageUrls);
+        // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
+        const savedImageUrls = newImageUrls;
         
         // 공지사항 업데이트
         const result = await pool.query(
