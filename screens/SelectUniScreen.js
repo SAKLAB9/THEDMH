@@ -109,109 +109,104 @@ export default function SelectUniScreen() {
           Object.keys(parsedUrls).forEach(imageName => {
             urls[imageName] = { uri: parsedUrls[imageName] };
           });
-          if (__DEV__ && Platform.OS === 'ios') {
-            console.log(`[SelectUniScreen] iOS 캐시에서 이미지 URL 로드:`, Object.keys(urls).length, '개');
+          if (__DEV__) {
+            console.log(`[SelectUniScreen] 캐시에서 이미지 URL 로드:`, Object.keys(urls).length, '개');
           }
           setImageUrls(urls);
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
-        // 캐시에 없으면 API 호출
-        const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
-        
-        if (__DEV__ && Platform.OS === 'ios') {
-          console.log(`[SelectUniScreen] iOS API 호출 시작:`, apiUrl, imageNames);
+        // 캐시에 없으면 먼저 Supabase에서 직접 URL 생성 (즉시 표시)
+        // API는 백그라운드에서 시도하고 성공하면 캐시 업데이트
+        const { supabase } = require('../config/supabase');
+        if (supabase) {
+          const urls = {};
+          imageNames.forEach(imageName => {
+            const trimmedName = String(imageName).trim();
+            if (trimmedName) {
+              const filePath = `assets/${trimmedName}`;
+              const { data: urlData } = supabase.storage
+                .from('images')
+                .getPublicUrl(filePath);
+              urls[trimmedName] = urlData.publicUrl;
+            }
+          });
+          
+          // URL 객체로 변환하여 즉시 표시
+          const urlObjects = {};
+          Object.keys(urls).forEach(imageName => {
+            urlObjects[imageName] = { uri: urls[imageName] };
+          });
+          
+          setImageUrls(urlObjects);
+          
+          // 캐시에 저장
+          await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+          
+          if (__DEV__) {
+            console.log(`[SelectUniScreen] Supabase 직접 URL 생성 성공:`, Object.keys(urlObjects).length, '개');
+            Object.keys(urlObjects).forEach(name => {
+              console.log(`  - ${name}: ${urlObjects[name].uri}`);
+            });
+          }
         }
         
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ filenames: imageNames }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
+        // 백그라운드에서 API 호출 시도 (성공하면 캐시 업데이트)
+        try {
+          const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
           
-          if (data.success && data.urls) {
-            // 캐시에 저장 (24시간 유효)
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
-            
-            // URL 객체로 변환
-            const urls = {};
-            Object.keys(data.urls).forEach(imageName => {
-              urls[imageName] = { uri: data.urls[imageName] };
-            });
-            
-            if (__DEV__ && Platform.OS === 'ios') {
-              console.log(`[SelectUniScreen] iOS 이미지 URL 로드 성공:`, Object.keys(urls).length, '개');
-              Object.keys(urls).forEach(name => {
-                console.log(`  - ${name}: ${urls[name].uri}`);
-              });
-            }
-            
-            setImageUrls(urls);
-          } else {
-            // API 응답 실패 시 조용히 처리 (기존 imageUrls 유지)
-            if (__DEV__ && Platform.OS === 'ios') {
-              console.warn(`[SelectUniScreen] iOS API 응답 실패:`, data);
-            }
-            // setImageUrls({}) 제거 - 기존 이미지 유지
-          }
-        } else {
-          // HTTP 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
           if (__DEV__) {
-            console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}), Supabase에서 직접 생성:`, {
-              status: response.status,
-              statusText: response.statusText
-            });
+            console.log(`[SelectUniScreen] 백그라운드 API 호출 시작:`, apiUrl);
           }
           
-          // Supabase Storage에서 직접 URL 생성
-          try {
-            const { supabase } = require('../config/supabase');
-            if (supabase) {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filenames: imageNames }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success && data.urls) {
+              // 캐시 업데이트
+              await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
+              
+              // URL 객체로 변환하여 업데이트
               const urls = {};
-              imageNames.forEach(imageName => {
-                const trimmedName = String(imageName).trim();
-                if (trimmedName) {
-                  const filePath = `assets/${trimmedName}`;
-                  const { data: urlData } = supabase.storage
-                    .from('images')
-                    .getPublicUrl(filePath);
-                  urls[trimmedName] = urlData.publicUrl;
-                }
+              Object.keys(data.urls).forEach(imageName => {
+                urls[imageName] = { uri: data.urls[imageName] };
               });
               
-              // 캐시에 저장
-              await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+              setImageUrls(urls);
               
-              // URL 객체로 변환
-              const urlObjects = {};
-              Object.keys(urls).forEach(imageName => {
-                urlObjects[imageName] = { uri: urls[imageName] };
-              });
-              
-              setImageUrls(urlObjects);
-              
-              if (__DEV__ && Platform.OS === 'ios') {
-                console.log(`[SelectUniScreen] iOS Supabase 직접 URL 생성 성공:`, Object.keys(urlObjects).length, '개');
+              if (__DEV__) {
+                console.log(`[SelectUniScreen] API 호출 성공, 이미지 URL 업데이트:`, Object.keys(urls).length, '개');
               }
             }
-          } catch (fallbackError) {
+          } else {
             if (__DEV__) {
-              console.warn(`[SelectUniScreen] Supabase 직접 URL 생성 실패:`, fallbackError.message);
+              console.warn(`[SelectUniScreen] API HTTP 에러:`, {
+                status: response.status,
+                statusText: response.statusText
+              });
             }
+          }
+        } catch (apiError) {
+          // API 실패는 무시 (이미 Supabase에서 직접 생성했으므로)
+          if (__DEV__) {
+            console.warn(`[SelectUniScreen] API 호출 실패 (무시됨):`, apiError.message);
           }
         }
       } catch (error) {
-        // 네트워크 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
+        // 전체 에러 처리
         if (__DEV__) {
-          console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}), Supabase에서 직접 생성:`, error.message);
+          console.error(`[SelectUniScreen] 이미지 로드 실패:`, error.message);
         }
         
-        // Supabase Storage에서 직접 URL 생성
+        // 최후의 수단: Supabase에서 직접 URL 생성
         try {
           const { supabase } = require('../config/supabase');
           if (supabase) {
@@ -238,13 +233,13 @@ export default function SelectUniScreen() {
             
             setImageUrls(urlObjects);
             
-            if (__DEV__ && Platform.OS === 'ios') {
-              console.log(`[SelectUniScreen] iOS Supabase 직접 URL 생성 성공 (에러 후):`, Object.keys(urlObjects).length, '개');
+            if (__DEV__) {
+              console.log(`[SelectUniScreen] Supabase 직접 URL 생성 성공 (에러 후):`, Object.keys(urlObjects).length, '개');
             }
           }
         } catch (fallbackError) {
           if (__DEV__) {
-            console.warn(`[SelectUniScreen] Supabase 직접 URL 생성 실패:`, fallbackError.message);
+            console.error(`[SelectUniScreen] Supabase 직접 URL 생성 실패:`, fallbackError.message);
           }
         }
       }
