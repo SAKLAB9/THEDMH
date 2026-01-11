@@ -632,23 +632,28 @@ export default function CirclesScreen({ navigation, route }) {
 
   // 화면이 포커스될 때마다 route.params에서 selectedChannel 업데이트 및 데이터 새로고침
   const intervalRef = useRef(null);
-  const lastSelectedChannelRef = useRef(selectedChannel);
+  const modalJustClosedRef = useRef(false);
+  
+  // 모달이 닫힐 때 추적
+  useEffect(() => {
+    if (!showPartnersModal) {
+      // 모달이 닫혔다는 것을 표시 (다음 useFocusEffect 실행 시 차단)
+      modalJustClosedRef.current = true;
+      // 짧은 시간 후 리셋 (모달이 닫힌 후 useFocusEffect가 실행될 시간을 줌)
+      setTimeout(() => {
+        modalJustClosedRef.current = false;
+      }, 100);
+    }
+  }, [showPartnersModal]);
   
   useFocusEffect(
     React.useCallback(() => {
       let isMounted = true;
       
-      // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
-      const currentSelectedChannel = selectedChannel;
-      const wasChannelJustChanged = lastSelectedChannelRef.current !== currentSelectedChannel;
-      lastSelectedChannelRef.current = currentSelectedChannel;
-      
-      if (wasChannelJustChanged) {
-        console.log('[DEBUG useFocusEffect] selectedChannel이 방금 변경됨, refreshData 스킵:', {
-          prev: lastSelectedChannelRef.current,
-          current: currentSelectedChannel
-        });
-        // selectedChannel 변경은 loadCirclesData가 처리하므로 여기서는 아무것도 하지 않음
+      // 모달이 방금 닫혔다면 refreshData를 실행하지 않음 (loadCirclesData가 이미 처리함)
+      if (modalJustClosedRef.current) {
+        console.log('[DEBUG useFocusEffect] 모달이 방금 닫혔으므로 refreshData 스킵');
+        modalJustClosedRef.current = false; // 리셋
         return () => {
           isMounted = false;
           if (intervalRef.current) {
