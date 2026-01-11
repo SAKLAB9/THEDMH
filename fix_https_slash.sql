@@ -431,23 +431,23 @@ END $$;
 
 -- 1. 업데이트 성공한 테이블 목록
 SELECT 
-    table_name as "✅ 업데이트된 테이블",
-    updated_rows as "변경된 행 수"
+    table_name as "updated_table",
+    updated_rows as "changed_rows"
 FROM update_results
 WHERE status = 'Success' AND updated_rows > 0
 ORDER BY updated_rows DESC, table_name;
 
 -- 2. 모든 테이블 상태
 SELECT 
-    table_name as "테이블명",
-    updated_rows as "업데이트된 행 수",
+    table_name as "table_name",
+    updated_rows as "updated_rows",
     CASE 
-        WHEN status = 'Success' AND updated_rows > 0 THEN '✅ 성공'
-        WHEN status = 'Success' AND updated_rows = 0 THEN '⚠️ 변경 없음'
-        WHEN status = 'No content_blocks column' THEN '⚠️ content_blocks 컬럼 없음'
-        WHEN status = 'Table does not exist' THEN '⚠️ 테이블 없음'
-        ELSE '❌ 에러: ' || status
-    END as "상태"
+        WHEN status = 'Success' AND updated_rows > 0 THEN 'Success'
+        WHEN status = 'Success' AND updated_rows = 0 THEN 'No changes'
+        WHEN status = 'No content_blocks column' THEN 'No content_blocks column'
+        WHEN status = 'Table does not exist' THEN 'Table does not exist'
+        ELSE 'Error: ' || status
+    END as "status"
 FROM update_results
 ORDER BY 
     CASE 
@@ -462,12 +462,12 @@ ORDER BY
 
 -- 3. 전체 요약
 SELECT 
-    '📊 업데이트 요약' as "구분",
-    COUNT(*) FILTER (WHERE status = 'Success' AND updated_rows > 0) as "성공한 테이블 수",
-    COALESCE(SUM(updated_rows) FILTER (WHERE status = 'Success'), 0) as "총 변경된 행 수",
-    COUNT(*) FILTER (WHERE status = 'Success' AND updated_rows = 0) as "변경 없음 테이블 수",
-    COUNT(*) FILTER (WHERE status = 'No content_blocks column') as "content_blocks 컬럼 없는 테이블 수",
-    COUNT(*) FILTER (WHERE status = 'Table does not exist') as "존재하지 않는 테이블 수",
-    COUNT(*) FILTER (WHERE status LIKE 'Error:%') as "에러 발생 테이블 수"
+    'Summary' as "type",
+    COUNT(*) FILTER (WHERE status = 'Success' AND updated_rows > 0) as "success_tables",
+    COALESCE(SUM(updated_rows) FILTER (WHERE status = 'Success'), 0) as "total_changed_rows",
+    COUNT(*) FILTER (WHERE status = 'Success' AND updated_rows = 0) as "no_change_tables",
+    COUNT(*) FILTER (WHERE status = 'No content_blocks column') as "no_column_tables",
+    COUNT(*) FILTER (WHERE status = 'Table does not exist') as "not_exist_tables",
+    COUNT(*) FILTER (WHERE status LIKE 'Error:%') as "error_tables"
 FROM update_results;
 
