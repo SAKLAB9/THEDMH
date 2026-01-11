@@ -65,7 +65,7 @@
     "extra": {
       "EXPO_PUBLIC_SUPABASE_URL": "https://waumfxamhuvhsblehsuf.supabase.co",
       "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhdW1meGFtaHV2aHNibGVoc3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNDk1NjgsImV4cCI6MjA4MzYyNTU2OH0.PUNYddXPTWDXOT6le3NH7nplihMrnSIyW9a3-hfB-UA",
-      "EXPO_PUBLIC_API_BASE_URL": "https://the-dongmunhoi-server.vercel.app",
+      "EXPO_PUBLIC_API_BASE_URL": "https://thedmh.vercel.app",
       "eas": {
         "projectId": "46def0eb-7c05-4095-8756-3a010adfc59b"
       }

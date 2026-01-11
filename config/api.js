@@ -20,7 +20,7 @@ const getApiBaseUrl = () => {
   }
 
   // 기본값: Vercel 배포 URL 사용 (THE동문회 서버)
-  return 'https://the-dongmunhoi-server.vercel.app';
+  return 'https://thedmh.vercel.app';
 };
 
 const API_BASE_URL = getApiBaseUrl();
