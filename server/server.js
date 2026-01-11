@@ -1414,33 +1414,6 @@ app.post('/api/notices', async (req, res) => {
         
         const tableName = getNoticesTableName(universityCode);
         
-        // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정
-        try {
-          // 현재 최대 ID 확인
-          const maxIdResult = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM ${tableName}`);
-          const maxId = parseInt(maxIdResult.rows[0]?.max_id || 0, 10);
-          
-          // 시퀀스 이름 가져오기
-          const seqResult = await pool.query(`SELECT pg_get_serial_sequence('${tableName}', 'id') as seq_name`);
-          const seqName = seqResult.rows[0]?.seq_name;
-          
-          if (seqName) {
-            // 현재 시퀀스 값 확인
-            const currValResult = await pool.query(`SELECT last_value FROM ${seqName}`);
-            const currVal = parseInt(currValResult.rows[0]?.last_value || 0, 10);
-            
-            // 최대 ID와 현재 시퀀스 값 중 더 큰 값 사용
-            const targetVal = Math.max(maxId, currVal);
-            
-            // 시퀀스 재설정 (false를 사용하여 다음 nextval()이 targetVal + 1을 반환하도록)
-            // setval(seq, value, false)는 다음 nextval()이 value + 1을 반환
-            await pool.query(`SELECT setval($1, $2, false)`, [seqName, targetVal]);
-          }
-        } catch (seqError) {
-          // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
-          console.error(`[공지사항 등록] 시퀀스 재설정 실패:`, seqError.message);
-        }
-        
         // url 컬럼이 없으면 자동으로 추가
         try {
           const checkResult = await pool.query(
@@ -1502,6 +1475,26 @@ app.post('/api/notices', async (req, res) => {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
+          
+          // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정 (트랜잭션 내에서)
+          try {
+            // 현재 최대 ID 확인
+            const maxIdResult = await client.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM ${tableName}`);
+            const maxId = parseInt(maxIdResult.rows[0]?.max_id || 0, 10);
+            
+            // 시퀀스 이름 가져오기
+            const seqResult = await client.query(`SELECT pg_get_serial_sequence($1, 'id') as seq_name`, [tableName]);
+            const seqName = seqResult.rows[0]?.seq_name;
+            
+            if (seqName) {
+              // 시퀀스 재설정: setval(seq, maxId, false)는 다음 nextval()이 maxId + 1을 반환하도록 함
+              // 이렇게 하면 테이블의 최대 ID보다 큰 값이 항상 생성됨
+              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
+            }
+          } catch (seqError) {
+            // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
+            console.error(`[공지사항 등록] 시퀀스 재설정 실패:`, seqError.message);
+          }
           
           const result = await client.query(
             `INSERT INTO ${tableName} (title, content_blocks, text_content, images, category, nickname, author, url)
@@ -2141,13 +2134,6 @@ app.post('/api/life-events', async (req, res) => {
         
         const tableName = getLifeEventsTableName(universityCode);
         
-        // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정
-        try {
-          await pool.query(`SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE((SELECT MAX(id) FROM ${tableName}), 0) + 1, false)`);
-        } catch (seqError) {
-          // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
-        }
-        
         // nickname 컬럼이 없으면 자동으로 추가
         try {
           const checkNicknameResult = await pool.query(
@@ -2174,6 +2160,21 @@ app.post('/api/life-events', async (req, res) => {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
+          
+          // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정 (트랜잭션 내에서)
+          try {
+            const maxIdResult = await client.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM ${tableName}`);
+            const maxId = parseInt(maxIdResult.rows[0]?.max_id || 0, 10);
+            const seqResult = await client.query(`SELECT pg_get_serial_sequence($1, 'id') as seq_name`, [tableName]);
+            const seqName = seqResult.rows[0]?.seq_name;
+            if (seqName) {
+              // setval(seq, maxId, false)는 다음 nextval()이 maxId + 1을 반환하도록 함
+              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
+            }
+          } catch (seqError) {
+            // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
+            console.error(`[Life Events 등록] 시퀀스 재설정 실패:`, seqError.message);
+          }
           
           const result = await client.query(
             `INSERT INTO ${tableName} (title, content_blocks, text_content, images, category, nickname, author, url, views, report_count, created_at)
@@ -2702,9 +2703,17 @@ app.post('/api/circles', async (req, res) => {
           
           // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정
           try {
-            await client.query(`SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE((SELECT MAX(id) FROM ${tableName}), 0) + 1, false)`);
+            const maxIdResult = await client.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM ${tableName}`);
+            const maxId = parseInt(maxIdResult.rows[0]?.max_id || 0, 10);
+            const seqResult = await client.query(`SELECT pg_get_serial_sequence($1, 'id') as seq_name`, [tableName]);
+            const seqName = seqResult.rows[0]?.seq_name;
+            if (seqName) {
+              // setval(seq, maxId, false)는 다음 nextval()이 maxId + 1을 반환하도록 함
+              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
+            }
           } catch (seqError) {
             // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
+            console.error(`[Circles 등록] 시퀀스 재설정 실패:`, seqError.message);
           }
           
           const result = await client.query(
@@ -3522,9 +3531,17 @@ app.post('/api/posts', async (req, res) => {
           
           // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정
           try {
-            await client.query(`SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE((SELECT MAX(id) FROM ${tableName}), 0) + 1, false)`);
+            const maxIdResult = await client.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM ${tableName}`);
+            const maxId = parseInt(maxIdResult.rows[0]?.max_id || 0, 10);
+            const seqResult = await client.query(`SELECT pg_get_serial_sequence($1, 'id') as seq_name`, [tableName]);
+            const seqName = seqResult.rows[0]?.seq_name;
+            if (seqName) {
+              // setval(seq, maxId, false)는 다음 nextval()이 maxId + 1을 반환하도록 함
+              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
+            }
           } catch (seqError) {
             // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
+            console.error(`[게시판 등록] 시퀀스 재설정 실패:`, seqError.message);
           }
           
           const defaultNickname = nickname || (() => {
