@@ -367,15 +367,16 @@ export default function ViewNoticeScreen({ route, navigation }) {
                 }
                 
                 // 기본 정보는 유지하고 내용만 업데이트
-                // 뷰수는 서버에서 이미 증가된 값 사용
+                // 뷰수는 서버에서 증가된 값과 클라이언트에서 증가한 값 중 큰 값 사용 (동기화)
+                const serverViews = fullNotice.views || 0;
+                const clientViews = notice.views || 0;
                 setNotice({
                   ...notice,
-                  views: fullNotice.views || notice.views || 0, // 서버에서 증가된 뷰수 사용
+                  views: Math.max(serverViews, clientViews), // 서버와 클라이언트 중 큰 값 사용
                   content_blocks: contentBlocks,
                   images: fullNotice.images || [],
                   text_content: fullNotice.text_content || ''
                 });
-                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content만 별도 캐시에 저장
                 AsyncStorage.setItem(contentCacheKey, JSON.stringify({
