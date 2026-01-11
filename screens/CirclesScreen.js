@@ -613,21 +613,93 @@ export default function CirclesScreen({ navigation, route }) {
 
         try {
           const universityCode = targetUni.toLowerCase();
+          const cacheKey = `circles_${universityCode}`;
+          const cacheTimestampKey = `circles_timestamp_${universityCode}`;
+          const now = Date.now();
+          const CACHE_DURATION = 2 * 60 * 1000; // 2분
           
+          // 캐시 확인 (기존 데이터 유지하면서 뷰수만 업데이트)
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+          
+          // 캐시가 있고 2분 이내면 기존 데이터 유지하고 뷰수만 백그라운드에서 업데이트
+          if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION && isMounted) {
+            const cachedCircles = JSON.parse(cachedData);
+            // 기존 데이터 유지 (빈 배열로 초기화하지 않음)
+            // 뷰수만 백그라운드에서 업데이트
+            fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
+              headers: { 'Cache-Control': 'no-cache' }
+            })
+              .then(async response => {
+                if (response.ok && isMounted) {
+                  const responseText = await response.text();
+                  try {
+                    const circlesData = JSON.parse(responseText);
+                    if (circlesData && circlesData.success && circlesData.circles) {
+                      // 뷰수만 업데이트 (기존 데이터 유지)
+                      const updatedCircles = cachedCircles.map(cachedCircle => {
+                        const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
+                        if (latestCircle) {
+                          return {
+                            ...cachedCircle,
+                            views: latestCircle.views
+                          };
+                        }
+                        return cachedCircle;
+                      });
+                      if (isMounted) {
+                        setSavedCircles(updatedCircles);
+                        AsyncStorage.setItem(cacheKey, JSON.stringify(updatedCircles)).catch(() => {});
+                      }
+                    }
+                  } catch (e) {
+                    // 파싱 오류는 무시 (기존 데이터 유지)
+                  }
+                }
+              })
+              .catch(() => {
+                // 오류는 무시 (기존 데이터 유지)
+              });
+            return; // 캐시가 있으면 여기서 종료
+          }
+          
+          // 캐시가 없거나 만료되었으면 새로 로드 (기존 데이터는 유지)
           const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
           if (circlesResponse.ok && isMounted) {
-            const circlesData = await circlesResponse.json();
-            if (circlesData.success && circlesData.circles) {
-              setSavedCircles(circlesData.circles);
-            } else {
-              setSavedCircles([]);
+            const circlesText = await circlesResponse.text();
+            try {
+              const circlesData = JSON.parse(circlesText);
+              if (circlesData.success && circlesData.circles) {
+                setSavedCircles(circlesData.circles);
+                // 캐시 저장
+                AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
+                AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
+              } else if (isMounted) {
+                // 데이터가 없으면 기존 데이터 유지 (빈 배열로 초기화하지 않음)
+                if (!cachedData) {
+                  setSavedCircles([]);
+                }
+              }
+            } catch (parseError) {
+              // 파싱 오류 시 기존 데이터 유지
+              if (!cachedData && isMounted) {
+                setSavedCircles([]);
+              }
             }
           } else if (isMounted) {
-            setSavedCircles([]);
+            // 오류 시 기존 데이터 유지 (빈 배열로 초기화하지 않음)
+            if (!cachedData) {
+              setSavedCircles([]);
+            }
           }
         } catch (error) {
+          // 오류 시 기존 데이터 유지
           if (isMounted) {
-            setSavedCircles([]);
+            const cacheKey = `circles_${targetUni.toLowerCase()}`;
+            const cachedData = await AsyncStorage.getItem(cacheKey).catch(() => null);
+            if (!cachedData) {
+              setSavedCircles([]);
+            }
           }
         }
         
