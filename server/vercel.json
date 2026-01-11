@@ -4,14 +4,19 @@
   "outputDirectory": ".",
   "installCommand": "npm install",
   "framework": null,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "server.js"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api/index"
     },
     {
       "source": "/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api/index"
     }
   ],
   "crons": [
