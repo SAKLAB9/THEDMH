@@ -117,6 +117,33 @@ export default function SelectUniScreen() {
     }
   }, [slotsCount, slotImageNamesString, getConfig]);
 
+  // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기
+  useEffect(() => {
+    if (!fontsLoaded) return;
+    
+    const loadMainIconImage = async () => {
+      const iconImageName = getConfig('select_uni_icon_image', 'icon.png');
+      if (iconImageName) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.url) {
+              setIconImageUrl({ uri: data.url });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('[SelectUniScreen] 아이콘 로드 실패:', error);
+        }
+      }
+      // Supabase Storage에서 로드 실패 시 기본 아이콘 사용
+      setIconImageUrl(require('../assets/icon.png'));
+    };
+    
+    loadMainIconImage();
+  }, [fontsLoaded, getConfig]);
+
   // 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
   const slotImages = [];
   for (let i = 1; i <= slotsCount; i++) {
