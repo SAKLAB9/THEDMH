@@ -327,6 +327,7 @@ export default function SelectUniScreen() {
                     cursor: 'pointer',
                   }}
                   resizeMode="contain"
+                  cache="force-cache"
                 />
               </TouchableOpacity>
             ) : (
