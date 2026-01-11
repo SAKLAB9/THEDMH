@@ -37,6 +37,8 @@ BEGIN
             CONTINUE;
         END IF;
         
+        DECLARE
+            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -64,11 +66,12 @@ BEGIN
                 );
             ', table_name);
             
-            RAISE NOTICE 'Updated % (images array)', table_name;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE 'Table % does not have images column', table_name;
+            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
         WHEN OTHERS THEN
-            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -89,6 +92,8 @@ BEGIN
             CONTINUE;
         END IF;
         
+        DECLARE
+            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -116,11 +121,12 @@ BEGIN
                 );
             ', table_name);
             
-            RAISE NOTICE 'Updated % (images array)', table_name;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE 'Table % does not have images column', table_name;
+            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
         WHEN OTHERS THEN
-            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -141,6 +147,8 @@ BEGIN
             CONTINUE;
         END IF;
         
+        DECLARE
+            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -168,11 +176,12 @@ BEGIN
                 );
             ', table_name);
             
-            RAISE NOTICE 'Updated % (images array)', table_name;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE 'Table % does not have images column', table_name;
+            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
         WHEN OTHERS THEN
-            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -193,6 +202,8 @@ BEGIN
             CONTINUE;
         END IF;
         
+        DECLARE
+            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -220,11 +231,12 @@ BEGIN
                 );
             ', table_name);
             
-            RAISE NOTICE 'Updated % (images array)', table_name;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE 'Table % does not have images column', table_name;
+            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
         WHEN OTHERS THEN
-            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -245,6 +257,8 @@ BEGIN
             CONTINUE;
         END IF;
         
+        DECLARE
+            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -272,11 +286,12 @@ BEGIN
                 );
             ', table_name);
             
-            RAISE NOTICE 'Updated % (images array)', table_name;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE 'Table % does not have images column', table_name;
+            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
         WHEN OTHERS THEN
-            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -288,13 +303,18 @@ END $$;
 -- 헬퍼 함수 삭제
 DROP FUNCTION IF EXISTS table_exists(TEXT);
 
--- 완료 메시지
+-- 완료 메시지 및 요약
 DO $$
 BEGIN
+    RAISE NOTICE '';
     RAISE NOTICE '========================================';
-    RAISE NOTICE '모든 테이블의 images 배열 URL 변경 완료!';
-    RAISE NOTICE 'qgtwkhkmdsaypnsnrpbf.supabase.co -> waumfxamhuvhsblehsuf.supabase.co';
-    RAISE NOTICE '슬래시 중복 제거 완료 (// -> /)';
+    RAISE NOTICE '✅ 모든 테이블의 images 배열 URL 변경 완료!';
+    RAISE NOTICE '';
+    RAISE NOTICE '변경 내용:';
+    RAISE NOTICE '  qgtwkhkmdsaypnsnrpbf.supabase.co → waumfxamhuvhsblehsuf.supabase.co';
+    RAISE NOTICE '  슬래시 중복 제거 (// → /)';
+    RAISE NOTICE '';
+    RAISE NOTICE '위의 로그에서 각 테이블별 업데이트된 행 수를 확인하세요.';
     RAISE NOTICE '========================================';
 END $$;
 
