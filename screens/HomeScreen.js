@@ -152,8 +152,9 @@ export default function HomeScreen({ navigation }) {
         return;
       }
       
-      // Supabase Storage에서 직접 URL 생성
+      // Supabase Storage에서 직접 URL 생성 (캐시 버스팅을 위해 타임스탬프 추가)
       const urls = {};
+      const currentTimestamp = Date.now(); // 현재 타임스탬프로 캐시 버스팅
       imageNames.forEach(imageName => {
         const trimmedName = String(imageName).trim();
         if (trimmedName) {
@@ -162,7 +163,8 @@ export default function HomeScreen({ navigation }) {
             .from('images')
             .getPublicUrl(filePath);
           if (urlData?.publicUrl) {
-            urls[trimmedName] = urlData.publicUrl;
+            // 쿼리 파라미터로 캐시 버스팅 (브라우저/앱 레벨 캐시 무효화)
+            urls[trimmedName] = `${urlData.publicUrl}?v=${currentTimestamp}`;
           }
         }
       });

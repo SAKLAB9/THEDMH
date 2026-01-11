@@ -202,6 +202,8 @@ export default function CirclesScreen({ navigation, route }) {
       });
       
       // Supabase Storage에서 직접 이미지 URL 가져오기 (동기적으로 빠르게 생성)
+      // 캐시 버스팅을 위해 타임스탬프 추가
+      const currentTimestamp = Date.now();
       toLoadFromSupabase.forEach(({ imageName }) => {
         const trimmedName = String(imageName).trim();
         if (trimmedName) {
@@ -210,7 +212,8 @@ export default function CirclesScreen({ navigation, route }) {
             .from('images')
             .getPublicUrl(filePath);
           if (urlData?.publicUrl) {
-            urls[trimmedName] = { uri: urlData.publicUrl };
+            // 쿼리 파라미터로 캐시 버스팅 (브라우저/앱 레벨 캐시 무효화)
+            urls[trimmedName] = { uri: `${urlData.publicUrl}?v=${currentTimestamp}` };
           }
         }
       });
