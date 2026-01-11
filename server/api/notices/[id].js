@@ -83,10 +83,15 @@ module.exports = async (req, res) => {
           // 컬럼 추가 실패해도 계속 진행
         }
         
-        // 공지사항 조회
+        // 공지사항 조회 (id를 정수로 변환)
+        const noticeId = parseInt(id, 10);
+        if (isNaN(noticeId)) {
+          return res.status(400).json({ error: '유효하지 않은 공지사항 ID입니다.' });
+        }
+        
         const result = await pool.query(
           `SELECT * FROM ${tableName} WHERE id = $1`,
-          [id]
+          [noticeId]
         );
         
         if (result.rows.length === 0) {
