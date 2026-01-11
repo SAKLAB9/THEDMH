@@ -128,12 +128,14 @@ function ImageBlock({ uri }) {
     <View className="relative mb-3" style={{ width: '100%', alignItems: 'center' }}>
       {!imageLoaded && (
         <View style={{ 
+          position: 'absolute',
           width: imageSize.width, 
           height: imageSize.height, 
           backgroundColor: '#f3f4f6',
           borderRadius: 8,
           justifyContent: 'center',
-          alignItems: 'center'
+          alignItems: 'center',
+          zIndex: 1
         }}>
           <ActivityIndicator size="small" color="#9ca3af" />
         </View>
@@ -145,7 +147,7 @@ function ImageBlock({ uri }) {
           height: imageSize.height, 
           borderRadius: 8,
           maxWidth: '100%',
-          display: imageLoaded ? 'flex' : 'none'
+          opacity: imageLoaded ? 1 : 0
         }}
         resizeMode="contain"
         onLoad={() => setImageLoaded(true)}
