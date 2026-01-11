@@ -23,9 +23,9 @@ if (SUPABASE_URL && SUPABASE_URL !== '' && SUPABASE_ANON_KEY && SUPABASE_ANON_KE
     supabase = null;
   }
 } else {
-  console.warn('[Supabase] URL 또는 Key가 설정되지 않았습니다.');
-  console.warn('[Supabase] SUPABASE_URL:', SUPABASE_URL);
-  console.warn('[Supabase] SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? '설정됨' : '없음');
+  if (__DEV__) {
+    console.warn('[Supabase] URL 또는 Key가 설정되지 않았습니다.');
+  }
 }
 
 export { supabase };
