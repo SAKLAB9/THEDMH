@@ -96,7 +96,8 @@ export default function SelectUniScreen() {
 
   // 슬롯 설정 가져오기 (select_uni_* 키 사용)
   // config가 로드되기 전에는 기본값 사용하지 않음 (0으로 설정)
-  const slotsCount = configLoading ? 0 : getConfigNumber('select_uni_slots_count', 4);
+  // 기본값 없이 config에서 실제 값만 가져오기
+  const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0);
   
   // 디버깅: slotsCount가 제대로 가져와지는지 확인
   if (__DEV__ && !configLoading) {
