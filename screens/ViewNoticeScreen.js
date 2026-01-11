@@ -28,7 +28,7 @@ function ImageBlock({ uri }) {
       return uri;
     }
     
-    // Supabase Storage URL인 경우 경로 수정
+    // Supabase Storage URL인 경우 경로 수정 및 이미지 최적화
     if (uri.includes('supabase.co/storage/v1/object/public/images/')) {
       // /images/nyu/images/ -> /images/nyu/ 로 수정 (중복된 /images/ 제거)
       // 또는 /images/nyu/board_images/ -> /images/nyu/ 로 수정
@@ -39,6 +39,17 @@ function ImageBlock({ uri }) {
       
       // 슬래시 중복 제거 (// -> /) - 하지만 https://는 유지
       fixedUri = fixedUri.replace(/([^:])\/+/g, '$1/');
+      
+      // 이미 쿼리 파라미터가 있는지 확인
+      const hasQueryParams = fixedUri.includes('?');
+      
+      // 이미지 최적화 파라미터 추가 (Retina 디스플레이 고려하여 2배 크기)
+      // width=1200이면 일반 모바일(375px)보다 충분히 크고, Retina(750px)도 커버
+      if (!hasQueryParams) {
+        // 화면 크기의 2배 정도로 설정 (Retina 디스플레이 대응)
+        const optimizedWidth = Math.max(1200, Math.ceil(maxImageWidth * 2));
+        fixedUri += `?width=${optimizedWidth}&quality=80`;
+      }
       
       return fixedUri;
     }
