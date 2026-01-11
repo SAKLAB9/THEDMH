@@ -417,37 +417,19 @@ export default function SelectUniScreen() {
     loadMainIconImage();
   }, [fontsLoaded, getConfig]);
 
-  // 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
-  const slotImages = [];
-  for (let i = 1; i <= slotsCount; i++) {
-    const imageName = getConfig(`select_uni_slot_${i}_image`, '');
-    // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
-    const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
-    const imageUrl = validImageName ? imageUrls[validImageName] : null;
-    if (__DEV__) {
-      if (imageName && !imageUrl) {
-        console.warn(`[SelectUniScreen] 이미지 URL 없음 (slot ${i}):`, {
-          imageName,
-          imageUrlsKeys: Object.keys(imageUrls),
-          imageUrlsLength: Object.keys(imageUrls).length,
-          hasImageUrl: !!imageUrls[imageName]
-        });
-      } else if (imageName && imageUrl) {
-        console.log(`[SelectUniScreen] 이미지 URL 있음 (slot ${i}):`, imageName, imageUrl.uri);
-      }
+  // 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드) - useMemo로 메모이제이션하여 불필요한 재생성 방지
+  const slotImages = useMemo(() => {
+    const images = [];
+    for (let i = 1; i <= slotsCount; i++) {
+      const imageName = getConfig(`select_uni_slot_${i}_image`, '');
+      // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
+      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
+      const imageUrl = validImageName ? imageUrls[validImageName] : null;
+      // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
+      images.push({ imageName: validImageName, imageUrl });
     }
-    // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
-    slotImages.push({ imageName: validImageName, imageUrl });
-  }
-  
-  if (__DEV__) {
-    console.log(`[SelectUniScreen] 슬롯 이미지 배열 생성 완료:`, {
-      slotsCount,
-      slotImagesLength: slotImages.length,
-      imageUrlsCount: Object.keys(imageUrls).length,
-      slotImagesWithUrl: slotImages.filter(s => s.imageUrl).length
-    });
-  }
+    return images;
+  }, [slotsCount, imageUrls, getConfig]);
 
   // 모달 높이 계산 (슬롯 개수에 따라)
   const calculateModalHeight = () => {
