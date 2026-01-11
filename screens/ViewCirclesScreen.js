@@ -145,9 +145,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
         console.log('[ViewCirclesScreen] 뷰수 증가 요청:', { circleId, universityCode });
       }
       
-      // 500ms 지연 후 뷰수 증가 API 호출
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       const response = await fetch(
         `${API_BASE_URL}/api/circles/${circleId}/increment-views?university=${encodeURIComponent(universityCode)}`,
         { method: 'POST' }
