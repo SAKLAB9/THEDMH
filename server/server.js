@@ -1487,24 +1487,37 @@ app.post('/api/notices', async (req, res) => {
             const seqName = seqResult.rows[0]?.seq_name;
             
             if (seqName) {
-              // 항상 테이블의 최대 ID를 기준으로 시퀀스를 재설정
-              // setval(seq, maxId, false)는 다음 nextval()이 maxId + 1을 반환하도록 함
-              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
+              // 시퀀스의 현재 값 확인
+              const currValResult = await client.query(`SELECT last_value, is_called FROM ${seqName}`);
+              const currVal = parseInt(currValResult.rows[0]?.last_value || 0, 10);
+              const isCalled = currValResult.rows[0]?.is_called || false;
               
-              // 재설정 후 실제로 생성될 ID 확인
-              const verifyResult = await client.query(`SELECT last_value, is_called FROM ${seqName}`);
-              const verifyVal = parseInt(verifyResult.rows[0]?.last_value || 0, 10);
-              const verifyCalled = verifyResult.rows[0]?.is_called || false;
-              const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
+              // 현재 시퀀스가 생성할 다음 값 계산
+              const nextSeqVal = isCalled ? currVal + 1 : currVal;
               
-              console.log(`[공지사항 등록] 시퀀스 재설정 완료: 테이블=${tableName}, maxId=${maxId}, 재설정 후 다음 ID=${verifyNextId}`);
-              
-              // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
-              if (verifyNextId <= maxId) {
-                // 여전히 문제가 있으면 더 높은 값으로 재설정
-                const safeId = maxId + 1;
-                await client.query(`SELECT setval($1, $2, false)`, [seqName, safeId]);
-                console.warn(`[공지사항 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
+              // 시퀀스가 테이블의 최대 ID보다 작거나 같으면 재설정 필요
+              if (nextSeqVal <= maxId) {
+                // setval(seq, maxId, true)는 다음 nextval()이 maxId + 1을 반환하도록 함
+                // true를 사용하면 마지막으로 사용된 값이 maxId임을 의미하므로, 다음 값은 maxId + 1이 됨
+                await client.query(`SELECT setval($1, $2, true)`, [seqName, maxId]);
+                
+                // 재설정 후 실제로 생성될 ID 확인
+                const verifyResult = await client.query(`SELECT last_value, is_called FROM ${seqName}`);
+                const verifyVal = parseInt(verifyResult.rows[0]?.last_value || 0, 10);
+                const verifyCalled = verifyResult.rows[0]?.is_called || false;
+                const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
+                
+                console.log(`[공지사항 등록] 시퀀스 재설정 완료: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
+                
+                // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
+                if (verifyNextId <= maxId) {
+                  // 여전히 문제가 있으면 더 높은 값으로 재설정
+                  const safeId = maxId + 1;
+                  await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
+                  console.warn(`[공지사항 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
+                }
+              } else {
+                console.log(`[공지사항 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
               }
             } else {
               console.warn(`[공지사항 등록] 시퀀스를 찾을 수 없음: ${tableName} - ID를 수동으로 지정해야 할 수 있습니다.`);
@@ -2192,9 +2205,29 @@ app.post('/api/life-events', async (req, res) => {
               const isCalled = currValResult.rows[0]?.is_called || false;
               const nextSeqVal = isCalled ? currVal + 1 : currVal;
               
-              // 항상 테이블의 최대 ID를 기준으로 시퀀스를 재설정 (안전하게)
-              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
-              console.log(`[Life Events 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, isCalled=${isCalled}, nextSeqVal=${nextSeqVal}`);
+              // 시퀀스가 테이블의 최대 ID보다 작거나 같으면 재설정 필요
+              if (nextSeqVal <= maxId) {
+                // setval(seq, maxId, true)는 다음 nextval()이 maxId + 1을 반환하도록 함
+                await client.query(`SELECT setval($1, $2, true)`, [seqName, maxId]);
+                
+                // 재설정 후 실제로 생성될 ID 확인
+                const verifyResult = await client.query(`SELECT last_value, is_called FROM ${seqName}`);
+                const verifyVal = parseInt(verifyResult.rows[0]?.last_value || 0, 10);
+                const verifyCalled = verifyResult.rows[0]?.is_called || false;
+                const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
+                
+                console.log(`[Life Events 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
+                
+                // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
+                if (verifyNextId <= maxId) {
+                  // 여전히 문제가 있으면 더 높은 값으로 재설정
+                  const safeId = maxId + 1;
+                  await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
+                  console.warn(`[Life Events 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
+                }
+              } else {
+                console.log(`[Life Events 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
+              }
             }
           } catch (seqError) {
             // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
@@ -2739,9 +2772,29 @@ app.post('/api/circles', async (req, res) => {
               const isCalled = currValResult.rows[0]?.is_called || false;
               const nextSeqVal = isCalled ? currVal + 1 : currVal;
               
-              // 항상 테이블의 최대 ID를 기준으로 시퀀스를 재설정 (안전하게)
-              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
-              console.log(`[Circles 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, isCalled=${isCalled}, nextSeqVal=${nextSeqVal}`);
+              // 시퀀스가 테이블의 최대 ID보다 작거나 같으면 재설정 필요
+              if (nextSeqVal <= maxId) {
+                // setval(seq, maxId, true)는 다음 nextval()이 maxId + 1을 반환하도록 함
+                await client.query(`SELECT setval($1, $2, true)`, [seqName, maxId]);
+                
+                // 재설정 후 실제로 생성될 ID 확인
+                const verifyResult = await client.query(`SELECT last_value, is_called FROM ${seqName}`);
+                const verifyVal = parseInt(verifyResult.rows[0]?.last_value || 0, 10);
+                const verifyCalled = verifyResult.rows[0]?.is_called || false;
+                const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
+                
+                console.log(`[Circles 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
+                
+                // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
+                if (verifyNextId <= maxId) {
+                  // 여전히 문제가 있으면 더 높은 값으로 재설정
+                  const safeId = maxId + 1;
+                  await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
+                  console.warn(`[Circles 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
+                }
+              } else {
+                console.log(`[Circles 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
+              }
             }
           } catch (seqError) {
             // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
@@ -3574,9 +3627,29 @@ app.post('/api/posts', async (req, res) => {
               const isCalled = currValResult.rows[0]?.is_called || false;
               const nextSeqVal = isCalled ? currVal + 1 : currVal;
               
-              // 항상 테이블의 최대 ID를 기준으로 시퀀스를 재설정 (안전하게)
-              await client.query(`SELECT setval($1, $2, false)`, [seqName, maxId]);
-              console.log(`[게시판 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, isCalled=${isCalled}, nextSeqVal=${nextSeqVal}`);
+              // 시퀀스가 테이블의 최대 ID보다 작거나 같으면 재설정 필요
+              if (nextSeqVal <= maxId) {
+                // setval(seq, maxId, true)는 다음 nextval()이 maxId + 1을 반환하도록 함
+                await client.query(`SELECT setval($1, $2, true)`, [seqName, maxId]);
+                
+                // 재설정 후 실제로 생성될 ID 확인
+                const verifyResult = await client.query(`SELECT last_value, is_called FROM ${seqName}`);
+                const verifyVal = parseInt(verifyResult.rows[0]?.last_value || 0, 10);
+                const verifyCalled = verifyResult.rows[0]?.is_called || false;
+                const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
+                
+                console.log(`[게시판 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
+                
+                // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
+                if (verifyNextId <= maxId) {
+                  // 여전히 문제가 있으면 더 높은 값으로 재설정
+                  const safeId = maxId + 1;
+                  await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
+                  console.warn(`[게시판 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
+                }
+              } else {
+                console.log(`[게시판 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
+              }
             }
           } catch (seqError) {
             // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
