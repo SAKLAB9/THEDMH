@@ -101,7 +101,15 @@ export default function SelectUniScreen() {
         }
         
         // 캐시에 없으면 API 호출
-        const response = await fetch(`${API_BASE_URL}/api/supabase-image-url`, {
+        const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
+        
+        console.log(`[SelectUniScreen] 이미지 로드 시작 (${Platform.OS}):`, {
+          apiUrl,
+          imageNames,
+          imageCount: imageNames.length
+        });
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -109,8 +117,19 @@ export default function SelectUniScreen() {
           body: JSON.stringify({ filenames: imageNames }),
         });
         
+        console.log(`[SelectUniScreen] 이미지 API 응답 (${Platform.OS}):`, {
+          status: response.status,
+          ok: response.ok
+        });
+        
         if (response.ok) {
           const data = await response.json();
+          
+          console.log(`[SelectUniScreen] 이미지 API 데이터 (${Platform.OS}):`, {
+            success: data.success,
+            urlsCount: data.urls ? Object.keys(data.urls).length : 0
+          });
+          
           if (data.success && data.urls) {
             // 캐시에 저장 (24시간 유효)
             await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
@@ -119,16 +138,29 @@ export default function SelectUniScreen() {
             const urls = {};
             Object.keys(data.urls).forEach(imageName => {
               urls[imageName] = { uri: data.urls[imageName] };
+              console.log(`[SelectUniScreen] 이미지 URL 생성 (${Platform.OS}):`, imageName, data.urls[imageName]);
             });
             setImageUrls(urls);
           } else {
+            console.warn(`[SelectUniScreen] 이미지 API 응답 실패 (${Platform.OS}):`, data);
             setImageUrls({});
           }
         } else {
+          const errorText = await response.text();
+          console.error(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
           setImageUrls({});
         }
       } catch (error) {
-        console.error('[SelectUniScreen] 이미지 로드 실패:', error);
+        console.error(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error);
+        console.error(`[SelectUniScreen] 에러 상세:`, {
+          message: error.message,
+          stack: error.stack,
+          apiUrl: `${API_BASE_URL}/api/supabase-image-url`
+        });
         setImageUrls({});
       }
     };
@@ -163,23 +195,51 @@ export default function SelectUniScreen() {
         
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
+        
+        console.log(`[SelectUniScreen] 메인 아이콘 로드 시작 (${Platform.OS}):`, {
+          apiUrl,
+          iconImageName
+        });
+        
         const response = await fetch(apiUrl);
+        
+        console.log(`[SelectUniScreen] 메인 아이콘 API 응답 (${Platform.OS}):`, {
+          status: response.status,
+          ok: response.ok
+        });
         
         if (response.ok) {
           const data = await response.json();
+          
+          console.log(`[SelectUniScreen] 메인 아이콘 API 데이터 (${Platform.OS}):`, {
+            success: data.success,
+            url: data.url
+          });
           
           if (data.success && data.url) {
             // 캐시에 저장 (24시간 유효)
             await AsyncStorage.setItem(cacheKey, data.url);
             setIconImageUrl({ uri: data.url });
           } else {
+            console.warn(`[SelectUniScreen] 메인 아이콘 API 응답 실패 (${Platform.OS}):`, data);
             setIconImageUrl(null);
           }
         } else {
+          const errorText = await response.text();
+          console.error(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
           setIconImageUrl(null);
         }
       } catch (error) {
-        console.error('[SelectUniScreen] 아이콘 로드 실패:', error);
+        console.error(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error);
+        console.error(`[SelectUniScreen] 에러 상세:`, {
+          message: error.message,
+          stack: error.stack,
+          apiUrl: `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`
+        });
         setIconImageUrl(null);
       }
     };
@@ -327,31 +387,43 @@ export default function SelectUniScreen() {
                     cursor: 'pointer',
                   }}
                   resizeMode="contain"
-                  cache="force-cache"
+                  {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
+                  onError={(error) => {
+                    console.error('[SelectUniScreen] 메인 아이콘 로드 실패 (웹):', error.nativeEvent?.error || error);
+                  }}
+                  onLoad={() => {
+                    console.log('[SelectUniScreen] 메인 아이콘 로드 성공 (웹):', iconImageUrl.uri);
+                  }}
                 />
               </TouchableOpacity>
             ) : (
-              <Image
-                source={iconImageUrl}
-                style={{
-                  width: 100,
-                  height: 100,
-                  marginBottom: 12,
-                  borderRadius: 20,
-                  // 그림자 효과 (iOS)
-                  shadowColor: LOGIN_COLORS.iconBackground,
-                  shadowOffset: {
-                    width: 0,
-                    height: 8,
-                  },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 12,
-                  // 그림자 효과 (Android)
-                  elevation: 12,
-                }}
-                resizeMode="contain"
-                cache="force-cache"
-              />
+                <Image
+                  source={iconImageUrl}
+                  style={{
+                    width: 100,
+                    height: 100,
+                    marginBottom: 12,
+                    borderRadius: 20,
+                    // 그림자 효과 (iOS)
+                    shadowColor: LOGIN_COLORS.iconBackground,
+                    shadowOffset: {
+                      width: 0,
+                      height: 8,
+                    },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 12,
+                    // 그림자 효과 (Android)
+                    elevation: 12,
+                  }}
+                  resizeMode="contain"
+                  {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
+                  onError={(error) => {
+                    console.error('[SelectUniScreen] 메인 아이콘 로드 실패:', error.nativeEvent.error);
+                  }}
+                  onLoad={() => {
+                    console.log('[SelectUniScreen] 메인 아이콘 로드 성공:', iconImageUrl.uri);
+                  }}
+                />
             )
           )}
         </View>
@@ -394,7 +466,13 @@ export default function SelectUniScreen() {
                     elevation: 8,
                   }}
                   resizeMode="contain"
-                  cache="force-cache"
+                  {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
+                  onError={(error) => {
+                    console.error('[SelectUniScreen] 메인 아이콘 확대 모달 로드 실패:', error.nativeEvent?.error || error);
+                  }}
+                  onLoad={() => {
+                    console.log('[SelectUniScreen] 메인 아이콘 확대 모달 로드 성공:', iconImageUrl.uri);
+                  }}
                 />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -651,7 +729,13 @@ export default function SelectUniScreen() {
                                 height: '100%',
                               }}
                               resizeMode="contain"
-                              cache="force-cache"
+                              {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
+                              onError={(error) => {
+                                console.error(`[SelectUniScreen] 이미지 로드 실패 (slot ${index + 1}):`, error.nativeEvent.error);
+                              }}
+                              onLoad={() => {
+                                console.log(`[SelectUniScreen] 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
+                              }}
                             />
                           )}
                         </View>

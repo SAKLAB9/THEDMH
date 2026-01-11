@@ -20,8 +20,8 @@ const getApiBaseUrl = () => {
 
   // 프로덕션 환경
   if (!__DEV__) {
-    // Vercel 배포 URL 사용 (기본값)
-    return 'https://thedmh.vercel.app';
+    // Railway 배포 URL 사용 (기본값)
+    return 'https://miuhub.up.railway.app';
   }
 
   // 개발 환경

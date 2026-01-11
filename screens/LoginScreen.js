@@ -436,6 +436,12 @@ export default function LoginScreen() {
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
         
+        console.log(`[LoginScreen] Admin 이미지 로드 시작 (${Platform.OS}):`, {
+          apiUrl,
+          imageNames,
+          imageCount: imageNames.length
+        });
+        
         // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -445,8 +451,18 @@ export default function LoginScreen() {
           body: JSON.stringify({ filenames: imageNames }),
         });
         
+        console.log(`[LoginScreen] Admin 이미지 API 응답 (${Platform.OS}):`, {
+          status: response.status,
+          ok: response.ok
+        });
+        
         if (response.ok) {
           const data = await response.json();
+          
+          console.log(`[LoginScreen] Admin 이미지 API 데이터 (${Platform.OS}):`, {
+            success: data.success,
+            urlsCount: data.urls ? Object.keys(data.urls).length : 0
+          });
           
           if (data.success && data.urls) {
             // 캐시에 저장 (24시간 유효)
@@ -456,16 +472,29 @@ export default function LoginScreen() {
             const urls = {};
             Object.keys(data.urls).forEach(imageName => {
               urls[imageName] = { uri: data.urls[imageName] };
+              console.log(`[LoginScreen] Admin 이미지 URL 생성 (${Platform.OS}):`, imageName, data.urls[imageName]);
             });
             setAdminImageUrls(urls);
           } else {
+            console.warn(`[LoginScreen] Admin 이미지 API 응답 실패 (${Platform.OS}):`, data);
             setAdminImageUrls({});
           }
         } else {
+          const errorText = await response.text();
+          console.error(`[LoginScreen] Admin 이미지 API HTTP 에러 (${Platform.OS}):`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText
+          });
           setAdminImageUrls({});
         }
       } catch (error) {
-        console.error('[LoginScreen] Admin 이미지 로드 실패:', error);
+        console.error(`[LoginScreen] Admin 이미지 로드 실패 (${Platform.OS}):`, error);
+        console.error(`[LoginScreen] 에러 상세:`, {
+          message: error.message,
+          stack: error.stack,
+          apiUrl: `${API_BASE_URL}/api/supabase-image-url`
+        });
         setAdminImageUrls({});
       }
     };
@@ -1043,7 +1072,13 @@ export default function LoginScreen() {
                                   height: '100%',
                                 }}
                                 resizeMode="contain"
-                                cache="force-cache"
+                                {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
+                                onError={(error) => {
+                                  console.error(`[LoginScreen] Admin 이미지 로드 실패 (slot ${index + 1}):`, error.nativeEvent.error);
+                                }}
+                                onLoad={() => {
+                                  console.log(`[LoginScreen] Admin 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
+                                }}
                               />
                             )}
                         </View>
@@ -1139,7 +1174,7 @@ export default function LoginScreen() {
 
                             // Supabase Auth로 비밀번호 재설정 이메일 전송
                             // 이메일 링크는 웹 페이지로 리다이렉트하고, 그 페이지에서 앱 딥링크로 이동
-                            const resetPasswordUrl = 'https://thedmh.vercel.app/reset-password';
+                            const resetPasswordUrl = `${API_BASE_URL}/reset-password`;
                             const { data, error: resetError } = await supabase.auth.resetPasswordForEmail(
                               findEmail.trim(),
                               {
