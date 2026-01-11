@@ -478,23 +478,55 @@ export default function HomeScreen({ navigation }) {
                 }
               }
               
+              // 기존 데이터의 가장 최신 created_at 찾기 (새로운 항목만 가져오기 위해)
+              const latestNoticeCreatedAt = cachedNotices.length > 0 
+                ? Math.max(...cachedNotices.map(n => new Date(n.created_at || 0).getTime()))
+                : 0;
+              const latestLifeEventCreatedAt = cachedLifeEvents.length > 0 
+                ? Math.max(...cachedLifeEvents.map(l => new Date(l.created_at || 0).getTime()))
+                : 0;
+              
+              const noticesSinceParam = latestNoticeCreatedAt > 0 ? `&since=${latestNoticeCreatedAt}` : '';
+              const lifeEventsSinceParam = latestLifeEventCreatedAt > 0 ? `&since=${latestLifeEventCreatedAt}` : '';
+              
               Promise.all([
-                fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`, {
+                fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}${noticesSinceParam}`, {
                   headers: { 'Cache-Control': 'no-cache' }
                 }),
-                fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`, {
+                fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}${lifeEventsSinceParam}`, {
                   headers: { 'Cache-Control': 'no-cache' }
                 })
               ]).then(async ([noticesResponse, lifeEventsResponse]) => {
                 
-                // 공지사항 업데이트 (응답 텍스트를 받는 즉시 파싱)
+                // 공지사항 업데이트 (새로운 항목만 추가, 기존 항목의 뷰수 업데이트)
                 if (noticesResponse.ok) {
                   try {
                     const noticesText = await noticesResponse.text();
                     const noticesData = JSON.parse(noticesText);
                     if (noticesData.success && noticesData.notices) {
-                      setSavedNotices(noticesData.notices);
-                      AsyncStorage.setItem(noticesCacheKey, JSON.stringify(noticesData.notices)).catch(() => {});
+                      // 기존 notices의 ID 집합 생성 (중복 체크용)
+                      const existingNoticeIds = new Set(cachedNotices.map(n => n.id));
+                      
+                      // 새로운 항목만 필터링 (기존에 없는 것만)
+                      const newNotices = noticesData.notices.filter(n => !existingNoticeIds.has(n.id));
+                      
+                      // 기존 항목의 뷰수 업데이트
+                      const updatedNotices = cachedNotices.map(cachedNotice => {
+                        const latestNotice = noticesData.notices.find(n => n.id === cachedNotice.id);
+                        if (latestNotice) {
+                          return {
+                            ...cachedNotice,
+                            views: latestNotice.views
+                          };
+                        }
+                        return cachedNotice;
+                      });
+                      
+                      // 새로운 항목을 앞에 추가 (최신순 유지)
+                      const finalNotices = [...newNotices, ...updatedNotices];
+                      
+                      setSavedNotices(finalNotices);
+                      AsyncStorage.setItem(noticesCacheKey, JSON.stringify(finalNotices)).catch(() => {});
                       AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
                     }
                   } catch (parseError) {
@@ -502,14 +534,35 @@ export default function HomeScreen({ navigation }) {
                   }
                 }
                 
-                // 경조사 업데이트 (응답 텍스트를 받는 즉시 파싱)
+                // 경조사 업데이트 (새로운 항목만 추가, 기존 항목의 뷰수 업데이트)
                 if (lifeEventsResponse.ok) {
                   try {
                     const lifeEventsText = await lifeEventsResponse.text();
                     const lifeEventsData = JSON.parse(lifeEventsText);
                     if (lifeEventsData.success && lifeEventsData.lifeEvents) {
-                      setSavedLifeEvents(lifeEventsData.lifeEvents);
-                      AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(lifeEventsData.lifeEvents)).catch(() => {});
+                      // 기존 lifeEvents의 ID 집합 생성 (중복 체크용)
+                      const existingLifeEventIds = new Set(cachedLifeEvents.map(l => l.id));
+                      
+                      // 새로운 항목만 필터링 (기존에 없는 것만)
+                      const newLifeEvents = lifeEventsData.lifeEvents.filter(l => !existingLifeEventIds.has(l.id));
+                      
+                      // 기존 항목의 뷰수 업데이트
+                      const updatedLifeEvents = cachedLifeEvents.map(cachedLifeEvent => {
+                        const latestLifeEvent = lifeEventsData.lifeEvents.find(l => l.id === cachedLifeEvent.id);
+                        if (latestLifeEvent) {
+                          return {
+                            ...cachedLifeEvent,
+                            views: latestLifeEvent.views
+                          };
+                        }
+                        return cachedLifeEvent;
+                      });
+                      
+                      // 새로운 항목을 앞에 추가 (최신순 유지)
+                      const finalLifeEvents = [...newLifeEvents, ...updatedLifeEvents];
+                      
+                      setSavedLifeEvents(finalLifeEvents);
+                      AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(finalLifeEvents)).catch(() => {});
                       AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
                     }
                   } catch (parseError) {

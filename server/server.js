@@ -1597,9 +1597,9 @@ app.post('/api/notices', async (req, res) => {
 // 공지사항 목록 조회 API
 app.get('/api/notices', async (req, res) => {
   try {
-    const { university, category } = req.query;
+    const { university, category, since } = req.query;
     
-    console.log('[공지사항 목록 조회] 요청:', { university, category });
+    console.log('[공지사항 목록 조회] 요청:', { university, category, since });
     
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
@@ -2204,9 +2204,9 @@ app.delete('/api/notices/:id', async (req, res) => {
 // 경조사 목록 조회 API
 app.get('/api/life-events', async (req, res) => {
   try {
-    const { university, category } = req.query;
+    const { university, category, since } = req.query;
     
-    console.log('[경조사 목록 조회] 요청:', { university, category });
+    console.log('[경조사 목록 조회] 요청:', { university, category, since });
     
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
