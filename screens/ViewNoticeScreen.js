@@ -17,10 +17,11 @@ function ImageBlock({ uri }) {
   const contentPadding = 72;
   const maxImageWidth = screenWidth - contentPadding;
   const [imageSize, setImageSize] = useState({ width: maxImageWidth, height: 200 });
+  const [imageError, setImageError] = useState(false);
 
   // 이미지 URI를 절대 경로로 변환
   const getImageUri = (uri) => {
-    if (!uri) return uri;
+    if (!uri) return null;
     // 이미 절대 경로인 경우 (http://, https://, data:)
     if (uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('data:')) {
       return uri;
@@ -36,8 +37,12 @@ function ImageBlock({ uri }) {
   const imageUri = getImageUri(uri);
 
   useEffect(() => {
-    if (!imageUri) return;
+    if (!imageUri) {
+      setImageError(true);
+      return;
+    }
     
+    setImageError(false);
     Image.getSize(imageUri, (width, height) => {
       const aspectRatio = height / width;
       // 가로폭을 내용 박스 안에 맞춤 (비율 유지)
@@ -48,8 +53,16 @@ function ImageBlock({ uri }) {
       setImageSize({ width: displayWidth, height: displayHeight });
     }, (error) => {
       // 에러가 발생해도 기본 크기로 표시 (이미지가 없거나 삭제된 경우)
+      if (__DEV__) {
+        console.error('[ViewNoticeScreen] Image.getSize 실패:', error, 'URI:', imageUri);
+      }
+      setImageError(true);
     });
   }, [imageUri, maxImageWidth]);
+
+  if (!imageUri || imageError) {
+    return null;
+  }
 
   return (
     <View className="relative mb-3" style={{ width: '100%', alignItems: 'center' }}>
@@ -62,7 +75,12 @@ function ImageBlock({ uri }) {
           maxWidth: '100%'
         }}
         resizeMode="contain"
-        onError={() => {}}
+        onError={(error) => {
+          if (__DEV__) {
+            console.error('[ViewNoticeScreen] Image 로드 실패:', error, 'URI:', imageUri);
+          }
+          setImageError(true);
+        }}
       />
     </View>
   );
