@@ -428,7 +428,7 @@ export default function LoginScreen() {
         }
         
         // 캐시에 없으면 API 호출
-        const apiUrl = `${API_BASE_URL}/api/supabase-image-urls`;
+        const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
         
         // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
         const response = await fetch(apiUrl, {

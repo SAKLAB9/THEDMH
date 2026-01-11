@@ -101,7 +101,7 @@ export default function SelectUniScreen() {
         }
         
         // 캐시에 없으면 API 호출
-        const response = await fetch(`${API_BASE_URL}/api/supabase-image-urls`, {
+        const response = await fetch(`${API_BASE_URL}/api/supabase-image-url`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -519,6 +519,7 @@ app.get('/api/supabase-image-url', async (req, res) => {
 });
 
 // Supabase Storage 이미지 URL 배치 조회 API (여러 이미지를 한 번에 가져오기) - POST 방식
+// /api/supabase-image-urls는 이제 /api/supabase-image-url로 통합됨 (POST 요청)
 app.post('/api/supabase-image-urls', async (req, res) => {
   try {
     const { filenames } = req.body;
