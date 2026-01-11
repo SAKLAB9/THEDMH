@@ -430,13 +430,15 @@ export default function CirclesScreen({ navigation, route }) {
             })
             .then(circlesData => {
               if (circlesData && circlesData.success && circlesData.circles) {
-                // 캐시된 데이터와 최신 데이터를 병합 (뷰수만 업데이트, 댓글수는 캐시 사용)
+                // 캐시된 데이터와 최신 데이터를 병합 (뷰수와 마감 상태 업데이트, 댓글수는 캐시 사용)
                 const updatedCircles = cachedCircles.map(cachedCircle => {
                   const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
                   if (latestCircle) {
                     return {
                       ...cachedCircle,
-                      views: latestCircle.views
+                      views: latestCircle.views,
+                      isClosed: latestCircle.isClosed || false,
+                      closedAt: latestCircle.closedAt
                       // commentCount는 캐시된 값 유지 (공지사항과 동일하게)
                     };
                   }
