@@ -390,12 +390,20 @@ export default function LoginScreen() {
   // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (모든 이미지를 동일하게 병렬 로드)
   // 모든 hooks는 early return 전에 호출해야 함
   useEffect(() => {
-    if (!fontsLoaded || adminSlotsCount <= 0) return;
+    if (!fontsLoaded || configLoading) return;
     
     const loadAdminImageUrls = async () => {
+      // config에서 슬롯 개수 다시 가져오기
+      const slotsCount = getConfigNumber('login_admin_slots_count', 0);
+      
+      if (slotsCount <= 0) {
+        setAdminImageUrls({});
+        return;
+      }
+      
       // 모든 이미지 파일명 수집
       const imageNames = [];
-      for (let i = 1; i <= adminSlotsCount; i++) {
+      for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`login_admin_slot_${i}_image`, '');
         if (imageName) {
           imageNames.push(imageName);
@@ -433,13 +441,13 @@ export default function LoginScreen() {
           setAdminImageUrls({});
         }
       } catch (error) {
-        // 에러 발생 시 빈 객체로 설정
+        console.error('[LoginScreen] Admin 이미지 로드 실패:', error);
         setAdminImageUrls({});
       }
     };
     
     loadAdminImageUrls();
-  }, [fontsLoaded, adminSlotsCount, adminSlotImageNames.join(',')]);
+  }, [fontsLoaded, configLoading, getConfig, getConfigNumber, config]);
 
   // 자동 로그인 체크 (앱 시작 시) - 모든 hooks는 early return 전에 호출해야 함
   useEffect(() => {
