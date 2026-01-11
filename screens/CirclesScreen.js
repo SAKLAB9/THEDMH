@@ -453,9 +453,7 @@ export default function CirclesScreen({ navigation, route }) {
         }
         
         // 캐시가 없거나 만료되었으면 새로 로드
-        const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
-          headers: { 'Cache-Control': 'no-cache' }
-        });
+        const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
         if (circlesResponse.ok) {
           // 응답 텍스트를 받는 즉시 파싱 (성능 최적화)
           const circlesText = await circlesResponse.text();
@@ -463,9 +461,9 @@ export default function CirclesScreen({ navigation, route }) {
             const circlesData = JSON.parse(circlesText);
             if (circlesData.success && circlesData.circles) {
               setSavedCircles(circlesData.circles);
-              // 캐시 저장 (뷰수/댓글수 제외하고 나머지만)
-              await AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
-              await AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
+              // 캐시 저장 (비동기, 블로킹하지 않음 - HomeScreen과 동일)
+              AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
+              AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
               if (__DEV__) {
                 console.log('[CirclesScreen] Circles 로드 성공:', circlesData.circles.length);
               }
