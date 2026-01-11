@@ -146,22 +146,20 @@ export default function SignUpScreen({ route }) {
           .maybeSingle();
         
         if (error) {
-          // PGRST116은 "no rows returned" 오류로 정상적인 경우임
-          if (error.code === 'PGRST116') {
-            // 데이터가 없으면 사용 가능
+          // PGRST116은 "no rows returned" 오류로 정상적인 경우임 (데이터 없음 = 사용 가능)
+          // PGRST205는 "table not found" 오류 (테이블 없음 = 사용 가능)
+          if (error.code === 'PGRST116' || error.code === 'PGRST205') {
+            // 데이터가 없거나 테이블이 없으면 사용 가능
             setEmailAvailable(true);
           } else {
-            // 다른 오류인 경우 (테이블이 없거나 권한 문제 등)
-            console.error('이메일 중복 체크 오류:', error);
-            console.error('오류 코드:', error.code);
-            console.error('오류 메시지:', error.message);
+            // 다른 오류인 경우 (네트워크 오류 등)
             // 오류가 발생해도 사용 가능으로 처리 (회원가입은 진행 가능)
             setEmailAvailable(true);
           }
           return;
         }
         
-        // 데이터가 있으면 중복, 없으면 사용 가능
+        // 데이터가 있으면 중복(false), 없으면 사용 가능(true)
         setEmailAvailable(data === null);
       } else {
         // Supabase가 없으면 서버 API 사용
