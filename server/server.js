@@ -5691,12 +5691,15 @@ app.get('/api/config', async (req, res) => {
       } catch (error) {
         console.error('[API Config] 데이터베이스 오류:', error);
         console.error('[API Config] 에러 상세:', error.message);
-        // 모든 데이터베이스 오류 시 빈 config 반환 (앱이 계속 작동하도록)
-        console.warn('[API Config] 데이터베이스 오류 발생 - 빈 config 반환');
-        return res.json({
-          success: true,
-          config: {}
-        });
+        // 데이터베이스 연결 오류 시 빈 config 반환 (앱이 계속 작동하도록)
+        if (error.message && (error.message.includes('Tenant') || error.message.includes('user not found') || error.message.includes('connection'))) {
+          console.warn('[API Config] 데이터베이스 연결 실패 - 빈 config 반환');
+          return res.json({
+            success: true,
+            config: {}
+          });
+        }
+        res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
       console.warn('[API Config] 데이터베이스 연결 없음 - 빈 config 반환');
@@ -5707,13 +5710,7 @@ app.get('/api/config', async (req, res) => {
     }
   } catch (error) {
     console.error('[API Config] 일반 오류:', error);
-    console.error('[API Config] 일반 오류 상세:', error.message);
-    // 모든 오류 시 빈 config 반환 (앱이 계속 작동하도록)
-    console.warn('[API Config] 일반 오류 발생 - 빈 config 반환');
-    return res.json({
-      success: true,
-      config: {}
-    });
+    res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
   }
 });
 
