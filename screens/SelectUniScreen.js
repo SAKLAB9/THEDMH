@@ -253,7 +253,7 @@ export default function SelectUniScreen() {
     if (slotsCount > 0) {
       loadImageUrls();
     }
-  }, [slotsCount, slotImageNamesString, getConfig]);
+  }, [fontsLoaded, slotsCount, slotImageNamesString, getConfig]);
 
   // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
