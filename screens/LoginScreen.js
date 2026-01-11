@@ -722,6 +722,17 @@ export default function LoginScreen() {
                   elevation: 12,
                 }}
                 resizeMode="contain"
+                onError={(error) => {
+                  console.error('[LoginScreen] 이미지 로드 오류:', error.nativeEvent?.error || error);
+                  if (__DEV__) {
+                    console.error('[LoginScreen] 이미지 URL:', iconImageUrl?.uri);
+                  }
+                }}
+                onLoad={() => {
+                  if (__DEV__) {
+                    console.log('[LoginScreen] 이미지 로드 성공');
+                  }
+                }}
               />
             )
           )}
