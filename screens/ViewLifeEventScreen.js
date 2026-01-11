@@ -301,29 +301,58 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         clearTimeout(timeoutId);
         
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.lifeEvent) {
-            // content_blocks 파싱
-            let lifeEvent = data.lifeEvent;
-            if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
-              try {
-                lifeEvent.content_blocks = JSON.parse(lifeEvent.content_blocks);
-              } catch (e) {
+          const responseText = await response.text();
+          
+          // 텍스트만 먼저 파싱해서 즉시 표시
+          try {
+            const data = JSON.parse(responseText);
+            if (data.success && data.lifeEvent) {
+              let lifeEvent = { ...data.lifeEvent };
+              
+              // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
+              if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
+                try {
+                  const parsedBlocks = JSON.parse(lifeEvent.content_blocks);
+                  // 텍스트 블록만 먼저 표시
+                  const textBlocks = Array.isArray(parsedBlocks) 
+                    ? parsedBlocks.filter(block => block.type === 'text')
+                    : [];
+                  lifeEvent.content_blocks = textBlocks;
+                  // 텍스트만 먼저 표시
+                  setLifeEvent(lifeEvent);
+                  
+                  // 이미지 블록 추가 (백그라운드에서)
+                  setTimeout(() => {
+                    if (Array.isArray(parsedBlocks)) {
+                      lifeEvent.content_blocks = parsedBlocks;
+                      setLifeEvent({ ...lifeEvent });
+                    }
+                  }, 0);
+                } catch (e) {
+                  lifeEvent.content_blocks = [];
+                  setLifeEvent(lifeEvent);
+                }
+              } else if (Array.isArray(lifeEvent.content_blocks)) {
+                // 이미 배열이면 텍스트 블록만 먼저 표시
+                const textBlocks = lifeEvent.content_blocks.filter(block => block.type === 'text');
+                lifeEvent.content_blocks = textBlocks;
+                setLifeEvent(lifeEvent);
+                
+                // 전체 블록 추가 (백그라운드에서)
+                setTimeout(() => {
+                  lifeEvent.content_blocks = data.lifeEvent.content_blocks;
+                  setLifeEvent({ ...lifeEvent });
+                }, 0);
+              } else {
                 lifeEvent.content_blocks = [];
+                setLifeEvent(lifeEvent);
               }
-            }
-            if (!Array.isArray(lifeEvent.content_blocks)) {
-              lifeEvent.content_blocks = [];
-            }
-            
-            // 텍스트는 즉시 표시하기 위해 먼저 설정
-            setLifeEvent(lifeEvent);
-            
-            // 캐시에 저장 (비동기, 블로킹하지 않음)
-            AsyncStorage.setItem(cacheKey, JSON.stringify({
-              lifeEvent: lifeEvent,
-              timestamp: Date.now()
-            })).catch(() => {});
+              
+              // 캐시에 저장 (비동기, 블로킹하지 않음)
+              AsyncStorage.setItem(cacheKey, JSON.stringify({
+                lifeEvent: data.lifeEvent,
+                timestamp: Date.now()
+              })).catch(() => {});
           } else {
             if (__DEV__) {
               console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음`);

@@ -295,29 +295,58 @@ export default function ViewNoticeScreen({ route, navigation }) {
         clearTimeout(timeoutId);
         
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.notice) {
-            // content_blocks 파싱
-            let notice = data.notice;
-            if (notice.content_blocks && typeof notice.content_blocks === 'string') {
-              try {
-                notice.content_blocks = JSON.parse(notice.content_blocks);
-              } catch (e) {
+          const responseText = await response.text();
+          
+          // 텍스트만 먼저 파싱해서 즉시 표시
+          try {
+            const data = JSON.parse(responseText);
+            if (data.success && data.notice) {
+              let notice = { ...data.notice };
+              
+              // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
+              if (notice.content_blocks && typeof notice.content_blocks === 'string') {
+                try {
+                  const parsedBlocks = JSON.parse(notice.content_blocks);
+                  // 텍스트 블록만 먼저 표시
+                  const textBlocks = Array.isArray(parsedBlocks) 
+                    ? parsedBlocks.filter(block => block.type === 'text')
+                    : [];
+                  notice.content_blocks = textBlocks;
+                  // 텍스트만 먼저 표시
+                  setNotice(notice);
+                  
+                  // 이미지 블록 추가 (백그라운드에서)
+                  setTimeout(() => {
+                    if (Array.isArray(parsedBlocks)) {
+                      notice.content_blocks = parsedBlocks;
+                      setNotice({ ...notice });
+                    }
+                  }, 0);
+                } catch (e) {
+                  notice.content_blocks = [];
+                  setNotice(notice);
+                }
+              } else if (Array.isArray(notice.content_blocks)) {
+                // 이미 배열이면 텍스트 블록만 먼저 표시
+                const textBlocks = notice.content_blocks.filter(block => block.type === 'text');
+                notice.content_blocks = textBlocks;
+                setNotice(notice);
+                
+                // 전체 블록 추가 (백그라운드에서)
+                setTimeout(() => {
+                  notice.content_blocks = data.notice.content_blocks;
+                  setNotice({ ...notice });
+                }, 0);
+              } else {
                 notice.content_blocks = [];
+                setNotice(notice);
               }
-            }
-            if (!Array.isArray(notice.content_blocks)) {
-              notice.content_blocks = [];
-            }
-            
-            // 텍스트는 즉시 표시하기 위해 먼저 설정
-            setNotice(notice);
-            
-            // 캐시에 저장 (비동기, 블로킹하지 않음)
-            AsyncStorage.setItem(cacheKey, JSON.stringify({
-              notice: notice,
-              timestamp: Date.now()
-            })).catch(() => {});
+              
+              // 캐시에 저장 (비동기, 블로킹하지 않음)
+              AsyncStorage.setItem(cacheKey, JSON.stringify({
+                notice: data.notice,
+                timestamp: Date.now()
+              })).catch(() => {});
           } else {
             if (__DEV__) {
               console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음`);
