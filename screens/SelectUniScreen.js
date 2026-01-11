@@ -129,45 +129,70 @@ export default function SelectUniScreen() {
     return slots;
   }, [slotsCount, appConfig, configLoading]);
 
-  // Supabase Storage에서 슬롯 이미지 URL 가져오기 (assets 폴더)
+  // Supabase Storage에서 슬롯 이미지 URL 가져오기 (assets 폴더) - 병렬 로딩으로 최적화
   useEffect(() => {
     if (!fontsLoaded || configLoading || slotData.length === 0) return;
     
     const loadSlotImages = async () => {
-      const urls = {};
+      if (!supabase) {
+        setImageUrls({});
+        return;
+      }
       
-      for (const slot of slotData) {
-        const { slotNumber, imageName } = slot;
-        const cacheKey = `select_uni_slot_${slotNumber}_url_${imageName}`;
-        
-        try {
-          // 캐시에서 먼저 확인
-          const cachedUrl = await AsyncStorage.getItem(cacheKey);
-          if (cachedUrl) {
-            urls[imageName] = { uri: cachedUrl };
-            continue;
-          }
-          
-          // Supabase Storage에서 직접 이미지 URL 가져오기
-          if (!supabase) {
-            continue;
-          }
-          
-          const filePath = `assets/${imageName}`;
-          const { data: urlData, error: urlError } = supabase.storage
+      // 모든 이미지 파일명 수집
+      const imageNames = slotData.map(slot => slot.imageName).filter(name => name && name.trim() !== '');
+      
+      if (imageNames.length === 0) {
+        setImageUrls({});
+        return;
+      }
+      
+      // 캐시에서 병렬로 확인
+      const cacheKeys = slotData.map(slot => ({
+        imageName: slot.imageName,
+        cacheKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}`
+      }));
+      
+      const cachePromises = cacheKeys.map(({ cacheKey }) => AsyncStorage.getItem(cacheKey));
+      const cachedResults = await Promise.all(cachePromises);
+      
+      const urls = {};
+      const toLoadFromSupabase = [];
+      
+      // 캐시된 URL과 새로 로드할 이미지 분리
+      cacheKeys.forEach(({ imageName }, index) => {
+        const cachedUrl = cachedResults[index];
+        if (cachedUrl) {
+          urls[imageName] = { uri: cachedUrl };
+        } else {
+          toLoadFromSupabase.push(imageName);
+        }
+      });
+      
+      // Supabase Storage에서 직접 이미지 URL 가져오기 (동기적으로 빠르게 생성)
+      toLoadFromSupabase.forEach(imageName => {
+        const trimmedName = String(imageName).trim();
+        if (trimmedName) {
+          const filePath = `assets/${trimmedName}`;
+          const { data: urlData } = supabase.storage
             .from('images')
             .getPublicUrl(filePath);
-          
-          if (urlError || !urlData?.publicUrl) {
-            continue;
+          if (urlData?.publicUrl) {
+            urls[trimmedName] = { uri: urlData.publicUrl };
           }
-          
-          await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
-          urls[imageName] = { uri: urlData.publicUrl };
-        } catch (error) {
-          // 에러 무시
         }
-      }
+      });
+      
+      // 새로 로드한 URL들을 캐시에 저장 (병렬로)
+      const savePromises = toLoadFromSupabase.map(imageName => {
+        const slot = slotData.find(s => s.imageName === imageName);
+        if (slot && urls[imageName]) {
+          const cacheKey = `select_uni_slot_${slot.slotNumber}_url_${imageName}`;
+          return AsyncStorage.setItem(cacheKey, urls[imageName].uri);
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(savePromises);
       
       setImageUrls(urls);
     };
