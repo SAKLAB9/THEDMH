@@ -380,15 +380,16 @@ export default function ViewLifeEventScreen({ route, navigation }) {
                 }
                 
                 // 기본 정보는 유지하고 내용만 업데이트
-                // 뷰수는 서버에서 이미 증가된 값 사용
+                // 뷰수는 서버에서 증가된 값과 클라이언트에서 증가한 값 중 큰 값 사용 (동기화)
+                const serverViews = fullLifeEvent.views || 0;
+                const clientViews = lifeEvent.views || 0;
                 setLifeEvent({
                   ...lifeEvent,
-                  views: fullLifeEvent.views || lifeEvent.views || 0, // 서버에서 증가된 뷰수 사용
+                  views: Math.max(serverViews, clientViews), // 서버와 클라이언트 중 큰 값 사용
                   content_blocks: contentBlocks,
                   images: fullLifeEvent.images || [],
                   text_content: fullLifeEvent.text_content || ''
                 });
-                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content만 별도 캐시에 저장
                 AsyncStorage.setItem(contentCacheKey, JSON.stringify({
@@ -404,7 +405,10 @@ export default function ViewLifeEventScreen({ route, navigation }) {
                 let lifeEvent = { ...fullLifeEvent };
                 
                 // 뷰수는 서버에서 이미 증가된 값이므로 그대로 사용
-                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
+                // 클라이언트에서 이미 증가했다면 서버 값과 동기화
+                if (!viewsIncremented) {
+                  setViewsIncremented(true);
+                }
                 
                 // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
                 if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
@@ -540,8 +544,8 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   // 서버에서 뷰수가 업데이트된 후에만 홈 화면에 전달
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', () => {
-      // 서버에서 뷰수가 업데이트되었을 때만 홈 화면에 뷰수 업데이트 알림
-      if (lifeEvent && lifeEvent.views !== undefined && viewsUpdated) {
+      // 뷰수가 증가했으면 홈 화면에 뷰수 업데이트 알림
+      if (lifeEvent && lifeEvent.views !== undefined && viewsIncremented) {
         navigation.navigate('Main', {
           screen: 'Home',
           params: {
@@ -556,7 +560,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     });
 
     return unsubscribe;
-  }, [navigation, lifeEvent, lifeEventId, viewsUpdated]);
+  }, [navigation, lifeEvent, lifeEventId, viewsIncremented]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 경조사는 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
