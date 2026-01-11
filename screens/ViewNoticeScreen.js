@@ -342,29 +342,8 @@ export default function ViewNoticeScreen({ route, navigation }) {
     handleDelete();
   };
 
-  // 스켈레톤 UI: 로딩 중이거나 데이터가 없을 때 기본 레이아웃 표시
-  if (loading || !notice) {
-    return (
-      <View className="flex-1" style={{ backgroundColor: colors.primary }}>
-        <View className="flex-1 bg-white" style={{ marginTop: 72 }}>
-          <View className="flex-row items-center justify-between px-6 pt-6 pb-4 border-b border-gray-200">
-            <View style={{ width: 80, height: 24, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
-            <View style={{ width: 24, height: 24, backgroundColor: '#E5E7EB', borderRadius: 12 }} />
-          </View>
-          <ScrollView className="px-6 py-4">
-            <View style={{ width: '100%', height: 32, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16 }} />
-            <View style={{ width: '60%', height: 20, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 24 }} />
-            <View style={{ width: '100%', height: 200, backgroundColor: '#E5E7EB', borderRadius: 8, marginBottom: 16 }} />
-            <View style={{ width: '100%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8 }} />
-            <View style={{ width: '90%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8 }} />
-            <View style={{ width: '80%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
-          </ScrollView>
-        </View>
-      </View>
-    );
-  }
-
-  const contentBlocks = notice.content_blocks || [];
+  // 점진적 렌더링: 레이아웃은 즉시 표시, 데이터는 로드되는 대로 표시
+  const contentBlocks = notice?.content_blocks || [];
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.primary }}>
@@ -394,38 +373,43 @@ export default function ViewNoticeScreen({ route, navigation }) {
           contentContainerStyle={{ paddingBottom: 120 }}
         >
           {/* 제목 */}
-          <Text className="text-2xl font-bold mb-4" style={{ color: '#000000' }}>
-            {notice.title}
-          </Text>
+          {notice?.title ? (
+            <Text className="text-2xl font-bold mb-4" style={{ color: '#000000' }}>
+              {notice.title}
+            </Text>
+          ) : null}
 
           {/* 메타 정보 */}
-          <View className="flex-row items-center justify-between mb-6 pb-4 border-b border-gray-200">
-            <View className="flex-row items-center">
-              <Text className="text-sm text-gray-600 mr-4">
-                {formatDate(notice.created_at)}
-              </Text>
-              <Text className="text-sm text-gray-600 mr-4">
-                {(() => {
-                  return notice.nickname || getEmailPrefix(notice.author);
-                })()}
-              </Text>
-              <Text className="text-sm text-gray-600">
-                👁️ {notice.views || 0}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              {/* 신고 버튼 */}
-              <TouchableOpacity
-                onPress={() => {
-                  setShowReportModal(true);
-                }}
-                className="mr-4"
-              >
-                <Ionicons name="flag-outline" size={20} color="#9ca3af" />
-              </TouchableOpacity>
-              
-              {/* 작성자이거나 관리자일 때 삭제/수정 버튼 표시 */}
-              {(notice.author === currentUser || currentUser === 'admin') && (
+          {notice && (
+            <View className="flex-row items-center justify-between mb-6 pb-4 border-b border-gray-200">
+              <View className="flex-row items-center">
+                {notice.created_at && (
+                  <Text className="text-sm text-gray-600 mr-4">
+                    {formatDate(notice.created_at)}
+                  </Text>
+                )}
+                {(notice.nickname || notice.author) && (
+                  <Text className="text-sm text-gray-600 mr-4">
+                    {notice.nickname || getEmailPrefix(notice.author)}
+                  </Text>
+                )}
+                <Text className="text-sm text-gray-600">
+                  👁️ {notice.views || 0}
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                {/* 신고 버튼 */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowReportModal(true);
+                  }}
+                  className="mr-4"
+                >
+                  <Ionicons name="flag-outline" size={20} color="#9ca3af" />
+                </TouchableOpacity>
+                
+                {/* 작성자이거나 관리자일 때 삭제/수정 버튼 표시 */}
+                {(notice.author === currentUser || currentUser === 'admin') && (
                 <>
               <TouchableOpacity
                 onPress={confirmDelete}
@@ -443,12 +427,14 @@ export default function ViewNoticeScreen({ route, navigation }) {
               </TouchableOpacity>
                 </>
               )}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* 본문 내용 */}
-          <View className="mt-4">
-            {contentBlocks.map((block, index) => {
+          {contentBlocks.length > 0 && (
+            <View className="mt-4">
+              {contentBlocks.map((block, index) => {
               if (block.type === 'image') {
                 return (
                   <ImageBlock 
@@ -471,11 +457,12 @@ export default function ViewNoticeScreen({ route, navigation }) {
                 );
               }
               return null;
-            })}
-          </View>
+              })}
+            </View>
+          )}
 
           {/* RSVP 버튼 */}
-          {notice.url && notice.url.trim() !== '' && (
+          {notice?.url && notice.url.trim() !== '' && (
             <TouchableOpacity
               onPress={async () => {
                 try {
