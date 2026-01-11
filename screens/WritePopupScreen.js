@@ -345,7 +345,7 @@ export default function WritePopupScreen({ navigation, route }) {
         // 파일 시스템 URL인 경우 상대 경로로 변환
         try {
           const url = new URL(result.url);
-          return url.pathname; // /popupimages/xxx.jpg
+          return url.pathname; // /popup/xxx.jpg
         } catch (e) {
           return result.url;
         }

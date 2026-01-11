@@ -4,12 +4,26 @@
     {
       "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/cleanup-unused-images.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/api/cleanup-unused-images",
+      "dest": "/api/cleanup-unused-images.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/server.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cleanup-unused-images",
+      "schedule": "3 2 * * *"
     }
   ],
   "env": {

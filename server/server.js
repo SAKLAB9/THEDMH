@@ -70,7 +70,7 @@ const getBoardImagesDir = (university) => {
 };
 
 const getPopupImagesDir = () => {
-  return path.join(__dirname, 'data', 'popupimages');
+  return path.join(__dirname, 'data', 'popup');
 };
 
 const { getCategoryPassword } = require('./categoryPasswords');
@@ -119,7 +119,7 @@ const registerStaticPaths = async () => {
   }
   
   // 공통 경로는 항상 등록
-  app.use('/popupimages', express.static(path.join(__dirname, 'data', 'popupimages')));
+  app.use('/popup', express.static(path.join(__dirname, 'data', 'popup')));
   app.use('/data', express.static(path.join(__dirname, 'data')));
 };
 
@@ -301,7 +301,7 @@ const savePopupImage = async (base64Data, filename) => {
   fs.writeFileSync(imagePath, imageBuffer);
   
   const baseUrl = process.env.BASE_URL || `http://192.168.10.102:${PORT}`;
-  return `${baseUrl}/popupimages/${filename}`;
+  return `${baseUrl}/popup/${filename}`;
 };
 
 // 이미지 업로드 API
@@ -322,7 +322,7 @@ app.post('/api/upload-image', async (req, res) => {
       return res.status(400).json({ error: '유효하지 않은 university입니다.' });
     }
     
-    const imageFilename = filename || `image_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+    const imageFilename = filename || `notice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
     const imageUrl = await saveImage(imageData, imageFilename, universityCode);
     res.json({
       success: true,
@@ -1571,31 +1571,30 @@ app.put('/api/notices/:id', async (req, res) => {
           ? JSON.parse(oldNotice.content_blocks) 
           : oldNotice.content_blocks;
 
-        // 기존 이미지 URL 수집
-        const normalizedUniversity = universityCode;
+        // 기존 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
         const oldImageUrls = new Set();
         oldImages.forEach(url => {
-          if (url && (url.includes(`/${normalizedUniversity}/images/`) || url.includes('/images/'))) {
+          if (url) {
             oldImageUrls.add(url);
           }
         });
         if (oldContentBlocks) {
           oldContentBlocks.forEach(block => {
-            if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/images/`) || block.uri.includes('/images/'))) {
+            if (block.type === 'image' && block.uri) {
               oldImageUrls.add(block.uri);
             }
           });
         }
 
-        // 새로운 이미지 URL 수집
+        // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
         const newImageUrls = new Set();
         (images || []).forEach(url => {
-          if (url && (url.includes(`/${normalizedUniversity}/images/`) || url.includes('/images/'))) {
+          if (url) {
             newImageUrls.add(url);
           }
         });
         contentBlocks.forEach(block => {
-          if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/images/`) || block.uri.includes('/images/'))) {
+          if (block.type === 'image' && block.uri) {
             newImageUrls.add(block.uri);
           }
         });
@@ -1650,15 +1649,22 @@ app.put('/api/notices/:id', async (req, res) => {
 
 const deleteImageFile = async (imageUrl) => {
   try {
+    if (!imageUrl) return false;
+    
+    // Supabase Storage URL 처리
     if (imageUrl.includes('supabase.co/storage/v1/object/public/')) {
-      return await deleteImageFromSupabaseStorage(imageUrl, null);
+      // URL에서 university 추출 시도
+      const urlMatch = imageUrl.match(/\/(nyu|usc|columbia|cornell|miuhub)\//);
+      const university = urlMatch ? urlMatch[1] : null;
+      return await deleteImageFromSupabaseStorage(imageUrl, university);
     }
     
+    // 파일 시스템 사용 시
     const urlParts = imageUrl.split('/');
     const filename = urlParts[urlParts.length - 1];
     const university = extractUniversityFromUrl(imageUrl);
     
-    if (filename) {
+    if (filename && university) {
       const imagesDir = getImagesDir(university);
       const imagePath = path.join(imagesDir, filename);
       if (fs.existsSync(imagePath)) {
@@ -1668,22 +1674,29 @@ const deleteImageFile = async (imageUrl) => {
     }
     return false;
   } catch (error) {
+    console.error('deleteImageFile 오류:', error);
     return false;
   }
 };
 
 const deleteCircleImageFile = async (imageUrl) => {
   try {
-    const university = extractUniversityFromUrl(imageUrl);
+    if (!imageUrl) return false;
     
+    // Supabase Storage URL 처리
     if (imageUrl.includes('supabase.co/storage/v1/object/public/')) {
+      // URL에서 university 추출 시도
+      const urlMatch = imageUrl.match(/\/(nyu|usc|columbia|cornell|miuhub)\//);
+      const university = urlMatch ? urlMatch[1] : (extractUniversityFromUrl(imageUrl));
       return await deleteCircleImageFromSupabase(imageUrl, university);
     }
     
+    // 파일 시스템 사용 시
     const urlParts = imageUrl.split('/');
     const filename = urlParts[urlParts.length - 1];
+    const university = extractUniversityFromUrl(imageUrl);
     
-    if (filename) {
+    if (filename && university) {
       const circlesImagesDir = getCirclesImagesDir(university);
       const imagePath = path.join(circlesImagesDir, filename);
       if (fs.existsSync(imagePath)) {
@@ -1693,6 +1706,7 @@ const deleteCircleImageFile = async (imageUrl) => {
     }
     return false;
   } catch (error) {
+    console.error('deleteCircleImageFile 오류:', error);
     return false;
   }
 };
@@ -1716,18 +1730,30 @@ app.delete('/api/notices/:id', async (req, res) => {
         
         const tableName = getNoticesTableName(universityCode);
         // 먼저 공지사항 정보를 가져와서 이미지 URL 확인
-        const noticeResult = await pool.query(`SELECT images FROM ${tableName} WHERE id = $1`, [id]);
+        const noticeResult = await pool.query(`SELECT images, content_blocks FROM ${tableName} WHERE id = $1`, [id]);
         
         if (noticeResult.rows.length === 0) {
           return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
         }
         
         // 이미지 파일 삭제
-        const normalizedUniversity = universityCode;
-        const images = noticeResult.rows[0].images || [];
+        const notice = noticeResult.rows[0];
+        const images = notice.images || [];
+        const contentBlocks = typeof notice.content_blocks === 'string' 
+          ? JSON.parse(notice.content_blocks) 
+          : (notice.content_blocks || []);
+        
+        // images 배열의 이미지 삭제
         for (const imageUrl of images) {
-          if (imageUrl && (imageUrl.includes(`/${normalizedUniversity}/images/`) || imageUrl.includes('/images/'))) {
+          if (imageUrl) {
             await deleteImageFile(imageUrl);
+          }
+        }
+        
+        // content_blocks의 이미지 삭제
+        for (const block of contentBlocks) {
+          if (block.type === 'image' && block.uri) {
+            await deleteImageFile(block.uri);
           }
         }
         
@@ -2020,31 +2046,30 @@ app.put('/api/life-events/:id', async (req, res) => {
           ? JSON.parse(oldLifeEvent.content_blocks) 
           : oldLifeEvent.content_blocks;
 
-        // 기존 이미지 URL 수집 (universityCode 사용)
-        const normalizedUniversity = universityCode;
+        // 기존 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
         const oldImageUrls = new Set();
         oldImages.forEach(url => {
-          if (url && (url.includes(`/${normalizedUniversity}/images/`) || url.includes('/images/'))) {
+          if (url) {
             oldImageUrls.add(url);
           }
         });
         if (oldContentBlocks) {
           oldContentBlocks.forEach(block => {
-            if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/images/`) || block.uri.includes('/images/'))) {
+            if (block.type === 'image' && block.uri) {
               oldImageUrls.add(block.uri);
             }
           });
         }
 
-        // 새로운 이미지 URL 수집
+        // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
         const newImageUrls = new Set();
         (images || []).forEach(url => {
-          if (url && (url.includes(`/${normalizedUniversity}/images/`) || url.includes('/images/'))) {
+          if (url) {
             newImageUrls.add(url);
           }
         });
         contentBlocks.forEach(block => {
-          if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/images/`) || block.uri.includes('/images/'))) {
+          if (block.type === 'image' && block.uri) {
             newImageUrls.add(block.uri);
           }
         });
@@ -2099,18 +2124,30 @@ app.delete('/api/life-events/:id', async (req, res) => {
         
         const tableName = getLifeEventsTableName(universityCode);
         // 먼저 경조사 정보를 가져와서 이미지 URL 확인
-        const lifeEventResult = await pool.query(`SELECT images FROM ${tableName} WHERE id = $1`, [id]);
+        const lifeEventResult = await pool.query(`SELECT images, content_blocks FROM ${tableName} WHERE id = $1`, [id]);
         
         if (lifeEventResult.rows.length === 0) {
           return res.status(404).json({ error: '경조사를 찾을 수 없습니다.' });
         }
         
         // 이미지 파일 삭제
-        const normalizedUniversity = universityCode;
-        const images = lifeEventResult.rows[0].images || [];
+        const lifeEvent = lifeEventResult.rows[0];
+        const images = lifeEvent.images || [];
+        const contentBlocks = typeof lifeEvent.content_blocks === 'string' 
+          ? JSON.parse(lifeEvent.content_blocks) 
+          : (lifeEvent.content_blocks || []);
+        
+        // images 배열의 이미지 삭제
         for (const imageUrl of images) {
-          if (imageUrl && (imageUrl.includes(`/${normalizedUniversity}/images/`) || imageUrl.includes('/images/'))) {
+          if (imageUrl) {
             await deleteImageFile(imageUrl);
+          }
+        }
+        
+        // content_blocks의 이미지 삭제
+        for (const block of contentBlocks) {
+          if (block.type === 'image' && block.uri) {
+            await deleteImageFile(block.uri);
           }
         }
         
@@ -2741,6 +2778,21 @@ app.put('/api/circles/:id', async (req, res) => {
       }
     }
     
+    // 기존 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
+    const oldImageUrls = new Set();
+    oldImages.forEach(imageUrl => {
+      if (imageUrl) {
+        oldImageUrls.add(imageUrl);
+      }
+    });
+    if (oldContentBlocks) {
+      oldContentBlocks.forEach(block => {
+        if (block.type === 'image' && block.uri) {
+          oldImageUrls.add(block.uri);
+        }
+      });
+    }
+
     // 전체 업데이트
     const existingImages = oldImages;
     const savedImageUrls = [...existingImages];
@@ -2775,6 +2827,26 @@ app.put('/api/circles/:id', async (req, res) => {
       }
       return block;
     }));
+    
+    // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
+    const newImageUrls = new Set();
+    savedImageUrls.forEach(imageUrl => {
+      if (imageUrl) {
+        newImageUrls.add(imageUrl);
+      }
+    });
+    updatedContentBlocks.forEach(block => {
+      if (block.type === 'image' && block.uri) {
+        newImageUrls.add(block.uri);
+      }
+    });
+    
+    // 삭제된 이미지 파일 제거
+    oldImageUrls.forEach(imageUrl => {
+      if (!newImageUrls.has(imageUrl)) {
+        deleteCircleImageFile(imageUrl);
+      }
+    });
 
     const mergedContentBlocks = [...existingContentBlocks];
     updatedContentBlocks.forEach(newBlock => {
@@ -2897,17 +2969,20 @@ app.delete('/api/circles/:id', async (req, res) => {
         
         // 관련 이미지 파일 삭제
         const images = circle.images || [];
-        const contentBlocks = circle.content_blocks || [];
-        const normalizedUniversity = universityCode;
+        const contentBlocks = typeof circle.content_blocks === 'string' 
+          ? JSON.parse(circle.content_blocks) 
+          : (circle.content_blocks || []);
         
+        // images 배열의 이미지 삭제
         for (const imageUrl of images) {
-          if (imageUrl && (imageUrl.includes(`/${normalizedUniversity}/circlesimage/`) || imageUrl.includes('/circlesimage/'))) {
+          if (imageUrl) {
             await deleteCircleImageFile(imageUrl);
           }
         }
         
+        // content_blocks의 이미지 삭제
         for (const block of contentBlocks) {
-          if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/circlesimage/`) || block.uri.includes('/circlesimage/'))) {
+          if (block.type === 'image' && block.uri) {
             await deleteCircleImageFile(block.uri);
           }
         }
@@ -3281,29 +3356,28 @@ app.put('/api/posts/:id', async (req, res) => {
       }
     }
     
-    // 기존 이미지 URL 수집 (universityCode 사용)
-    const normalizedUniversity = universityCode;
+    // 기존 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
     const oldImageUrls = new Set();
     oldImages.forEach(imageUrl => {
-      if (imageUrl && (imageUrl.includes(`/${normalizedUniversity}/boardimage/`) || imageUrl.includes('/boardimage/'))) {
+      if (imageUrl) {
         oldImageUrls.add(imageUrl);
       }
     });
     oldContentBlocks.forEach(block => {
-      if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/boardimage/`) || block.uri.includes('/boardimage/'))) {
+      if (block.type === 'image' && block.uri) {
         oldImageUrls.add(block.uri);
       }
     });
 
-    // 새로운 이미지 URL 수집
+    // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
     const newImageUrls = new Set();
     (images || []).forEach(imageUrl => {
-      if (imageUrl && (imageUrl.includes(`/${normalizedUniversity}/boardimage/`) || imageUrl.includes('/boardimage/'))) {
+      if (imageUrl) {
         newImageUrls.add(imageUrl);
       }
     });
     (contentBlocks || []).forEach(block => {
-      if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/boardimage/`) || block.uri.includes('/boardimage/'))) {
+      if (block.type === 'image' && block.uri) {
         newImageUrls.add(block.uri);
       }
     });
@@ -3398,22 +3472,22 @@ app.put('/api/posts/:id', async (req, res) => {
 
 const deleteBoardImageFile = async (imageUrl) => {
   try {
+    if (!imageUrl) return false;
+    
+    // Supabase Storage URL 처리
     if (imageUrl.includes('supabase.co/storage/v1/object/public/')) {
-      const urlParts = imageUrl.split('/storage/v1/object/public/');
-      if (urlParts.length > 1) {
-        const pathParts = urlParts[1].split('/');
-        const bucketName = pathParts[0];
-        const filePath = pathParts.slice(1).join('/');
-        return await deleteImageFromSupabase(bucketName, filePath);
-      }
-      return false;
+      // URL에서 university 추출 시도
+      const urlMatch = imageUrl.match(/\/(nyu|usc|columbia|cornell|miuhub)\//);
+      const university = urlMatch ? urlMatch[1] : null;
+      return await deleteBoardImageFromSupabase(imageUrl, university);
     }
     
+    // 파일 시스템 사용 시
     const urlParts = imageUrl.split('/');
     const filename = urlParts[urlParts.length - 1];
     const university = extractUniversityFromUrl(imageUrl);
     
-    if (filename) {
+    if (filename && university) {
       const boardImagesDir = getBoardImagesDir(university);
       const imagePath = path.join(boardImagesDir, filename);
       if (fs.existsSync(imagePath)) {
@@ -3423,6 +3497,7 @@ const deleteBoardImageFile = async (imageUrl) => {
     }
     return false;
   } catch (error) {
+    console.error('deleteBoardImageFile 오류:', error);
     return false;
   }
 };
@@ -3460,17 +3535,20 @@ app.delete('/api/posts/:id', async (req, res) => {
         
         // 관련 이미지 파일 삭제
         const images = post.images || [];
-        const contentBlocks = post.content_blocks || [];
-        const normalizedUniversity = universityCode;
+        const contentBlocks = typeof post.content_blocks === 'string' 
+          ? JSON.parse(post.content_blocks) 
+          : (post.content_blocks || []);
         
+        // images 배열의 이미지 삭제
         for (const imageUrl of images) {
-          if (imageUrl && (imageUrl.includes(`/${normalizedUniversity}/boardimage/`) || imageUrl.includes('/boardimage/'))) {
+          if (imageUrl) {
             await deleteBoardImageFile(imageUrl);
           }
         }
         
+        // content_blocks의 이미지 삭제
         for (const block of contentBlocks) {
-          if (block.type === 'image' && block.uri && (block.uri.includes(`/${normalizedUniversity}/boardimage/`) || block.uri.includes('/boardimage/'))) {
+          if (block.type === 'image' && block.uri) {
             await deleteBoardImageFile(block.uri);
           }
         }
@@ -5631,6 +5709,35 @@ async function deleteExpiredFeatured() {
 
 
 // 삭제 함수는 pool이 준비된 후에 등록됨 (위의 pool.query().then() 내부)
+
+// 사용되지 않는 이미지 정리 API
+const cleanupUnusedImages = require('./api/cleanup-unused-images-helper');
+
+// 수동 실행용 API 엔드포인트 (인증 필요)
+app.post('/api/cleanup-unused-images', async (req, res) => {
+  try {
+    // 간단한 인증 (환경 변수에 CLEANUP_SECRET 설정 필요)
+    const secret = req.headers['x-cleanup-secret'];
+    if (secret !== process.env.CLEANUP_SECRET) {
+      return res.status(401).json({ error: '인증 실패' });
+    }
+    
+    console.log('[Cleanup] 수동 정리 시작...');
+    const result = await cleanupUnusedImages();
+    
+    res.json({
+      success: true,
+      message: '정리 완료',
+      ...result
+    });
+  } catch (error) {
+    console.error('[Cleanup] 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 // Vercel 배포를 위한 처리
 // Vercel에서는 serverless 함수로 실행되므로 app.listen을 사용하지 않음

@@ -1043,8 +1043,8 @@ export default function LoginScreen() {
                             }
 
                             // Supabase Auth로 비밀번호 재설정 이메일 전송
-                            // 이메일 링크는 MIUHub의 reset-password.html 페이지로 리다이렉트
-                            const resetPasswordUrl = 'https://miuhub.up.railway.app/reset-password';
+                            // 이메일 링크는 THEDMH 앱으로 리다이렉트
+                            const resetPasswordUrl = 'thedongmunhoi://reset-password';
                             const { data, error: resetError } = await supabase.auth.resetPasswordForEmail(
                               findEmail.trim(),
                               {

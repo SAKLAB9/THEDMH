@@ -173,37 +173,46 @@ async function deleteImageFromSupabase(bucketName, filePath) {
 
 /**
  * 게시판 이미지 저장 (Supabase Storage)
+ * 파일명에 board_ 접두사가 없으면 추가
  */
 async function saveBoardImageToSupabase(base64Data, filename, university) {
   const uni = getUniversityPrefix(university);
   if (!uni) {
     throw new Error('university가 제공되지 않았습니다.');
   }
-  const filePath = `${uni}/boardimage/${filename}`;
+  // 파일명에 board_ 접두사가 없으면 추가
+  const prefixedFilename = filename.startsWith('board_') ? filename : `board_${filename}`;
+  const filePath = `${uni}/${prefixedFilename}`;
   return await uploadImageToSupabase(base64Data, 'images', filePath);
 }
 
 /**
  * 소모임 이미지 저장 (Supabase Storage)
+ * 파일명에 circle_ 접두사가 없으면 추가
  */
 async function saveCircleImageToSupabase(base64Data, filename, university) {
   const uni = getUniversityPrefix(university);
   if (!uni) {
     throw new Error('university가 제공되지 않았습니다.');
   }
-  const filePath = `${uni}/circlesimage/${filename}`;
+  // 파일명에 circle_ 접두사가 없으면 추가
+  const prefixedFilename = filename.startsWith('circle_') ? filename : `circle_${filename}`;
+  const filePath = `${uni}/${prefixedFilename}`;
   return await uploadImageToSupabase(base64Data, 'images', filePath);
 }
 
 /**
  * 공지사항/경조사 이미지 저장 (Supabase Storage)
+ * 파일명에 notice_ 접두사가 없으면 추가
  */
 async function saveImageToSupabase(base64Data, filename, university) {
   const uni = getUniversityPrefix(university);
   if (!uni) {
     throw new Error('university가 제공되지 않았습니다.');
   }
-  const filePath = `${uni}/images/${filename}`;
+  // 파일명에 notice_ 접두사가 없으면 추가
+  const prefixedFilename = filename.startsWith('notice_') ? filename : `notice_${filename}`;
+  const filePath = `${uni}/${prefixedFilename}`;
   return await uploadImageToSupabase(base64Data, 'images', filePath);
 }
 
@@ -211,7 +220,7 @@ async function saveImageToSupabase(base64Data, filename, university) {
  * 팝업 이미지 저장 (Supabase Storage)
  */
 async function savePopupImageToSupabase(base64Data, filename) {
-  const filePath = `popupimages/${filename}`;
+  const filePath = `popup/${filename}`;
   return await uploadImageToSupabase(base64Data, 'images', filePath);
 }
 
@@ -233,7 +242,9 @@ async function deleteBoardImageFromSupabase(imageUrl, university) {
     return false;
   }
   const filename = imageUrl.split('/').pop();
-  const filePath = `${uni}/boardimage/${filename}`;
+  // 파일명에 board_ 접두사가 없으면 추가
+  const prefixedFilename = filename.startsWith('board_') ? filename : `board_${filename}`;
+  const filePath = `${uni}/${prefixedFilename}`;
   return await deleteImageFromSupabase('images', filePath);
 }
 
@@ -255,7 +266,9 @@ async function deleteCircleImageFromSupabase(imageUrl, university) {
     return false;
   }
   const filename = imageUrl.split('/').pop();
-  const filePath = `${uni}/circlesimage/${filename}`;
+  // 파일명에 circle_ 접두사가 없으면 추가
+  const prefixedFilename = filename.startsWith('circle_') ? filename : `circle_${filename}`;
+  const filePath = `${uni}/${prefixedFilename}`;
   return await deleteImageFromSupabase('images', filePath);
 }
 
@@ -277,7 +290,9 @@ async function deleteImageFromSupabaseStorage(imageUrl, university) {
     return false;
   }
   const filename = imageUrl.split('/').pop();
-  const filePath = `${uni}/images/${filename}`;
+  // 파일명에 notice_ 접두사가 없으면 추가
+  const prefixedFilename = filename.startsWith('notice_') ? filename : `notice_${filename}`;
+  const filePath = `${uni}/${prefixedFilename}`;
   return await deleteImageFromSupabase('images', filePath);
 }
 
@@ -286,7 +301,7 @@ async function deleteImageFromSupabaseStorage(imageUrl, university) {
  */
 async function deletePopupImageFromSupabase(imageUrl) {
   const filename = imageUrl.split('/').pop();
-  const filePath = `popupimages/${filename}`;
+  const filePath = `popup/${filename}`;
   return await deleteImageFromSupabase('images', filePath);
 }
 
