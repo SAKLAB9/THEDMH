@@ -447,11 +447,8 @@ export default function CirclesScreen({ navigation, route }) {
                 AsyncStorage.setItem(cacheKey, JSON.stringify(updatedCircles)).catch(() => {});
               }
             })
-            .catch(error => {
+            .catch(() => {
               // 백그라운드 업데이트 실패는 무시 (이미 캐시된 데이터 표시됨)
-              if (__DEV__) {
-                console.warn('[CirclesScreen] 뷰수/댓글수 백그라운드 업데이트 실패:', error);
-              }
             });
           
           return; // 캐시 사용 시 여기서 종료
@@ -469,30 +466,14 @@ export default function CirclesScreen({ navigation, route }) {
               // 캐시 저장 (비동기, 블로킹하지 않음 - HomeScreen과 동일)
               AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
               AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
-              if (__DEV__) {
-                console.log('[CirclesScreen] Circles 로드 성공:', circlesData.circles.length);
-              }
             } else {
-              if (__DEV__) {
-                console.log('[CirclesScreen] Circles 데이터 없음 또는 실패:', circlesData);
-              }
               setSavedCircles([]);
             }
           } catch (parseError) {
-            if (__DEV__) {
-              console.error('[CirclesScreen] Circles JSON 파싱 오류:', parseError);
-            }
             setSavedCircles([]);
           }
         } else {
-          const errorText = await circlesResponse.text().catch(() => '');
-          if (__DEV__) {
-            console.error('[CirclesScreen] Circles API 오류:', {
-              status: circlesResponse.status,
-              statusText: circlesResponse.statusText,
-              error: errorText
-            });
-          }
+          await circlesResponse.text().catch(() => '');
           // 오류 시 캐시된 데이터가 있으면 사용
           if (cachedData) {
             setSavedCircles(JSON.parse(cachedData));
@@ -501,9 +482,6 @@ export default function CirclesScreen({ navigation, route }) {
           }
         }
       } catch (error) {
-        if (__DEV__) {
-          console.error('[CirclesScreen] Circles 로드 실패:', error);
-        }
         // 에러 발생 시 캐시된 데이터가 있으면 사용
         try {
           const cacheKey = `circles_${targetUni.toLowerCase()}`;

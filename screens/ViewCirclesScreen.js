@@ -130,9 +130,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
     
     // 중복 호출 방지 (호출 전에 즉시 플래그 설정)
     if (viewsIncrementedRef.current) {
-      if (__DEV__) {
-        console.log('[ViewCirclesScreen] 뷰수 증가 이미 실행됨, 중복 호출 방지');
-      }
       return;
     }
     
@@ -141,9 +138,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
     
     try {
       const universityCode = targetUniversity.toLowerCase();
-      if (__DEV__) {
-        console.log('[ViewCirclesScreen] 뷰수 증가 요청:', { circleId, universityCode });
-      }
       
       const response = await fetch(
         `${API_BASE_URL}/api/circles/${circleId}/increment-views?university=${encodeURIComponent(universityCode)}`,
@@ -153,9 +147,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          if (__DEV__) {
-            console.log('[ViewCirclesScreen] 뷰수 증가 성공:', data.views);
-          }
           // 뷰수 업데이트 (캐시 무관)
           setCircle(prev => prev ? { ...prev, views: data.views } : prev);
         } else {
@@ -166,24 +157,10 @@ export default function ViewCirclesScreen({ route, navigation }) {
         // 실패 시 플래그 리셋
         viewsIncrementedRef.current = false;
         // 404 에러는 조용히 처리 (다른 학교로 넘어갔을 때 발생할 수 있음)
-        if (response.status === 404) {
-          if (__DEV__) {
-            console.log('[ViewCirclesScreen] 소모임을 찾을 수 없음 (다른 학교일 수 있음):', { circleId, universityCode });
-          }
-          // 조용히 처리 (에러 메시지 표시 안 함)
-        } else {
-          if (__DEV__) {
-            console.error('[ViewCirclesScreen] 뷰수 증가 실패:', response.status);
-          }
-        }
       }
     } catch (error) {
       // 실패 시 플래그 리셋
       viewsIncrementedRef.current = false;
-      // 뷰수 증가 실패는 무시 (로그만 출력)
-      if (__DEV__) {
-        console.error('[ViewCirclesScreen] 뷰수 증가 실패:', error);
-      }
     }
   }, [circleId, targetUniversity]);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -503,9 +480,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
                 try {
                   fullCircle.content_blocks = JSON.parse(fullCircle.content_blocks);
                 } catch (e) {
-                  if (__DEV__) {
-                    console.error('[ViewCirclesScreen] content_blocks 파싱 실패:', e);
-                  }
                   fullCircle.content_blocks = [];
                 }
               }
@@ -573,9 +547,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
               ]);
             } else {
               // 소모임을 찾을 수 없음 (다른 학교일 수 있음)
-              if (__DEV__) {
-                console.log(`[ViewCirclesScreen] 소모임을 찾을 수 없음 (다른 학교일 수 있음)`);
-              }
               // 조용히 뒤로 가기
               if (navigation.canGoBack()) {
                 navigation.goBack();
@@ -584,9 +555,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
               }
             }
           } catch (parseError) {
-            if (__DEV__) {
-              console.error('[ViewCirclesScreen] JSON 파싱 오류:', parseError);
-            }
             setLoading(false);
             // 파싱 오류 시 조용히 뒤로 가기
             if (navigation.canGoBack()) {
@@ -598,9 +566,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
         } else {
           // 에러 응답 처리 (404는 조용히 처리)
           if (response.status === 404) {
-            if (__DEV__) {
-              console.log(`[ViewCirclesScreen] 소모임을 찾을 수 없음 (404) - 다른 학교일 수 있음`);
-            }
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
