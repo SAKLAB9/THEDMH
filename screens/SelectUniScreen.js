@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Modal, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -24,29 +24,39 @@ export default function SelectUniScreen() {
   const [iconImageUrl, setIconImageUrl] = useState(null); // 메인 아이콘 이미지 URL
 
   // 화면이 포커스될 때마다 설정 강제 새로고침 (최적화: 5분 이내면 스킵)
+  // 무한 루프 방지를 위해 ref로 새로고침 시도 여부 추적
+  const refreshAttemptedRef = useRef(false);
+  
   useEffect(() => {
     const refreshConfig = async () => {
-      // config가 비어있으면 강제로 새로고침
-      if (Object.keys(appConfig).length === 0) {
-        if (__DEV__) {
-          console.log('[SelectUniScreen] config가 비어있어 강제 새로고침');
-        }
+      // 이미 새로고침을 시도했으면 스킵 (무한 루프 방지)
+      if (refreshAttemptedRef.current) {
+        return;
+      }
+      
+      // config가 비어있고 아직 새로고침을 시도하지 않았으면 한 번만 시도
+      if (Object.keys(appConfig).length === 0 && !configLoading) {
+        refreshAttemptedRef.current = true;
         await loadConfig(null, true);
         return;
       }
       
-      const cachedTime = await AsyncStorage.getItem('app_config_updated');
-      if (cachedTime) {
-        const timeDiff = Date.now() - parseInt(cachedTime);
-        // 5분 이내면 새로고침 스킵
-        if (timeDiff < 5 * 60 * 1000) {
-          return;
+      // config가 있으면 캐시 시간 확인
+      if (Object.keys(appConfig).length > 0) {
+        const cachedTime = await AsyncStorage.getItem('app_config_updated');
+        if (cachedTime) {
+          const timeDiff = Date.now() - parseInt(cachedTime);
+          // 5분 이내면 새로고침 스킵
+          if (timeDiff < 5 * 60 * 1000) {
+            return;
+          }
         }
+        refreshAttemptedRef.current = true;
+        loadConfig(null, true);
       }
-      loadConfig(null, true);
     };
     refreshConfig();
-  }, [loadConfig, appConfig]);
+  }, [loadConfig]); // appConfig 의존성 제거하여 무한 루프 방지
 
   // 폰트 로드
   const [fontsLoaded] = useFonts({
@@ -94,65 +104,22 @@ export default function SelectUniScreen() {
   // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
     if (!fontsLoaded || configLoading) {
-      if (__DEV__) {
-        console.log(`[SelectUniScreen] 이미지 로드 스킵:`, { fontsLoaded, configLoading });
-      }
       return; // 폰트와 config가 로드되지 않았으면 실행하지 않음
     }
     
     const loadImageUrls = async () => {
-      if (__DEV__) {
-        console.log(`[SelectUniScreen] app_config 전체:`, {
-          configSize: Object.keys(appConfig).length,
-          allKeys: Object.keys(appConfig),
-          select_uni_keys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
-          slotsCount,
-          configLoading,
-        });
-        
-        // select_uni 관련 모든 키 확인
-        const allSelectUniKeys = Object.keys(appConfig).filter(k => k.includes('select_uni'));
-        console.log(`[SelectUniScreen] select_uni 관련 모든 키:`, allSelectUniKeys);
-        allSelectUniKeys.forEach(key => {
-          console.log(`[SelectUniScreen] ${key}:`, appConfig[key]);
-        });
-      }
-      
       // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
         const configKey = `select_uni_slot_${i}_image`;
         const imageName = getConfig(configKey, '');
-        const rawValue = appConfig[configKey];
-        if (__DEV__) {
-          console.log(`[SelectUniScreen] 슬롯 ${i}:`, {
-            configKey,
-            imageName,
-            rawValue,
-            isUndefined: rawValue === undefined,
-            type: typeof rawValue,
-            appConfigHasKey: configKey in appConfig,
-          });
-        }
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
         }
       }
       
-      if (__DEV__) {
-        console.log(`[SelectUniScreen] 슬롯 이미지 로드 시작:`, {
-          configLoading,
-          slotsCount,
-          imageNames,
-          imageNamesLength: imageNames.length,
-        });
-      }
-      
       if (imageNames.length === 0) {
-        if (__DEV__) {
-          console.warn(`[SelectUniScreen] 이미지 파일명이 없음`);
-        }
         setImageUrls({});
         return;
       }
@@ -171,9 +138,6 @@ export default function SelectUniScreen() {
           Object.keys(parsedUrls).forEach(imageName => {
             urls[imageName] = { uri: parsedUrls[imageName] };
           });
-          if (__DEV__) {
-            console.log(`[SelectUniScreen] 캐시에서 이미지 URL 로드:`, Object.keys(urls).length, '개');
-          }
           setImageUrls(urls);
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
@@ -204,22 +168,11 @@ export default function SelectUniScreen() {
           
           // 캐시에 저장
           await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
-          
-          if (__DEV__) {
-            console.log(`[SelectUniScreen] Supabase 직접 URL 생성 성공:`, Object.keys(urlObjects).length, '개');
-            Object.keys(urlObjects).forEach(name => {
-              console.log(`  - ${name}: ${urlObjects[name].uri}`);
-            });
-          }
         }
         
         // 백그라운드에서 API 호출 시도 (성공하면 캐시 업데이트)
         try {
           const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
-          
-          if (__DEV__) {
-            console.log(`[SelectUniScreen] 백그라운드 API 호출 시작:`, apiUrl);
-          }
           
           const response = await fetch(apiUrl, {
             method: 'POST',
@@ -243,10 +196,6 @@ export default function SelectUniScreen() {
               });
               
               setImageUrls(urls);
-              
-              if (__DEV__) {
-                console.log(`[SelectUniScreen] API 호출 성공, 이미지 URL 업데이트:`, Object.keys(urls).length, '개');
-              }
             }
           } else {
             if (__DEV__) {
@@ -294,10 +243,6 @@ export default function SelectUniScreen() {
             });
             
             setImageUrls(urlObjects);
-            
-            if (__DEV__) {
-              console.log(`[SelectUniScreen] Supabase 직접 URL 생성 성공 (에러 후):`, Object.keys(urlObjects).length, '개');
-            }
           }
         } catch (fallbackError) {
           if (__DEV__) {
@@ -369,13 +314,9 @@ export default function SelectUniScreen() {
                 .from('images')
                 .getPublicUrl(filePath);
               
-              // 캐시에 저장
-              await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
-              setIconImageUrl({ uri: urlData.publicUrl });
-              
-              if (__DEV__ && Platform.OS === 'ios') {
-                console.log(`[SelectUniScreen] iOS 메인 아이콘 Supabase 직접 URL 생성 성공:`, urlData.publicUrl);
-              }
+            // 캐시에 저장
+            await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+            setIconImageUrl({ uri: urlData.publicUrl });
             }
           } catch (fallbackError) {
             if (__DEV__) {
@@ -401,10 +342,6 @@ export default function SelectUniScreen() {
             // 캐시에 저장
             await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
             setIconImageUrl({ uri: urlData.publicUrl });
-            
-            if (__DEV__ && Platform.OS === 'ios') {
-              console.log(`[SelectUniScreen] iOS 메인 아이콘 Supabase 직접 URL 생성 성공 (에러 후):`, urlData.publicUrl);
-            }
           }
         } catch (fallbackError) {
           if (__DEV__) {
@@ -564,9 +501,7 @@ export default function SelectUniScreen() {
                   onError={(error) => {
                     console.error('[SelectUniScreen] 메인 아이콘 로드 실패 (웹):', error.nativeEvent?.error || error);
                   }}
-                  onLoad={() => {
-                    console.log('[SelectUniScreen] 메인 아이콘 로드 성공 (웹):', iconImageUrl.uri);
-                  }}
+                  onLoad={() => {}}
                 />
               </TouchableOpacity>
             ) : (
@@ -593,9 +528,7 @@ export default function SelectUniScreen() {
                   onError={(error) => {
                     console.error('[SelectUniScreen] 메인 아이콘 로드 실패:', error.nativeEvent.error);
                   }}
-                  onLoad={() => {
-                    console.log('[SelectUniScreen] 메인 아이콘 로드 성공:', iconImageUrl.uri);
-                  }}
+                  onLoad={() => {}}
                 />
             )
           )}
@@ -643,9 +576,7 @@ export default function SelectUniScreen() {
                   onError={(error) => {
                     console.error('[SelectUniScreen] 메인 아이콘 확대 모달 로드 실패:', error.nativeEvent?.error || error);
                   }}
-                  onLoad={() => {
-                    console.log('[SelectUniScreen] 메인 아이콘 확대 모달 로드 성공:', iconImageUrl.uri);
-                  }}
+                  onLoad={() => {}}
                 />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -913,11 +844,7 @@ export default function SelectUniScreen() {
                                   });
                                 }
                               }}
-                              onLoad={() => {
-                                if (__DEV__ && Platform.OS === 'ios') {
-                                  console.log(`[SelectUniScreen] iOS 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
-                                }
-                              }}
+                              onLoad={() => {}}
                             />
                           ) : (
                             // 이미지가 로딩 중일 때 표시할 플레이스홀더
