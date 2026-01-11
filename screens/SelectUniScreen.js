@@ -65,7 +65,7 @@ export default function SelectUniScreen() {
     return slotImageNames.join(',');
   }, [slotImageNames]);
 
-  // Supabase Storage에서 이미지 URL 가져오기 (배치 API로 한 번에 로드)
+  // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
     const loadImageUrls = async () => {
       // 모든 이미지 파일명 수집
@@ -82,8 +82,25 @@ export default function SelectUniScreen() {
         return;
       }
       
+      // 캐시 키 생성 (모든 파일명을 정렬하여 일관된 키 생성)
+      const sortedNames = [...imageNames].sort().join(',');
+      const cacheKey = `select_uni_image_urls_${sortedNames}`;
+      
       try {
-        // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
+        // 캐시에서 먼저 확인
+        const cachedUrls = await AsyncStorage.getItem(cacheKey);
+        if (cachedUrls) {
+          const parsedUrls = JSON.parse(cachedUrls);
+          // URL 객체로 변환
+          const urls = {};
+          Object.keys(parsedUrls).forEach(imageName => {
+            urls[imageName] = { uri: parsedUrls[imageName] };
+          });
+          setImageUrls(urls);
+          return; // 캐시에서 가져왔으므로 API 호출 생략
+        }
+        
+        // 캐시에 없으면 API 호출
         const response = await fetch(`${API_BASE_URL}/api/supabase-image-urls`, {
           method: 'POST',
           headers: {
@@ -95,6 +112,9 @@ export default function SelectUniScreen() {
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.urls) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
+            
             // URL 객체로 변환
             const urls = {};
             Object.keys(data.urls).forEach(imageName => {
@@ -108,7 +128,7 @@ export default function SelectUniScreen() {
           setImageUrls({});
         }
       } catch (error) {
-        // 에러 발생 시 빈 객체로 설정
+        console.error('[SelectUniScreen] 이미지 로드 실패:', error);
         setImageUrls({});
       }
     };
@@ -628,6 +648,7 @@ export default function SelectUniScreen() {
                                 height: '100%',
                               }}
                               resizeMode="contain"
+                              cache="force-cache"
                             />
                           )}
                         </View>
