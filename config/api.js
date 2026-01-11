@@ -20,8 +20,8 @@ const getApiBaseUrl = () => {
 
   // 프로덕션 환경
   if (!__DEV__) {
-    // Railway 배포 URL 사용 (기본값)
-    return 'https://miuhub.up.railway.app';
+    // Vercel 배포 URL 사용 (THE동문회 서버)
+    return 'https://the-dongmunhoi-server.vercel.app';
   }
 
   // 개발 환경
