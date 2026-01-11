@@ -1351,54 +1351,44 @@ app.get('/api/popups/:popupId/survey-responses', async (req, res) => {
 
 // 게시판 이미지 업로드 API (upload-image로 통합, type='board' 파라미터 사용)
 app.post('/api/upload-board-image', async (req, res) => {
-  // upload-image로 리다이렉트 (하위 호환성)
-  req.body.type = 'board';
-  // upload-image 핸들러 재사용
-  const { imageData, filename, university } = req.body;
-  
-  if (!imageData) {
-    return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
-  }
-  
-  if (!university) {
-    return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
-  }
-  
-  const universityCode = await normalizeUniversityFromRequest(university, pool);
-  if (!universityCode) {
-    return res.status(400).json({ error: '유효하지 않은 university입니다.' });
-  }
-  
-  const imageFilename = filename || `board_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
-  
   try {
-    const imageUrl = await saveBoardImageToSupabase(imageData, imageFilename, universityCode);
-    return res.json({
-      success: true,
-      url: imageUrl,
-      filename: imageFilename
-    });
-  } catch (error) {
-    console.error('[API Upload Board Image] 이미지 저장 실패:', error);
-    return res.status(500).json({ 
-      error: '이미지 업로드 실패', 
-      message: error.message 
-    });
-  }
-});
+    const { imageData, filename, university } = req.body;
+    
+    if (!imageData) {
+      return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
+    }
+    
+    if (!university) {
+      return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+    }
+    
+    const universityCode = await normalizeUniversityFromRequest(university, pool);
     if (!universityCode) {
       return res.status(400).json({ error: '유효하지 않은 university입니다.' });
     }
     
     const imageFilename = filename || `board_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
-    const imageUrl = await saveBoardImage(imageData, imageFilename, universityCode);
-    res.json({
-      success: true,
-      url: imageUrl,
-      filename: imageFilename
-    });
+    
+    try {
+      const imageUrl = await saveBoardImageToSupabase(imageData, imageFilename, universityCode);
+      return res.json({
+        success: true,
+        url: imageUrl,
+        filename: imageFilename
+      });
     } catch (error) {
-    res.status(500).json({ error: '게시판 이미지 업로드 실패', message: error.message });
+      console.error('[API Upload Board Image] 이미지 저장 실패:', error);
+      return res.status(500).json({ 
+        error: '이미지 업로드 실패', 
+        message: error.message 
+      });
+    }
+  } catch (error) {
+    console.error('[API Upload Board Image] 일반 오류:', error);
+    return res.status(500).json({ 
+      error: '서버 오류가 발생했습니다.', 
+      message: error.message 
+    });
   }
 });
 
