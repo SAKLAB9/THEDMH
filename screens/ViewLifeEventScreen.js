@@ -535,10 +535,11 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   }, [lifeEventId, university, loadLifeEvent]);
 
   // 홈 화면의 뷰수 업데이트를 위한 navigation listener
+  // 서버에서 뷰수가 업데이트된 후에만 홈 화면에 전달
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', () => {
-      // 화면을 떠날 때 홈 화면에 뷰수 업데이트 알림
-      if (lifeEvent && lifeEvent.views !== undefined) {
+      // 서버에서 뷰수가 업데이트되었을 때만 홈 화면에 뷰수 업데이트 알림
+      if (lifeEvent && lifeEvent.views !== undefined && viewsUpdated) {
         navigation.navigate('Main', {
           screen: 'Home',
           params: {
@@ -553,7 +554,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     });
 
     return unsubscribe;
-  }, [navigation, lifeEvent, lifeEventId]);
+  }, [navigation, lifeEvent, lifeEventId, viewsUpdated]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 경조사는 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
