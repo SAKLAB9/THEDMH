@@ -385,7 +385,10 @@ export default function HomeScreen({ navigation }) {
               setSavedNotices([]);
             }
           } else {
-            console.error('[HomeScreen] 공지사항 로드 실패:', noticesResponse.status);
+            // 404 오류는 개발 모드에서만 로그
+            if (__DEV__) {
+              console.error('[HomeScreen] 공지사항 로드 실패:', noticesResponse.status, `${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`);
+            }
             setSavedNotices([]);
           }
 
@@ -395,11 +398,16 @@ export default function HomeScreen({ navigation }) {
             if (lifeEventsData.success && lifeEventsData.lifeEvents) {
               setSavedLifeEvents(lifeEventsData.lifeEvents);
             } else {
-              console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+              if (__DEV__) {
+                console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+              }
               setSavedLifeEvents([]);
             }
           } else {
-            console.error('[HomeScreen] 경조사 로드 실패:', lifeEventsResponse.status);
+            // 404 오류는 개발 모드에서만 로그
+            if (__DEV__) {
+              console.error('[HomeScreen] 경조사 로드 실패:', lifeEventsResponse.status, `${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`);
+            }
             setSavedLifeEvents([]);
           }
         } catch (error) {

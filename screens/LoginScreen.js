@@ -553,8 +553,18 @@ export default function LoginScreen() {
         });
 
         if (authError) {
-          console.error('Supabase 로그인 에러:', authError);
-          alert(authError.message || '로그인에 실패했습니다.');
+          // 비밀번호 오류 등 일반적인 인증 실패는 상세 로그 생략
+          if (authError.message?.includes('Invalid login credentials') || authError.message?.includes('Invalid')) {
+            // 개발 모드에서만 상세 로그
+            if (__DEV__) {
+              console.log('[Login] 인증 실패:', authError.message);
+            }
+            alert('이메일 또는 비밀번호가 올바르지 않습니다.');
+          } else {
+            // 기타 오류는 상세 로그
+            console.error('[Login] Supabase 로그인 에러:', authError);
+            alert(authError.message || '로그인에 실패했습니다.');
+          }
           setIsLoggingIn(false);
           return;
         }
