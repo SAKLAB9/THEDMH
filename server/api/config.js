@@ -57,11 +57,12 @@ module.exports = async (req, res) => {
           config: config
         });
       } catch (error) {
-        console.error('[API Config] 데이터베이스 오류:', error);
-        return res.status(500).json({ 
-          success: false,
-          error: '서버 오류가 발생했습니다.', 
-          message: error.message 
+        console.error('[API Config] 데이터베이스 오류:', error.message);
+        // 데이터베이스 오류 시에도 빈 config 반환 (앱이 계속 작동하도록)
+        console.warn('[API Config] 데이터베이스 오류로 인해 빈 config 반환');
+        return res.json({
+          success: true,
+          config: {}
         });
       }
     } else {
@@ -72,11 +73,11 @@ module.exports = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('[API Config] 일반 오류:', error);
-    return res.status(500).json({ 
-      success: false,
-      error: '서버 오류가 발생했습니다.', 
-      message: error.message 
+    console.error('[API Config] 일반 오류:', error.message);
+    // 일반 오류 시에도 빈 config 반환 (앱이 계속 작동하도록)
+    return res.json({
+      success: true,
+      config: {}
     });
   }
 };
