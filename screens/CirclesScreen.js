@@ -32,12 +32,10 @@ export default function CirclesScreen({ navigation, route }) {
     
     // selectedChannel이 'MIUHub'인 경우 university로 덮어쓰지 않음
     if (selectedChannel === 'MIUHub') {
-      console.log('[DEBUG university useEffect] selectedChannel이 MIUHub이므로 university 변경 무시');
       return;
     }
     
     if (university) {
-      console.log('[DEBUG university useEffect] selectedChannel을 university로 업데이트:', university);
       setSelectedChannel(university);
     } else if (!university) {
       setSelectedChannel(null);
@@ -63,15 +61,12 @@ export default function CirclesScreen({ navigation, route }) {
     const prevChannel = selectedChannelRef.current;
     selectedChannelRef.current = selectedChannel;
     
-    console.log('[DEBUG useEffect] selectedChannel 변경:', { prevChannel, selectedChannel });
-    
     // selectedChannel이 실제로 변경되었을 때만 실행
     if (prevChannel === selectedChannel) {
       return;
     }
     
     // 채널이 변경되면 캐시 무시하고 새로 로드 (MIUHub <-> 학교 탭 전환 시)
-    console.log('[DEBUG useEffect] 채널 변경 감지, 캐시 무시하고 새로 로드:', { prevChannel, selectedChannel });
     loadCirclesData(true);
   }, [selectedChannel, university]);
   
@@ -418,10 +413,7 @@ export default function CirclesScreen({ navigation, route }) {
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
       const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
-      console.log('[DEBUG loadCirclesData] 시작:', { selectedChannel, targetUni, university, forceRefresh });
-      
       if (!targetUni || !targetUni.trim()) {
-        console.log('[DEBUG loadCirclesData] targetUni 없음, 빈 배열 설정');
         setSavedCircles([]);
         return;
       }
@@ -449,7 +441,6 @@ export default function CirclesScreen({ navigation, route }) {
           // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
           if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
             const cachedCircles = JSON.parse(cachedData);
-            console.log('[DEBUG loadCirclesData] 캐시 사용:', { universityCode, count: cachedCircles.length });
             
             // 캐시된 데이터를 즉시 표시 (빠른 응답)
             setSavedCircles(cachedCircles);
@@ -499,7 +490,6 @@ export default function CirclesScreen({ navigation, route }) {
         }
         
         // 캐시가 없거나 만료되었거나 forceRefresh이면 새로 로드
-        console.log('[DEBUG loadCirclesData] API 호출:', { universityCode });
         const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
         if (circlesResponse.ok) {
           // 응답 텍스트를 받는 즉시 파싱 (성능 최적화)
@@ -507,7 +497,6 @@ export default function CirclesScreen({ navigation, route }) {
           try {
             const circlesData = JSON.parse(circlesText);
             if (circlesData.success && circlesData.circles) {
-              console.log('[DEBUG loadCirclesData] API 응답 성공:', { universityCode, count: circlesData.circles.length });
               setSavedCircles(circlesData.circles);
               // 캐시 저장 (비동기, 블로킹하지 않음 - HomeScreen과 동일)
               AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
@@ -662,7 +651,6 @@ export default function CirclesScreen({ navigation, route }) {
         
         // currentChannel에 따라 targetUni 결정
         const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
-        console.log('[DEBUG refreshData] targetUni 결정:', { currentChannel, targetUni, university });
         
         if (!targetUni) {
           if (isMounted) {
@@ -736,7 +724,6 @@ export default function CirclesScreen({ navigation, route }) {
             try {
               const circlesData = JSON.parse(circlesText);
               if (circlesData.success && circlesData.circles) {
-                console.log('[DEBUG refreshData] API 응답 성공:', { universityCode, count: circlesData.circles.length });
                 setSavedCircles(circlesData.circles);
                 // 캐시 저장
                 AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
