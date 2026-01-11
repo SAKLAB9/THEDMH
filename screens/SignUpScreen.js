@@ -28,22 +28,44 @@ export default function SignUpScreen({ route }) {
   const uniColor = useMemo(() => uniColors ? uniColors.background : LOGIN_COLORS.iconBackground, [uniColors, LOGIN_COLORS.iconBackground]); // 선택한 학교 색상 또는 Login 아이콘 색상
   const primaryColor = uniColor; // 선택한 학교 색상을 primary 색상으로 사용
   
-  // Supabase Storage에서 이미지 URL 로드
+  // Supabase Storage에서 이미지 URL 로드 (캐싱 적용)
   useEffect(() => {
     const loadIconImage = async () => {
-      if (selectedUniImage) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(selectedUniImage)}`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.url) {
-              setIconImageUrl({ uri: data.url });
-            }
-          }
-        } catch (error) {
-          // 이미지 로드 실패 시 무시
+      if (!selectedUniImage) {
+        setIconImageUrl(null);
+        return;
+      }
+      
+      // 캐시 키 생성
+      const cacheKey = `signup_icon_url_${selectedUniImage}`;
+      
+      try {
+        // 캐시에서 먼저 확인
+        const cachedUrl = await AsyncStorage.getItem(cacheKey);
+        if (cachedUrl) {
+          setIconImageUrl({ uri: cachedUrl });
+          return; // 캐시에서 가져왔으므로 API 호출 생략
         }
-      } else {
+        
+        // 캐시에 없으면 API 호출
+        const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(selectedUniImage)}`;
+        const response = await fetch(apiUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.url) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, data.url);
+            setIconImageUrl({ uri: data.url });
+          } else {
+            setIconImageUrl(null);
+          }
+        } else {
+          setIconImageUrl(null);
+        }
+      } catch (error) {
+        // 이미지 로드 실패 시 무시
         setIconImageUrl(null);
       }
     };
@@ -368,6 +390,7 @@ export default function SignUpScreen({ route }) {
                     cursor: 'pointer',
                   }}
                   resizeMode="contain"
+                  cache="force-cache"
                 />
               ) : (
                 <View style={{
@@ -400,6 +423,7 @@ export default function SignUpScreen({ route }) {
                   elevation: 12,
                 }}
                 resizeMode="contain"
+                cache="force-cache"
               />
             ) : (
               <View style={{
@@ -454,6 +478,7 @@ export default function SignUpScreen({ route }) {
                       elevation: 12,
                     }}
                     resizeMode="contain"
+                    cache="force-cache"
                   />
                 ) : (
                   <View style={{
