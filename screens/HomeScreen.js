@@ -431,9 +431,11 @@ export default function HomeScreen({ navigation }) {
           }
           
           // 공지사항과 경조사 캐시 확인
-          const noticesCacheKey = `home_notices_${universityCode}`;
-          const lifeEventsCacheKey = `home_life_events_${universityCode}`;
-          const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
+          // 캐시 키에 채널 정보 포함: 학교 탭과 MIUHub 탭의 캐시를 완전히 분리
+          const channelPrefix = universityCode === 'miuhub' ? 'miuhub' : 'school';
+          const noticesCacheKey = `home_notices_${channelPrefix}_${universityCode}`;
+          const lifeEventsCacheKey = `home_life_events_${channelPrefix}_${universityCode}`;
+          const cacheTimestampKey = `home_data_timestamp_${channelPrefix}_${universityCode}`;
           
           let cachedNotices = null;
           let cachedLifeEvents = null;
