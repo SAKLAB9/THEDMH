@@ -710,7 +710,6 @@ export default function CirclesScreen({ navigation, route }) {
           }
           
           // 캐시가 없거나 만료되었으면 새로 로드 (기존 데이터는 유지)
-          console.log('[DEBUG refreshData] API 호출:', { universityCode });
           const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
           if (circlesResponse.ok && isMounted) {
             const circlesText = await circlesResponse.text();
