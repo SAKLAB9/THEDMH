@@ -268,6 +268,10 @@ export default function HomeScreen({ navigation }) {
 
   // university가 변경될 때마다 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
   useEffect(() => {
+    // university가 변경되면 즉시 이전 데이터 초기화 (다른 채널로 전환 시)
+    setSavedNotices([]);
+    setSavedLifeEvents([]);
+    
     const loadAllData = async () => {
       if (!university || !university.trim()) {
         setLogoImageUrl(null);
