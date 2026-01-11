@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, Image, ActivityIndicator, Alert, TouchableOpacity, Dimensions, TextInput, Modal, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,8 +18,6 @@ function ImageBlock({ uri }) {
   const maxImageWidth = screenWidth - contentPadding;
   const [imageSize, setImageSize] = useState({ width: maxImageWidth, height: 200 });
   const [imageError, setImageError] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const loadTimeoutRef = useRef(null);
 
   // 이미지 URI를 절대 경로로 변환 및 경로 수정
   const getImageUri = (uri) => {
@@ -89,21 +87,16 @@ function ImageBlock({ uri }) {
         }
         
         // 캐시가 없으면 기본 크기로 시작하고 백그라운드에서 크기 확인
-        // 크기 확인 (비동기, 블로킹하지 않음)
         Image.getSize(imageUri, (width, height) => {
           const aspectRatio = height / width;
           const displayWidth = maxImageWidth;
           const displayHeight = displayWidth * aspectRatio;
-          const newSize = { width: displayWidth, height: displayHeight };
-          setImageSize(newSize);
+          setImageSize({ width: displayWidth, height: displayHeight });
           
           // 크기를 캐시에 저장
           AsyncStorage.setItem(sizeCacheKey, JSON.stringify({ width, height })).catch(() => {});
-        }, (error) => {
+        }, () => {
           // 에러가 발생해도 기본 크기 유지
-          if (__DEV__) {
-            console.error('[ViewNoticeScreen] Image.getSize 실패:', error, 'URI:', imageUri);
-          }
         });
       })
       .catch(() => {
@@ -115,20 +108,7 @@ function ImageBlock({ uri }) {
           setImageSize({ width: displayWidth, height: displayHeight });
         }, () => {});
       });
-    
-    // 타임아웃 설정: 5초 후에도 로드되지 않으면 강제로 표시
-    loadTimeoutRef.current = setTimeout(() => {
-      if (!imageLoaded) {
-        setImageLoaded(true);
-      }
-    }, 5000);
-    
-    return () => {
-      if (loadTimeoutRef.current) {
-        clearTimeout(loadTimeoutRef.current);
-      }
-    };
-  }, [imageUri, maxImageWidth, imageLoaded]);
+  }, [imageUri, maxImageWidth]);
 
   if (!imageUri || imageError) {
     return null;
@@ -136,31 +116,15 @@ function ImageBlock({ uri }) {
 
   return (
     <View className="relative mb-3" style={{ width: '100%', alignItems: 'center' }}>
-      {!imageLoaded && (
-        <View style={{ 
-          position: 'absolute',
-          width: imageSize.width, 
-          height: imageSize.height, 
-          backgroundColor: '#f3f4f6',
-          borderRadius: 8,
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1
-        }}>
-          <ActivityIndicator size="small" color="#9ca3af" />
-        </View>
-      )}
       <Image
         source={{ uri: imageUri }}
         style={{ 
           width: imageSize.width, 
           height: imageSize.height, 
           borderRadius: 8,
-          maxWidth: '100%',
-          opacity: imageLoaded ? 1 : 0
+          maxWidth: '100%'
         }}
         resizeMode="contain"
-        onLoad={() => setImageLoaded(true)}
         onError={(error) => {
           if (__DEV__) {
             console.error('[ViewNoticeScreen] Image 로드 실패:', error, 'URI:', imageUri);
