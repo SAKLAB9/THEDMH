@@ -7,13 +7,13 @@
 -- ============================================
 
 -- 헬퍼 함수: 테이블 존재 여부 확인
-CREATE OR REPLACE FUNCTION table_exists(table_name TEXT)
+CREATE OR REPLACE FUNCTION table_exists(p_table_name TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
-        AND table_name = table_exists.table_name
+        AND information_schema.tables.table_name = p_table_name
     );
 END;
 $$ LANGUAGE plpgsql;
