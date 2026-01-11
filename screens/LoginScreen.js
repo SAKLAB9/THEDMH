@@ -329,14 +329,8 @@ export default function LoginScreen() {
     // 폰트 로드 완료는 조용히 처리
   }, [fontsLoaded, fontError]);
 
-  // Config에서 Admin 모달 슬롯 설정 가져오기 (hooks 전에 계산)
-  const adminSlotsCount = getConfigNumber ? getConfigNumber('login_admin_slots_count', 3) : 3;
-  
-  // Admin 모달 슬롯 이미지 파일명들 가져오기 (의존성 배열용)
-  const adminSlotImageNames = [];
-  for (let i = 1; i <= adminSlotsCount; i++) {
-    adminSlotImageNames.push(getConfig(`login_admin_slot_${i}_image`, ''));
-  }
+  // Config에서 Admin 모달 슬롯 설정 가져오기 (config가 로드된 후에만 계산)
+  const adminSlotsCount = configLoading ? 0 : (getConfigNumber ? getConfigNumber('login_admin_slots_count', 0) : 0);
 
   // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
