@@ -353,11 +353,23 @@ export default function ViewLifeEventScreen({ route, navigation }) {
                 lifeEvent: data.lifeEvent,
                 timestamp: Date.now()
               })).catch(() => {});
-          } else {
-            if (__DEV__) {
-              console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음`);
+            } else {
+              if (__DEV__) {
+                console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음`);
+              }
+              Alert.alert('오류', '경조사를 찾을 수 없습니다.');
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Main');
+              }
             }
-            Alert.alert('오류', '경조사를 찾을 수 없습니다.');
+          } catch (parseError) {
+            // JSON 파싱 실패 시 기존 방식으로 처리
+            if (__DEV__) {
+              console.error('[ViewLifeEventScreen] JSON 파싱 실패:', parseError);
+            }
+            Alert.alert('오류', '데이터를 불러오는 중 오류가 발생했습니다.');
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
