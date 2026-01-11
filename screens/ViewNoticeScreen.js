@@ -19,6 +19,7 @@ function ImageBlock({ uri }) {
   const [imageSize, setImageSize] = useState({ width: maxImageWidth, height: 200 });
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const loadTimeoutRef = useRef(null);
 
   // 이미지 URI를 절대 경로로 변환 및 경로 수정
   const getImageUri = (uri) => {
@@ -88,9 +89,6 @@ function ImageBlock({ uri }) {
         }
         
         // 캐시가 없으면 기본 크기로 시작하고 백그라운드에서 크기 확인
-        // 이미지 프리로드 (캐시에 저장)
-        Image.prefetch(imageUri).catch(() => {});
-        
         // 크기 확인 (비동기, 블로킹하지 않음)
         Image.getSize(imageUri, (width, height) => {
           const aspectRatio = height / width;
@@ -99,7 +97,7 @@ function ImageBlock({ uri }) {
           const newSize = { width: displayWidth, height: displayHeight };
           setImageSize(newSize);
           
-          // 크기를 캐시에 저장 (24시간 유효)
+          // 크기를 캐시에 저장
           AsyncStorage.setItem(sizeCacheKey, JSON.stringify({ width, height })).catch(() => {});
         }, (error) => {
           // 에러가 발생해도 기본 크기 유지
@@ -110,7 +108,6 @@ function ImageBlock({ uri }) {
       })
       .catch(() => {
         // AsyncStorage 오류 시 바로 크기 확인
-        Image.prefetch(imageUri).catch(() => {});
         Image.getSize(imageUri, (width, height) => {
           const aspectRatio = height / width;
           const displayWidth = maxImageWidth;
@@ -118,7 +115,20 @@ function ImageBlock({ uri }) {
           setImageSize({ width: displayWidth, height: displayHeight });
         }, () => {});
       });
-  }, [imageUri, maxImageWidth]);
+    
+    // 타임아웃 설정: 5초 후에도 로드되지 않으면 강제로 표시
+    loadTimeoutRef.current = setTimeout(() => {
+      if (!imageLoaded) {
+        setImageLoaded(true);
+      }
+    }, 5000);
+    
+    return () => {
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+    };
+  }, [imageUri, maxImageWidth, imageLoaded]);
 
   if (!imageUri || imageError) {
     return null;
