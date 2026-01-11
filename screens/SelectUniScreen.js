@@ -96,12 +96,19 @@ export default function SelectUniScreen() {
           Object.keys(parsedUrls).forEach(imageName => {
             urls[imageName] = { uri: parsedUrls[imageName] };
           });
+          if (__DEV__ && Platform.OS === 'ios') {
+            console.log(`[SelectUniScreen] iOS 캐시에서 이미지 URL 로드:`, Object.keys(urls).length, '개');
+          }
           setImageUrls(urls);
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
+        
+        if (__DEV__ && Platform.OS === 'ios') {
+          console.log(`[SelectUniScreen] iOS API 호출 시작:`, apiUrl, imageNames);
+        }
         
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -123,9 +130,20 @@ export default function SelectUniScreen() {
             Object.keys(data.urls).forEach(imageName => {
               urls[imageName] = { uri: data.urls[imageName] };
             });
+            
+            if (__DEV__ && Platform.OS === 'ios') {
+              console.log(`[SelectUniScreen] iOS 이미지 URL 로드 성공:`, Object.keys(urls).length, '개');
+              Object.keys(urls).forEach(name => {
+                console.log(`  - ${name}: ${urls[name].uri}`);
+              });
+            }
+            
             setImageUrls(urls);
           } else {
             // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
+            if (__DEV__ && Platform.OS === 'ios') {
+              console.warn(`[SelectUniScreen] iOS API 응답 실패:`, data);
+            }
             setImageUrls({});
           }
         } else {
@@ -222,7 +240,11 @@ export default function SelectUniScreen() {
   for (let i = 1; i <= slotsCount; i++) {
     const imageName = getConfig(`select_uni_slot_${i}_image`, '');
     if (imageName) {
-      slotImages.push(imageUrls[imageName] || null);
+      const imageUrl = imageUrls[imageName];
+      if (__DEV__ && Platform.OS === 'ios' && !imageUrl) {
+        console.warn(`[SelectUniScreen] iOS 이미지 URL 없음 (slot ${i}):`, imageName, 'imageUrls:', Object.keys(imageUrls));
+      }
+      slotImages.push(imageUrl || null);
     } else {
       slotImages.push(null);
     }
@@ -701,10 +723,18 @@ export default function SelectUniScreen() {
                               resizeMode="contain"
                               {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
                               onError={(error) => {
-                                console.error(`[SelectUniScreen] 이미지 로드 실패 (slot ${index + 1}):`, error.nativeEvent.error);
+                                if (__DEV__ && Platform.OS === 'ios') {
+                                  console.error(`[SelectUniScreen] iOS 이미지 로드 실패 (slot ${index + 1}):`, {
+                                    error: error.nativeEvent?.error,
+                                    uri: imageSource.uri,
+                                    imageName: imageName
+                                  });
+                                }
                               }}
                               onLoad={() => {
-                                console.log(`[SelectUniScreen] 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
+                                if (__DEV__ && Platform.OS === 'ios') {
+                                  console.log(`[SelectUniScreen] iOS 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
+                                }
                               }}
                             />
                           )}
