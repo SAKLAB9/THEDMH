@@ -70,7 +70,7 @@ BEGIN
                 EXECUTE format('
                     UPDATE %I 
                     SET images = (
-                        SELECT array_agg(
+                        SELECT COALESCE(array_agg(
                             regexp_replace(
                                 regexp_replace(
                                     img,
@@ -82,7 +82,7 @@ BEGIN
                                 ''/'',
                                 ''g''
                             )
-                        )
+                        ), ARRAY[]::TEXT[])
                         FROM (
                             SELECT img FROM unnest(images) AS img
                         ) AS img_list
