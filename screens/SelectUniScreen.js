@@ -26,7 +26,7 @@ export default function SelectUniScreen() {
   // 화면이 포커스될 때마다 설정 강제 새로고침 (최적화: 5분 이내면 스킵)
   // 무한 루프 방지를 위해 ref로 새로고침 시도 여부 추적
   const refreshAttemptedRef = useRef(false);
-  const configLogRef = useRef(false); // 로그 출력 여부 추적
+  const lastConfigStateRef = useRef(''); // 마지막 config 상태 추적
   
   useEffect(() => {
     const refreshConfig = async () => {
@@ -38,10 +38,6 @@ export default function SelectUniScreen() {
       // config가 비어있고 아직 새로고침을 시도하지 않았으면 한 번만 시도
       if (Object.keys(appConfig).length === 0 && !configLoading) {
         refreshAttemptedRef.current = true;
-        if (__DEV__ && !configLogRef.current) {
-          console.log('[SelectUniScreen] config가 비어있어 강제 새로고침 시도');
-          configLogRef.current = true;
-        }
         await loadConfig(null, true);
         return;
       }
@@ -63,16 +59,28 @@ export default function SelectUniScreen() {
     refreshConfig();
   }, [loadConfig]); // appConfig 의존성 제거하여 무한 루프 방지
   
-  // config 상태 로깅 (한 번만 출력)
+  // config 상태 로깅 (상태가 변경될 때만 출력)
   useEffect(() => {
-    if (__DEV__ && !configLoading && Object.keys(appConfig).length > 0 && !configLogRef.current) {
-      const selectUniKeys = Object.keys(appConfig).filter(k => k.includes('select_uni'));
-      console.log('[SelectUniScreen] Config 로드 완료:', {
-        totalKeys: Object.keys(appConfig).length,
-        selectUniKeys: selectUniKeys.length,
-        selectUniKeysList: selectUniKeys,
+    if (__DEV__ && !configLoading) {
+      const currentState = JSON.stringify({
+        keys: Object.keys(appConfig).length,
+        isEmpty: Object.keys(appConfig).length === 0,
       });
-      configLogRef.current = true;
+      
+      // 상태가 변경되었을 때만 로그 출력
+      if (currentState !== lastConfigStateRef.current) {
+        if (Object.keys(appConfig).length > 0) {
+          const selectUniKeys = Object.keys(appConfig).filter(k => k.includes('select_uni'));
+          console.log('[SelectUniScreen] Config 로드 완료:', {
+            totalKeys: Object.keys(appConfig).length,
+            selectUniKeys: selectUniKeys.length,
+            selectUniKeysList: selectUniKeys,
+          });
+        } else {
+          console.log('[SelectUniScreen] Config가 비어있음 - API 응답 확인 필요');
+        }
+        lastConfigStateRef.current = currentState;
+      }
     }
   }, [appConfig, configLoading]);
 
@@ -120,7 +128,7 @@ export default function SelectUniScreen() {
   }, [slotImageNames]);
 
   // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
-  const imageLoadLogRef = useRef(false); // 이미지 로드 로그 출력 여부 추적
+  const lastImageLoadStateRef = useRef(''); // 마지막 이미지 로드 상태 추적
   
   useEffect(() => {
     if (!fontsLoaded || configLoading) {
@@ -130,20 +138,20 @@ export default function SelectUniScreen() {
     const loadImageUrls = async () => {
       // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
+      const slotDetails = [];
+      
       for (let i = 1; i <= slotsCount; i++) {
         const configKey = `select_uni_slot_${i}_image`;
         const imageName = getConfig(configKey, '');
         const rawValue = appConfig[configKey];
         
-        // 디버깅 로그 (한 번만 출력)
-        if (__DEV__ && !imageLoadLogRef.current) {
-          console.log(`[SelectUniScreen] 슬롯 ${i} config 확인:`, {
-            configKey,
-            imageName: imageName || '(빈 값)',
-            rawValue: rawValue || '(undefined)',
-            hasInConfig: configKey in appConfig,
-          });
-        }
+        slotDetails.push({
+          slot: i,
+          configKey,
+          imageName: imageName || '(빈 값)',
+          rawValue: rawValue || '(undefined)',
+          hasInConfig: configKey in appConfig,
+        });
         
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
@@ -151,15 +159,22 @@ export default function SelectUniScreen() {
         }
       }
       
-      // 디버깅 로그 (한 번만 출력)
-      if (__DEV__ && !imageLoadLogRef.current) {
+      // 상태가 변경되었을 때만 로그 출력
+      const currentState = JSON.stringify({
+        slotsCount,
+        imageNamesCount: imageNames.length,
+        configKeys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
+      });
+      
+      if (__DEV__ && currentState !== lastImageLoadStateRef.current) {
+        console.log('[SelectUniScreen] 슬롯 config 확인:', slotDetails);
         console.log('[SelectUniScreen] 이미지 파일명 수집 결과:', {
           slotsCount,
           imageNamesFound: imageNames.length,
           imageNames: imageNames,
           allSelectUniKeys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
         });
-        imageLoadLogRef.current = true;
+        lastImageLoadStateRef.current = currentState;
       }
       
       if (imageNames.length === 0) {
