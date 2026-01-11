@@ -67,18 +67,8 @@ export default function SelectUniScreen() {
         isEmpty: Object.keys(appConfig).length === 0,
       });
       
-      // 상태가 변경되었을 때만 로그 출력
+      // 상태 추적
       if (currentState !== lastConfigStateRef.current) {
-        if (Object.keys(appConfig).length > 0) {
-          const selectUniKeys = Object.keys(appConfig).filter(k => k.includes('select_uni'));
-          console.log('[SelectUniScreen] Config 로드 완료:', {
-            totalKeys: Object.keys(appConfig).length,
-            selectUniKeys: selectUniKeys.length,
-            selectUniKeysList: selectUniKeys,
-          });
-        } else {
-          console.log('[SelectUniScreen] Config가 비어있음 - API 응답 확인 필요');
-        }
         lastConfigStateRef.current = currentState;
       }
     }
@@ -115,41 +105,14 @@ export default function SelectUniScreen() {
 
   // 슬롯 데이터: app_config에서 각 슬롯의 이미지 파일명 가져오기
   const slotData = useMemo(() => {
-    if (configLoading) {
-      if (__DEV__) {
-        console.log('[SelectUniScreen] configLoading 중 - slotData 빈 배열 반환');
-      }
-      return [];
-    }
-    
-    if (slotsCount === 0) {
-      if (__DEV__) {
-        console.log('[SelectUniScreen] slotsCount가 0 - slotData 빈 배열 반환');
-      }
+    if (configLoading || slotsCount === 0) {
       return [];
     }
     
     const slots = [];
-    if (__DEV__) {
-      console.log('[SelectUniScreen] 슬롯 데이터 생성 시작:', {
-        slotsCount,
-        appConfigKeys: Object.keys(appConfig).length,
-        hasSelectUniSlotsCount: 'select_uni_slots_count' in appConfig,
-      });
-    }
-    
     for (let i = 1; i <= slotsCount; i++) {
       const key = `select_uni_slot_${i}`;
       const imageName = appConfig[key] || '';
-      
-      if (__DEV__) {
-        console.log(`[SelectUniScreen] 슬롯 ${i} 확인:`, {
-          key,
-          imageName: imageName || '(빈 값)',
-          hasInConfig: key in appConfig,
-          rawValue: appConfig[key],
-        });
-      }
       
       if (imageName && imageName.trim() !== '' && imageName !== 'EMPTY') {
         const row = Math.ceil(i / 2);
@@ -161,13 +124,6 @@ export default function SelectUniScreen() {
           imageName: imageName.trim(),
         });
       }
-    }
-    
-    if (__DEV__) {
-      console.log('[SelectUniScreen] 슬롯 데이터 생성 완료:', {
-        totalSlots: slots.length,
-        slots: slots.map(s => ({ slot: s.slotNumber, image: s.imageName })),
-      });
     }
     
     return slots;
@@ -203,18 +159,13 @@ export default function SelectUniScreen() {
             .getPublicUrl(filePath);
           
           if (urlError || !urlData?.publicUrl) {
-            if (__DEV__) {
-              console.error(`[SelectUniScreen] 슬롯 ${slotNumber} URL 생성 실패:`, urlError);
-            }
             continue;
           }
           
           await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
           urls[imageName] = { uri: urlData.publicUrl };
         } catch (error) {
-          if (__DEV__) {
-            console.error(`[SelectUniScreen] 슬롯 ${slotNumber} 이미지 로드 실패:`, error.message);
-          }
+          // 에러 무시
         }
       }
       
@@ -260,9 +211,6 @@ export default function SelectUniScreen() {
           .getPublicUrl(filePath);
         
         if (urlError || !urlData?.publicUrl) {
-          if (__DEV__) {
-            console.error('[SelectUniScreen] 메인 아이콘 URL 생성 실패:', urlError);
-          }
           setIconImageUrl(null);
           return;
         }
@@ -271,9 +219,6 @@ export default function SelectUniScreen() {
         await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
         setIconImageUrl({ uri: urlData.publicUrl });
       } catch (error) {
-        if (__DEV__) {
-          console.error('[SelectUniScreen] 메인 아이콘 로드 실패:', error);
-        }
         setIconImageUrl(null);
       }
     };
@@ -419,9 +364,7 @@ export default function SelectUniScreen() {
                   }}
                   resizeMode="contain"
                   {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
-                  onError={(error) => {
-                    console.error('[SelectUniScreen] 메인 아이콘 로드 실패 (웹):', error.nativeEvent?.error || error);
-                  }}
+                  onError={() => {}}
                   onLoad={() => {}}
                 />
               </TouchableOpacity>
@@ -446,9 +389,7 @@ export default function SelectUniScreen() {
                   }}
                   resizeMode="contain"
                   {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
-                  onError={(error) => {
-                    console.error('[SelectUniScreen] 메인 아이콘 로드 실패:', error.nativeEvent.error);
-                  }}
+                  onError={() => {}}
                   onLoad={() => {}}
                 />
             )
@@ -494,9 +435,7 @@ export default function SelectUniScreen() {
                   }}
                   resizeMode="contain"
                   {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
-                  onError={(error) => {
-                    console.error('[SelectUniScreen] 메인 아이콘 확대 모달 로드 실패:', error.nativeEvent?.error || error);
-                  }}
+                  onError={() => {}}
                   onLoad={() => {}}
                 />
               </TouchableOpacity>
