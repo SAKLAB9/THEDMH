@@ -68,15 +68,36 @@ export default function SelectUniScreen() {
 
   // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
-    if (!fontsLoaded || configLoading) return; // 폰트와 config가 로드되지 않았으면 실행하지 않음
+    if (!fontsLoaded || configLoading) {
+      if (__DEV__) {
+        console.log(`[SelectUniScreen] 이미지 로드 스킵:`, { fontsLoaded, configLoading });
+      }
+      return; // 폰트와 config가 로드되지 않았으면 실행하지 않음
+    }
     
     const loadImageUrls = async () => {
+      if (__DEV__) {
+        console.log(`[SelectUniScreen] app_config 전체:`, {
+          configSize: Object.keys(appConfig).length,
+          allKeys: Object.keys(appConfig),
+          select_uni_keys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
+        });
+      }
+      
       // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
-        const imageName = getConfig(`select_uni_slot_${i}_image`, '');
+        const configKey = `select_uni_slot_${i}_image`;
+        const imageName = getConfig(configKey, '');
+        const rawValue = appConfig[configKey];
         if (__DEV__) {
-          console.log(`[SelectUniScreen] 슬롯 ${i} 이미지 파일명:`, imageName, 'config:', appConfig[`select_uni_slot_${i}_image`]);
+          console.log(`[SelectUniScreen] 슬롯 ${i}:`, {
+            configKey,
+            imageName,
+            rawValue,
+            isUndefined: rawValue === undefined,
+            type: typeof rawValue,
+          });
         }
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
@@ -90,7 +111,6 @@ export default function SelectUniScreen() {
           slotsCount,
           imageNames,
           imageNamesLength: imageNames.length,
-          configKeys: Object.keys(appConfig).filter(k => k.startsWith('select_uni_slot'))
         });
       }
       
