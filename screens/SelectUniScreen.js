@@ -12,7 +12,7 @@ import API_BASE_URL from '../config/api';
 
 export default function SelectUniScreen() {
   const navigation = useNavigation();
-  const { getConfig, getConfigNumber, getColorConfig, config: appConfig, loading: configLoading } = useAppConfig();
+  const { getConfig, getConfigNumber, getColorConfig, config: appConfig, loading: configLoading, loadConfig } = useAppConfig();
   const LOGIN_COLORS = getLoginColors(getConfig);
   const [iconModalVisible, setIconModalVisible] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -22,6 +22,31 @@ export default function SelectUniScreen() {
   const [showUniSelection, setShowUniSelection] = useState(false);
   const [imageUrls, setImageUrls] = useState({}); // Supabase Storage 이미지 URL 캐시
   const [iconImageUrl, setIconImageUrl] = useState(null); // 메인 아이콘 이미지 URL
+
+  // 화면이 포커스될 때마다 설정 강제 새로고침 (최적화: 5분 이내면 스킵)
+  useEffect(() => {
+    const refreshConfig = async () => {
+      // config가 비어있으면 강제로 새로고침
+      if (Object.keys(appConfig).length === 0) {
+        if (__DEV__) {
+          console.log('[SelectUniScreen] config가 비어있어 강제 새로고침');
+        }
+        await loadConfig(null, true);
+        return;
+      }
+      
+      const cachedTime = await AsyncStorage.getItem('app_config_updated');
+      if (cachedTime) {
+        const timeDiff = Date.now() - parseInt(cachedTime);
+        // 5분 이내면 새로고침 스킵
+        if (timeDiff < 5 * 60 * 1000) {
+          return;
+        }
+      }
+      loadConfig(null, true);
+    };
+    refreshConfig();
+  }, [loadConfig, appConfig]);
 
   // 폰트 로드
   const [fontsLoaded] = useFonts({
@@ -81,6 +106,15 @@ export default function SelectUniScreen() {
           configSize: Object.keys(appConfig).length,
           allKeys: Object.keys(appConfig),
           select_uni_keys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
+          slotsCount,
+          configLoading,
+        });
+        
+        // select_uni 관련 모든 키 확인
+        const allSelectUniKeys = Object.keys(appConfig).filter(k => k.includes('select_uni'));
+        console.log(`[SelectUniScreen] select_uni 관련 모든 키:`, allSelectUniKeys);
+        allSelectUniKeys.forEach(key => {
+          console.log(`[SelectUniScreen] ${key}:`, appConfig[key]);
         });
       }
       
@@ -97,6 +131,7 @@ export default function SelectUniScreen() {
             rawValue,
             isUndefined: rawValue === undefined,
             type: typeof rawValue,
+            appConfigHasKey: configKey in appConfig,
           });
         }
         // EMPTY 값과 빈 문자열 필터링
