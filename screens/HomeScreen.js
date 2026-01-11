@@ -442,13 +442,6 @@ export default function HomeScreen({ navigation }) {
             fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
           ]);
           
-          if (__DEV__) {
-                console.error('[HomeScreen] 로고 이미지 로드 실패:', logoResponse.status);
-              }
-              setLogoImageUrl(null);
-            }
-          }
-
           // 공지사항 처리
           if (noticesResponse.ok) {
             const noticesData = await noticesResponse.json();
