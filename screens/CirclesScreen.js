@@ -66,6 +66,9 @@ export default function CirclesScreen({ navigation, route }) {
       return;
     }
     
+    // 채널이 변경되면 즉시 이전 데이터 초기화 (깜빡임 방지)
+    setSavedCircles([]);
+    
     // 채널이 변경되면 캐시 무시하고 새로 로드 (MIUHub <-> 학교 탭 전환 시)
     loadCirclesData(true);
   }, [selectedChannel, university]);
