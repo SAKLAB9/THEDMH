@@ -18,6 +18,7 @@ function ImageBlock({ uri }) {
   const maxImageWidth = screenWidth - contentPadding;
   const [imageSize, setImageSize] = useState({ width: maxImageWidth, height: 200 });
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // 이미지 URI를 절대 경로로 변환 및 경로 수정
   const getImageUri = (uri) => {
@@ -66,21 +67,57 @@ function ImageBlock({ uri }) {
     }
     
     setImageError(false);
-    Image.getSize(imageUri, (width, height) => {
-      const aspectRatio = height / width;
-      // 가로폭을 내용 박스 안에 맞춤 (비율 유지)
-      let displayWidth = maxImageWidth;
-      let displayHeight = displayWidth * aspectRatio;
-      
-      // 세로는 비율에 맞게 자동 조정 (최대 높이 제한 없음)
-      setImageSize({ width: displayWidth, height: displayHeight });
-    }, (error) => {
-      // 에러가 발생해도 기본 크기로 표시 (이미지가 없거나 삭제된 경우)
-      if (__DEV__) {
-        console.error('[ViewNoticeScreen] Image.getSize 실패:', error, 'URI:', imageUri);
-      }
-      setImageError(true);
-    });
+    
+    // 이미지 크기 캐시 키 생성
+    const sizeCacheKey = `image_size_${imageUri}`;
+    
+    // 캐시에서 크기 확인
+    AsyncStorage.getItem(sizeCacheKey)
+      .then(cachedSize => {
+        if (cachedSize) {
+          try {
+            const { width, height } = JSON.parse(cachedSize);
+            const aspectRatio = height / width;
+            const displayWidth = maxImageWidth;
+            const displayHeight = displayWidth * aspectRatio;
+            setImageSize({ width: displayWidth, height: displayHeight });
+            return;
+          } catch (e) {
+            // 캐시 파싱 실패 시 무시
+          }
+        }
+        
+        // 캐시가 없으면 기본 크기로 시작하고 백그라운드에서 크기 확인
+        // 이미지 프리로드 (캐시에 저장)
+        Image.prefetch(imageUri).catch(() => {});
+        
+        // 크기 확인 (비동기, 블로킹하지 않음)
+        Image.getSize(imageUri, (width, height) => {
+          const aspectRatio = height / width;
+          const displayWidth = maxImageWidth;
+          const displayHeight = displayWidth * aspectRatio;
+          const newSize = { width: displayWidth, height: displayHeight };
+          setImageSize(newSize);
+          
+          // 크기를 캐시에 저장 (24시간 유효)
+          AsyncStorage.setItem(sizeCacheKey, JSON.stringify({ width, height })).catch(() => {});
+        }, (error) => {
+          // 에러가 발생해도 기본 크기 유지
+          if (__DEV__) {
+            console.error('[ViewNoticeScreen] Image.getSize 실패:', error, 'URI:', imageUri);
+          }
+        });
+      })
+      .catch(() => {
+        // AsyncStorage 오류 시 바로 크기 확인
+        Image.prefetch(imageUri).catch(() => {});
+        Image.getSize(imageUri, (width, height) => {
+          const aspectRatio = height / width;
+          const displayWidth = maxImageWidth;
+          const displayHeight = displayWidth * aspectRatio;
+          setImageSize({ width: displayWidth, height: displayHeight });
+        }, () => {});
+      });
   }, [imageUri, maxImageWidth]);
 
   if (!imageUri || imageError) {
@@ -89,15 +126,29 @@ function ImageBlock({ uri }) {
 
   return (
     <View className="relative mb-3" style={{ width: '100%', alignItems: 'center' }}>
+      {!imageLoaded && (
+        <View style={{ 
+          width: imageSize.width, 
+          height: imageSize.height, 
+          backgroundColor: '#f3f4f6',
+          borderRadius: 8,
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <ActivityIndicator size="small" color="#9ca3af" />
+        </View>
+      )}
       <Image
         source={{ uri: imageUri }}
         style={{ 
           width: imageSize.width, 
           height: imageSize.height, 
           borderRadius: 8,
-          maxWidth: '100%'
+          maxWidth: '100%',
+          display: imageLoaded ? 'flex' : 'none'
         }}
         resizeMode="contain"
+        onLoad={() => setImageLoaded(true)}
         onError={(error) => {
           if (__DEV__) {
             console.error('[ViewNoticeScreen] Image 로드 실패:', error, 'URI:', imageUri);
