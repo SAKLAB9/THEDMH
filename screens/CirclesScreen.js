@@ -429,7 +429,6 @@ export default function CirclesScreen({ navigation, route }) {
         if (forceRefresh) {
         } else {
           // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
-          // 현재 채널의 캐시만 확인 (다른 채널의 캐시는 확인하지 않음)
           const cachedData = await AsyncStorage.getItem(cacheKey);
           const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
           
@@ -657,7 +656,7 @@ export default function CirclesScreen({ navigation, route }) {
           const now = Date.now();
           const CACHE_DURATION = 2 * 60 * 1000; // 2분
           
-          // 캐시 확인 (현재 채널의 캐시만 확인, 다른 채널의 캐시는 확인하지 않음)
+          // 캐시 확인
           const cachedData = await AsyncStorage.getItem(cacheKey);
           const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
           
