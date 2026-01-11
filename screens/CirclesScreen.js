@@ -619,10 +619,31 @@ export default function CirclesScreen({ navigation, route }) {
 
   // 화면이 포커스될 때마다 route.params에서 selectedChannel 업데이트 및 데이터 새로고침
   const intervalRef = useRef(null);
+  const lastSelectedChannelRef = useRef(selectedChannel);
   
   useFocusEffect(
     React.useCallback(() => {
       let isMounted = true;
+      
+      // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
+      const currentSelectedChannel = selectedChannel;
+      const wasChannelJustChanged = lastSelectedChannelRef.current !== currentSelectedChannel;
+      lastSelectedChannelRef.current = currentSelectedChannel;
+      
+      if (wasChannelJustChanged) {
+        console.log('[DEBUG useFocusEffect] selectedChannel이 방금 변경됨, refreshData 스킵:', {
+          prev: lastSelectedChannelRef.current,
+          current: currentSelectedChannel
+        });
+        // selectedChannel 변경은 loadCirclesData가 처리하므로 여기서는 아무것도 하지 않음
+        return () => {
+          isMounted = false;
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        };
+      }
       
       // 화면 포커스 시 config 새로고침 (캐시 무시)
       // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
