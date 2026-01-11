@@ -2942,6 +2942,12 @@ app.get('/api/circles', async (req, res) => {
           const transformed = {
             ...circle,
             eventDate: circle.event_date,
+            region: circle.region,
+            location: circle.location,
+            keywords: circle.keywords,
+            participants: circle.participants,
+            fee: circle.fee,
+            contact: circle.contact,
             accountNumber: circle.account_number,
             reportCount: circle.report_count || 0,
             isClosed: circle.is_closed || false,
