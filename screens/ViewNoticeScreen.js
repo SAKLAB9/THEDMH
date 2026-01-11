@@ -124,10 +124,12 @@ export default function ViewNoticeScreen({ route, navigation }) {
   // 공지사항 데이터 로드
   useEffect(() => {
     const loadNotice = async () => {
-      if (!noticeId || !university) {
+      if (!noticeId || !university || !university.trim()) {
+        setLoading(false);
         return;
       }
 
+      setLoading(true);
       try {
         const universityCode = university.toLowerCase();
         const cacheKey = `notice_${noticeId}_${universityCode}`;
@@ -166,59 +168,57 @@ export default function ViewNoticeScreen({ route, navigation }) {
           setNotice(notice);
           setLoading(false);
           
-          // 백그라운드에서 새 데이터 가져오기
-          fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
-            .then(response => {
-              if (response.ok) {
-                return response.json();
-              }
-              return null;
-            })
-            .then(data => {
-              if (data && data.success && data.notice) {
-                // content_blocks 파싱
-                let updatedNotice = data.notice;
-                if (updatedNotice.content_blocks && typeof updatedNotice.content_blocks === 'string') {
-                  try {
-                    updatedNotice.content_blocks = JSON.parse(updatedNotice.content_blocks);
-                  } catch (e) {
+          // 백그라운드에서 새 데이터 가져오기 (캐시가 오래되었을 때만)
+          const cacheAge = Date.now() - (JSON.parse(await AsyncStorage.getItem(cacheKey) || '{}').timestamp || 0);
+          if (cacheAge > 2 * 60 * 1000) { // 2분 이상 지났을 때만 업데이트
+            fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
+              .then(response => {
+                if (response.ok) {
+                  return response.json();
+                }
+                return null;
+              })
+              .then(data => {
+                if (data && data.success && data.notice) {
+                  // content_blocks 파싱
+                  let updatedNotice = data.notice;
+                  if (updatedNotice.content_blocks && typeof updatedNotice.content_blocks === 'string') {
+                    try {
+                      updatedNotice.content_blocks = JSON.parse(updatedNotice.content_blocks);
+                    } catch (e) {
+                      updatedNotice.content_blocks = [];
+                    }
+                  }
+                  if (!Array.isArray(updatedNotice.content_blocks)) {
                     updatedNotice.content_blocks = [];
                   }
+                  AsyncStorage.setItem(cacheKey, JSON.stringify({
+                    notice: updatedNotice,
+                    timestamp: Date.now()
+                  })).catch(() => {});
+                  setNotice(updatedNotice);
                 }
-                if (!Array.isArray(updatedNotice.content_blocks)) {
-                  updatedNotice.content_blocks = [];
-                }
-                AsyncStorage.setItem(cacheKey, JSON.stringify({
-                  notice: updatedNotice,
-                  timestamp: Date.now()
-                })).catch(() => {});
-                setNotice(updatedNotice);
-              }
-            })
-            .catch(() => {});
+              })
+              .catch(() => {});
+          }
           
           return; // 캐시가 있으면 여기서 종료
         }
         
-        // 캐시가 없으면 API 호출
+        // 캐시가 없으면 API 호출 (타임아웃 설정)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+        
         const url = `${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
-          // Content-Type 확인
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            if (__DEV__) {
-              console.error('[ViewNoticeScreen] JSON이 아닌 응답:', text.substring(0, 200));
-            }
-            throw new Error('서버 응답이 JSON 형식이 아닙니다.');
-          }
-          
           const data = await response.json();
           if (data.success && data.notice) {
             // content_blocks 파싱
-            let notice = { ...data.notice };
+            let notice = data.notice;
             if (notice.content_blocks && typeof notice.content_blocks === 'string') {
               try {
                 notice.content_blocks = JSON.parse(notice.content_blocks);
@@ -252,30 +252,22 @@ export default function ViewNoticeScreen({ route, navigation }) {
             }
           }
         } else {
-          // 에러 응답 처리 (JSON이 아닐 수 있음)
+          // 에러 응답 처리
           let errorData = { error: '공지사항을 불러올 수 없습니다.' };
           try {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
               errorData = await response.json();
-            } else {
-              const text = await response.text();
-              if (__DEV__) {
-                console.error(`[ViewNoticeScreen] 서버 오류 (${response.status}):`, text.substring(0, 200));
-              }
             }
           } catch (parseError) {
-            if (__DEV__) {
-              console.error(`[ViewNoticeScreen] 에러 응답 파싱 실패:`, parseError);
-            }
+            // 파싱 실패는 무시
           }
           
           if (__DEV__) {
             console.error(`[ViewNoticeScreen] 서버 오류:`, {
               status: response.status,
               statusText: response.statusText,
-              url,
-              errorData
+              url
             });
           }
           Alert.alert('오류', errorData.error || '공지사항을 불러올 수 없습니다.');
@@ -286,14 +278,23 @@ export default function ViewNoticeScreen({ route, navigation }) {
           }
         }
       } catch (error) {
-        if (__DEV__) {
+        if (error.name === 'AbortError') {
+          if (__DEV__) {
+            console.error('[ViewNoticeScreen] 요청 타임아웃');
+          }
+          Alert.alert('오류', '요청 시간이 초과되었습니다. 다시 시도해주세요.');
+        } else if (__DEV__) {
           console.error('[ViewNoticeScreen] 공지사항 로드 오류:', error);
         }
-        Alert.alert('오류', '공지사항을 불러오는 중 오류가 발생했습니다.');
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-        } else {
-          navigation.navigate('Main');
+        
+        // 에러 발생 시에도 캐시가 있으면 표시
+        if (!notice) {
+          Alert.alert('오류', '공지사항을 불러오는 중 오류가 발생했습니다.');
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Main');
+          }
         }
       } finally {
         setLoading(false);
@@ -301,7 +302,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
     };
 
     loadNotice();
-  }, [noticeId, university, navigation, getConfig]);
+  }, [noticeId, university]);
 
   // 작성 날짜 포맷 함수 (다른 게시판과 동일한 형식)
   const formatDate = (dateString) => {
@@ -477,45 +478,34 @@ export default function ViewNoticeScreen({ route, navigation }) {
           )}
 
           {/* 본문 내용 */}
-          {contentBlocks && contentBlocks.length > 0 ? (
+          {contentBlocks.length > 0 && (
             <View className="mt-4">
               {contentBlocks.map((block, index) => {
-                if (block && block.type === 'image' && block.uri) {
-                  return (
-                    <ImageBlock 
-                      key={block.id || `image_${index}`} 
-                      uri={block.uri} 
-                    />
-                  );
-                } else if (block && block.type === 'text' && block.content) {
-                  return (
-                    <Text 
-                      key={block.id || `text_${index}`}
-                      className="text-base mb-4"
-                      style={{ 
-                        color: '#333',
-                        lineHeight: 24
-                      }}
-                    >
-                      {block.content}
-                    </Text>
-                  );
-                }
-                return null;
+              if (block.type === 'image') {
+                return (
+                  <ImageBlock 
+                    key={block.id || `image_${index}`} 
+                    uri={block.uri} 
+                  />
+                );
+              } else if (block.type === 'text') {
+                return (
+                  <Text 
+                    key={block.id || `text_${index}`}
+                    className="text-base mb-4"
+                    style={{ 
+                      color: '#333',
+                      lineHeight: 24
+                    }}
+                  >
+                    {block.content}
+                  </Text>
+                );
+              }
+              return null;
               })}
             </View>
-          ) : notice?.text_content ? (
-            // contentBlocks가 없고 text_content가 있는 경우 (레거시 데이터)
-            <Text 
-              className="text-base mb-4"
-              style={{ 
-                color: '#333',
-                lineHeight: 24
-              }}
-            >
-              {notice.text_content}
-            </Text>
-          ) : null}
+          )}
 
           {/* RSVP 버튼 */}
           {notice?.url && notice.url.trim() !== '' && (

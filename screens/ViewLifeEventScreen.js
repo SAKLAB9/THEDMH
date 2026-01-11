@@ -130,10 +130,12 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   // 경조사 데이터 로드
   useEffect(() => {
     const loadLifeEvent = async () => {
-      if (!lifeEventId || !university) {
+      if (!lifeEventId || !university || !university.trim()) {
+        setLoading(false);
         return;
       }
 
+      setLoading(true);
       try {
         const universityCode = university.toLowerCase();
         const cacheKey = `lifeevent_${lifeEventId}_${universityCode}`;
@@ -172,10 +174,9 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           setLifeEvent(lifeEvent);
           setLoading(false);
           
-          // 백그라운드에서 새 데이터 가져오기 (캐시 만료 시간이 지났을 때만)
-          const CACHE_REFRESH_THRESHOLD = 2 * 60 * 1000; // 2분
-          const cacheAge = Date.now() - (parsedData.timestamp || 0);
-          if (cacheAge > CACHE_REFRESH_THRESHOLD) {
+          // 백그라운드에서 새 데이터 가져오기 (캐시가 오래되었을 때만)
+          const cacheAge = Date.now() - (JSON.parse(await AsyncStorage.getItem(cacheKey) || '{}').timestamp || 0);
+          if (cacheAge > 2 * 60 * 1000) { // 2분 이상 지났을 때만 업데이트
             fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
               .then(response => {
                 if (response.ok) {
@@ -210,25 +211,20 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           return; // 캐시가 있으면 여기서 종료
         }
         
-        // 캐시가 없으면 API 호출
+        // 캐시가 없으면 API 호출 (타임아웃 설정)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+        
         const url = `${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
-          // Content-Type 확인
-          const contentType = response.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            if (__DEV__) {
-              console.error('[ViewLifeEventScreen] JSON이 아닌 응답:', text.substring(0, 200));
-            }
-            throw new Error('서버 응답이 JSON 형식이 아닙니다.');
-          }
-          
           const data = await response.json();
           if (data.success && data.lifeEvent) {
             // content_blocks 파싱
-            let lifeEvent = { ...data.lifeEvent };
+            let lifeEvent = data.lifeEvent;
             if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
               try {
                 lifeEvent.content_blocks = JSON.parse(lifeEvent.content_blocks);
@@ -262,30 +258,22 @@ export default function ViewLifeEventScreen({ route, navigation }) {
             }
           }
         } else {
-          // 에러 응답 처리 (JSON이 아닐 수 있음)
+          // 에러 응답 처리
           let errorData = { error: '경조사를 불러올 수 없습니다.' };
           try {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
               errorData = await response.json();
-            } else {
-              const text = await response.text();
-              if (__DEV__) {
-                console.error(`[ViewLifeEventScreen] 서버 오류 (${response.status}):`, text.substring(0, 200));
-              }
             }
           } catch (parseError) {
-            if (__DEV__) {
-              console.error(`[ViewLifeEventScreen] 에러 응답 파싱 실패:`, parseError);
-            }
+            // 파싱 실패는 무시
           }
           
           if (__DEV__) {
             console.error(`[ViewLifeEventScreen] 서버 오류:`, {
               status: response.status,
               statusText: response.statusText,
-              url,
-              errorData
+              url
             });
           }
           Alert.alert('오류', errorData.error || '경조사를 불러올 수 없습니다.');
@@ -296,14 +284,23 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           }
         }
       } catch (error) {
-        if (__DEV__) {
+        if (error.name === 'AbortError') {
+          if (__DEV__) {
+            console.error('[ViewLifeEventScreen] 요청 타임아웃');
+          }
+          Alert.alert('오류', '요청 시간이 초과되었습니다. 다시 시도해주세요.');
+        } else if (__DEV__) {
           console.error('[ViewLifeEventScreen] 경조사 로드 오류:', error);
         }
-        Alert.alert('오류', '경조사를 불러오는 중 오류가 발생했습니다.');
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-        } else {
-          navigation.navigate('Main');
+        
+        // 에러 발생 시에도 캐시가 있으면 표시
+        if (!lifeEvent) {
+          Alert.alert('오류', '경조사를 불러오는 중 오류가 발생했습니다.');
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Main');
+          }
         }
       } finally {
         setLoading(false);
@@ -311,7 +308,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     };
 
     loadLifeEvent();
-  }, [lifeEventId, university, navigation]);
+  }, [lifeEventId, university]);
 
   const handleDelete = async () => {
     if (!lifeEvent) return;
@@ -575,45 +572,34 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           )}
 
           {/* 본문 내용 */}
-          {contentBlocks && contentBlocks.length > 0 ? (
+          {contentBlocks.length > 0 && (
             <View className="mt-4">
               {contentBlocks.map((block, index) => {
-                if (block && block.type === 'image' && block.uri) {
-                  return (
-                    <ImageBlock 
-                      key={block.id || `image_${index}`} 
-                      uri={block.uri} 
-                    />
-                  );
-                } else if (block && block.type === 'text' && block.content) {
-                  return (
-                    <Text 
-                      key={block.id || `text_${index}`}
-                      className="text-base mb-4"
-                      style={{ 
-                        color: '#333',
-                        lineHeight: 24
-                      }}
-                    >
-                      {block.content}
-                    </Text>
-                  );
-                }
-                return null;
+              if (block.type === 'image') {
+                return (
+                  <ImageBlock 
+                    key={block.id || `image_${index}`} 
+                    uri={block.uri} 
+                  />
+                );
+              } else if (block.type === 'text') {
+                return (
+                  <Text 
+                    key={block.id || `text_${index}`}
+                    className="text-base mb-4"
+                    style={{ 
+                      color: '#333',
+                      lineHeight: 24
+                    }}
+                  >
+                    {block.content}
+                  </Text>
+                );
+              }
+              return null;
               })}
             </View>
-          ) : lifeEvent?.text_content ? (
-            // contentBlocks가 없고 text_content가 있는 경우 (레거시 데이터)
-            <Text 
-              className="text-base mb-4"
-              style={{ 
-                color: '#333',
-                lineHeight: 24
-              }}
-            >
-              {lifeEvent.text_content}
-            </Text>
-          ) : null}
+          )}
 
           {/* RSVP 버튼 */}
           {lifeEvent?.url && lifeEvent.url.trim() !== '' && (
