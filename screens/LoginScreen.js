@@ -311,6 +311,7 @@ export default function LoginScreen() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [adminImageUrls, setAdminImageUrls] = useState({}); // Admin 모달용 Supabase Storage 이미지 URL 캐시
+  const [iconImageUrl, setIconImageUrl] = useState(null); // 로그인 아이콘 이미지 URL
 
   // 폰트 로드
   const [fontsLoaded, fontError] = useFonts({
@@ -557,14 +558,38 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="items-center mb-6">
-          {/* 앱 아이콘 - 이미지 파일 사용 */}
-          {Platform.OS === 'web' ? (
-            <TouchableOpacity
-              onPress={() => setIconModalVisible(true)}
-              activeOpacity={0.8}
-            >
+          {/* 앱 아이콘 - Supabase Storage에서 로드 */}
+          {iconImageUrl && (
+            Platform.OS === 'web' ? (
+              <TouchableOpacity
+                onPress={() => setIconModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={iconImageUrl}
+                  style={{
+                    width: 100,
+                    height: 100,
+                    marginBottom: 12,
+                    borderRadius: 20,
+                    // 그림자 효과 (iOS)
+                    shadowColor: LOGIN_COLORS.iconBackground,
+                    shadowOffset: {
+                      width: 0,
+                      height: 8,
+                    },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 12,
+                    // 그림자 효과 (Android)
+                    elevation: 12,
+                    cursor: 'pointer',
+                  }}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            ) : (
               <Image
-                source={require('../assets/icon.png')}
+                source={iconImageUrl}
                 style={{
                   width: 100,
                   height: 100,
@@ -580,32 +605,10 @@ export default function LoginScreen() {
                   shadowRadius: 12,
                   // 그림자 효과 (Android)
                   elevation: 12,
-                  cursor: 'pointer',
                 }}
                 resizeMode="contain"
               />
-            </TouchableOpacity>
-          ) : (
-            <Image
-              source={require('../assets/icon.png')}
-              style={{
-                width: 100,
-                height: 100,
-                marginBottom: 12,
-                borderRadius: 20,
-                // 그림자 효과 (iOS)
-                shadowColor: LOGIN_COLORS.iconBackground,
-                shadowOffset: {
-                  width: 0,
-                  height: 8,
-                },
-                shadowOpacity: 0.3,
-                shadowRadius: 12,
-                // 그림자 효과 (Android)
-                elevation: 12,
-              }}
-              resizeMode="contain"
-            />
+            )
           )}
         </View>
 

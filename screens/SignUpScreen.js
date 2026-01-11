@@ -51,9 +51,8 @@ export default function SignUpScreen({ route }) {
     loadIconImage();
   }, [selectedUniImage]);
   
-  // 기본 아이콘 (선택한 학교가 없을 때)
-  const defaultIcon = require('../assets/icon.png');
-  const iconImage = iconImageUrl || (selectedUni && !iconImageUrl ? null : defaultIcon);
+  // 아이콘 이미지 (Supabase Storage에서만 로드, fallback 없음)
+  const iconImage = iconImageUrl;
   
   // ID 필드 제거됨
   const [password, setPassword] = useState('');
