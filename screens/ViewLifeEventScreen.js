@@ -223,12 +223,27 @@ export default function ViewLifeEventScreen({ route, navigation }) {
 
   // 뷰수 증가 함수 (별도 호출, 캐시 무관)
   const incrementViews = React.useCallback(async () => {
-    if (!lifeEventId || !university || !university.trim() || viewsIncrementedRef.current) {
+    if (!lifeEventId || !university || !university.trim()) {
       return;
     }
     
+    // 중복 호출 방지 (호출 전에 즉시 플래그 설정)
+    if (viewsIncrementedRef.current) {
+      if (__DEV__) {
+        console.log('[ViewLifeEventScreen] 뷰수 증가 이미 실행됨, 중복 호출 방지');
+      }
+      return;
+    }
+    
+    // 즉시 플래그 설정하여 중복 호출 방지
+    viewsIncrementedRef.current = true;
+    
     try {
       const universityCode = university.toLowerCase();
+      if (__DEV__) {
+        console.log('[ViewLifeEventScreen] 뷰수 증가 요청:', { lifeEventId, universityCode });
+      }
+      
       const response = await fetch(
         `${API_BASE_URL}/api/life-events/${lifeEventId}/increment-views?university=${encodeURIComponent(universityCode)}`,
         { method: 'POST' }
@@ -237,20 +252,31 @@ export default function ViewLifeEventScreen({ route, navigation }) {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          viewsIncrementedRef.current = true;
-          // 뷰수 업데이트
-          if (lifeEvent) {
-            setLifeEvent({ ...lifeEvent, views: data.views });
+          if (__DEV__) {
+            console.log('[ViewLifeEventScreen] 뷰수 증가 성공:', data.views);
           }
+          // 뷰수 업데이트
+          setLifeEvent(prev => prev ? { ...prev, views: data.views } : prev);
+        } else {
+          // 실패 시 플래그 리셋
+          viewsIncrementedRef.current = false;
+        }
+      } else {
+        // 실패 시 플래그 리셋
+        viewsIncrementedRef.current = false;
+        if (__DEV__) {
+          console.error('[ViewLifeEventScreen] 뷰수 증가 실패:', response.status);
         }
       }
     } catch (error) {
+      // 실패 시 플래그 리셋
+      viewsIncrementedRef.current = false;
       // 뷰수 증가 실패는 무시 (로그만 출력)
       if (__DEV__) {
         console.error('[ViewLifeEventScreen] 뷰수 증가 실패:', error);
       }
     }
-  }, [lifeEventId, university, lifeEvent]);
+  }, [lifeEventId, university]);
 
   // 경조사 데이터 로드 함수 (content_blocks와 images만 로드)
   const loadLifeEvent = React.useCallback(async (forceRefresh = false) => {

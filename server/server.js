@@ -1703,6 +1703,10 @@ app.get('/api/notices', async (req, res) => {
 });
 
 // 공지사항 뷰수 증가 API (별도 엔드포인트)
+// 중복 증가 방지를 위한 간단한 메모리 캐시 (서버 재시작 시 리셋됨)
+const viewIncrementCache = new Map();
+const VIEW_INCREMENT_CACHE_DURATION = 60 * 1000; // 1분
+
 app.post('/api/notices/:id/increment-views', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1726,6 +1730,40 @@ app.post('/api/notices/:id/increment-views', async (req, res) => {
           return res.status(400).json({ error: '유효하지 않은 공지사항 ID입니다.' });
         }
         
+        // 중복 증가 방지: 캐시 키 생성
+        const cacheKey = `${tableName}_${noticeId}`;
+        const now = Date.now();
+        const cached = viewIncrementCache.get(cacheKey);
+        
+        // 1분 이내에 같은 요청이 있으면 무시
+        if (cached && (now - cached) < VIEW_INCREMENT_CACHE_DURATION) {
+          console.log(`[공지사항 뷰수 증가] 중복 요청 무시: ${cacheKey} (${now - cached}ms 전)`);
+          // 현재 뷰수만 반환 (증가하지 않음)
+          const currentResult = await pool.query(
+            `SELECT views FROM ${tableName} WHERE id = $1`,
+            [noticeId]
+          );
+          if (currentResult.rows.length > 0) {
+            return res.json({
+              success: true,
+              views: currentResult.rows[0].views,
+              skipped: true // 중복 요청으로 증가하지 않았음을 표시
+            });
+          }
+        }
+        
+        // 캐시에 저장
+        viewIncrementCache.set(cacheKey, now);
+        
+        // 오래된 캐시 정리 (메모리 누수 방지)
+        if (viewIncrementCache.size > 1000) {
+          for (const [key, timestamp] of viewIncrementCache.entries()) {
+            if (now - timestamp > VIEW_INCREMENT_CACHE_DURATION) {
+              viewIncrementCache.delete(key);
+            }
+          }
+        }
+        
         // 뷰수만 증가 (데이터 조회 없음)
         const result = await pool.query(
           `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING views`,
@@ -1735,6 +1773,8 @@ app.post('/api/notices/:id/increment-views', async (req, res) => {
         if (result.rows.length === 0) {
           return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
         }
+        
+        console.log(`[공지사항 뷰수 증가] 성공: ${tableName} id=${noticeId}, views=${result.rows[0].views}`);
         
         res.json({
           success: true,
