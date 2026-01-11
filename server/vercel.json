@@ -34,6 +34,10 @@
       "dest": "/api/upload-board-image.js"
     },
     {
+      "src": "/reset-password",
+      "dest": "/api/reset-password.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },
