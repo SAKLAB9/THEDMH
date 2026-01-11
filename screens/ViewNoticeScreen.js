@@ -251,8 +251,16 @@ export default function ViewNoticeScreen({ route, navigation }) {
       } else {
         // 실패 시 플래그 리셋
         viewsIncrementedRef.current = false;
-        if (__DEV__) {
-          console.error('[ViewNoticeScreen] 뷰수 증가 실패:', response.status);
+        // 404 에러는 조용히 처리 (다른 학교로 넘어갔을 때 발생할 수 있음)
+        if (response.status === 404) {
+          if (__DEV__) {
+            console.log('[ViewNoticeScreen] 공지사항을 찾을 수 없음 (다른 학교일 수 있음):', { noticeId, universityCode });
+          }
+          // 조용히 처리 (에러 메시지 표시 안 함)
+        } else {
+          if (__DEV__) {
+            console.error('[ViewNoticeScreen] 뷰수 증가 실패:', response.status);
+          }
         }
       }
     } catch (error) {
@@ -491,10 +499,11 @@ export default function ViewNoticeScreen({ route, navigation }) {
                 })).catch(() => {});
               }
             } else {
+              // 공지사항을 찾을 수 없음 (다른 학교일 수 있음)
               if (__DEV__) {
-                console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음`);
+                console.log(`[ViewNoticeScreen] 공지사항을 찾을 수 없음 (다른 학교일 수 있음)`);
               }
-              Alert.alert('오류', '공지사항을 찾을 수 없습니다.');
+              // 조용히 뒤로 가기 (에러 메시지 표시 안 함)
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
@@ -506,7 +515,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
             if (__DEV__) {
               console.error('[ViewNoticeScreen] JSON 파싱 실패:', parseError);
             }
-            Alert.alert('오류', '데이터를 불러오는 중 오류가 발생했습니다.');
+            // 조용히 뒤로 가기
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
@@ -514,29 +523,43 @@ export default function ViewNoticeScreen({ route, navigation }) {
             }
           }
         } else {
-          // 에러 응답 처리
-          let errorData = { error: '공지사항을 불러올 수 없습니다.' };
-          try {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              errorData = await response.json();
+          // 에러 응답 처리 (404는 조용히 처리)
+          if (response.status === 404) {
+            // 다른 학교로 넘어갔을 때 발생할 수 있는 404는 조용히 처리
+            if (__DEV__) {
+              console.log(`[ViewNoticeScreen] 공지사항을 찾을 수 없음 (404) - 다른 학교일 수 있음`);
             }
-          } catch (parseError) {
-            // 파싱 실패는 무시
-          }
-          
-          if (__DEV__) {
-            console.error(`[ViewNoticeScreen] 서버 오류:`, {
-              status: response.status,
-              statusText: response.statusText,
-              url
-            });
-          }
-          Alert.alert('오류', errorData.error || '공지사항을 불러올 수 없습니다.');
-          if (navigation.canGoBack()) {
-            navigation.goBack();
+            // 조용히 뒤로 가기 (에러 메시지 표시 안 함)
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main');
+            }
           } else {
-            navigation.navigate('Main');
+            // 다른 에러는 기존대로 처리
+            let errorData = { error: '공지사항을 불러올 수 없습니다.' };
+            try {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                errorData = await response.json();
+              }
+            } catch (parseError) {
+              // 파싱 실패는 무시
+            }
+            
+            if (__DEV__) {
+              console.error(`[ViewNoticeScreen] 서버 오류:`, {
+                status: response.status,
+                statusText: response.statusText,
+                url
+              });
+            }
+            Alert.alert('오류', errorData.error || '공지사항을 불러올 수 없습니다.');
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main');
+            }
           }
         }
       } catch (error) {
@@ -573,13 +596,22 @@ export default function ViewNoticeScreen({ route, navigation }) {
     // noticePreview가 있으면 이미 기본 정보가 표시되므로 content만 로드
     // 없으면 전체 데이터 로드
     // 뷰수는 초기 로드 시에만 증가
-    viewsIncrementedRef.current = false; // noticeId가 변경되면 리셋
+    viewsIncrementedRef.current = false; // noticeId나 university가 변경되면 리셋
     loadNotice(false);
     // 뷰수 증가는 약간의 지연 후 실행 (데이터 로드 완료 후)
     setTimeout(() => {
       incrementViews();
     }, 500);
   }, [noticeId, university, loadNotice, incrementViews]);
+  
+  // university가 변경되면 데이터 초기화 (다른 학교로 넘어갔을 때)
+  useEffect(() => {
+    if (university && university.trim()) {
+      // university가 변경되면 이전 데이터 초기화
+      setNotice(null);
+      viewsIncrementedRef.current = false;
+    }
+  }, [university]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 공지사항 데이터는 로드하지 않음 (중복 호출 방지)

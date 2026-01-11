@@ -264,8 +264,16 @@ export default function ViewLifeEventScreen({ route, navigation }) {
       } else {
         // 실패 시 플래그 리셋
         viewsIncrementedRef.current = false;
-        if (__DEV__) {
-          console.error('[ViewLifeEventScreen] 뷰수 증가 실패:', response.status);
+        // 404 에러는 조용히 처리 (다른 학교로 넘어갔을 때 발생할 수 있음)
+        if (response.status === 404) {
+          if (__DEV__) {
+            console.log('[ViewLifeEventScreen] 경조사를 찾을 수 없음 (다른 학교일 수 있음):', { lifeEventId, universityCode });
+          }
+          // 조용히 처리 (에러 메시지 표시 안 함)
+        } else {
+          if (__DEV__) {
+            console.error('[ViewLifeEventScreen] 뷰수 증가 실패:', response.status);
+          }
         }
       }
     } catch (error) {
