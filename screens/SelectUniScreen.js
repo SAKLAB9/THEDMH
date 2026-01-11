@@ -94,25 +94,7 @@ export default function SelectUniScreen() {
     return null;
   }
 
-  // 슬롯 설정 가져오기 (select_uni_* 키 사용)
-  // config가 로드되기 전에는 기본값 사용하지 않음 (0으로 설정)
-  // 기본값 없이 config에서 실제 값만 가져오기
-  const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0);
-  
-  // 디버깅: slotsCount가 제대로 가져와지는지 확인
-  if (__DEV__ && !configLoading) {
-    const testSlot1 = getConfig('select_uni_slot_1', '');
-    const testSlotCount = appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0;
-    console.log('[SelectUniScreen] Config 테스트:', {
-      slotsCount,
-      testSlotCount,
-      testSlot1: testSlot1 || '(빈 값)',
-      configKeys: Object.keys(appConfig).length,
-      hasSelectUniSlot1: 'select_uni_slot_1' in appConfig,
-      hasSelectUniSlotsCount: 'select_uni_slots_count' in appConfig,
-      rawSelectUniSlotsCount: appConfig['select_uni_slots_count'] || '(없음)',
-    });
-  }
+  // 모달 슬롯 설정
   const slotWidth = 100;
   const slotHeight = 100;
   const slotGap = 24;
@@ -128,100 +110,59 @@ export default function SelectUniScreen() {
   const modalWidthPercent = 90;
   const modalMaxWidth = 400;
 
-  // 슬롯 이미지 파일명들 가져오기 (최대 10개 완전 하드코딩, getConfig 사용)
-  // appConfig 객체가 변경되면 재계산 (config 값 변경 감지)
-  const slotImageNames = useMemo(() => {
-    // 각 슬롯을 완전히 하드코딩하여 getConfig로 가져오기 (select_uni_slots_count와 동일한 방식)
-    return [
-      getConfig('select_uni_slot_1', ''),
-      getConfig('select_uni_slot_2', ''),
-      getConfig('select_uni_slot_3', ''),
-      getConfig('select_uni_slot_4', ''),
-      getConfig('select_uni_slot_5', ''),
-      getConfig('select_uni_slot_6', ''),
-      getConfig('select_uni_slot_7', ''),
-      getConfig('select_uni_slot_8', ''),
-      getConfig('select_uni_slot_9', ''),
-      getConfig('select_uni_slot_10', ''),
-    ];
-  }, [appConfig, getConfig]);
+  // app_config에서 슬롯 개수 가져오기
+  const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0);
 
-  // 슬롯 이미지 파일명들을 문자열로 변환 (의존성 배열용)
-  const slotImageNamesString = useMemo(() => {
-    return slotImageNames.join(',');
-  }, [slotImageNames]);
-
-  // Supabase Storage에서 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
-  useEffect(() => {
-    if (!fontsLoaded || configLoading) return; // LoginScreen과 동일하게 configLoading 체크
+  // 슬롯 데이터: app_config에서 각 슬롯의 이미지 파일명 가져오기
+  const slotData = useMemo(() => {
+    if (configLoading || slotsCount === 0) return [];
     
-    const loadSlotImageUrls = async () => {
+    const slots = [];
+    for (let i = 1; i <= slotsCount; i++) {
+      const imageName = appConfig[`select_uni_slot_${i}`] || '';
+      if (imageName && imageName.trim() !== '' && imageName !== 'EMPTY') {
+        const row = Math.ceil(i / 2);
+        const col = ((i - 1) % 2) + 1;
+        slots.push({
+          slotNumber: i,
+          row,
+          col,
+          imageName: imageName.trim(),
+        });
+      }
+    }
+    return slots;
+  }, [slotsCount, appConfig, configLoading]);
+
+  // Supabase Storage에서 슬롯 이미지 URL 가져오기 (assets 폴더)
+  useEffect(() => {
+    if (!fontsLoaded || configLoading || slotData.length === 0) return;
+    
+    const loadSlotImages = async () => {
       const urls = {};
       
-      // 각 슬롯을 완전히 하드코딩하여 getConfig로 가져오기 (select_uni_slots_count와 동일한 방식)
-      const slotConfigs = [
-        { slotNumber: 1, imageName: getConfig('select_uni_slot_1', '') },
-        { slotNumber: 2, imageName: getConfig('select_uni_slot_2', '') },
-        { slotNumber: 3, imageName: getConfig('select_uni_slot_3', '') },
-        { slotNumber: 4, imageName: getConfig('select_uni_slot_4', '') },
-        { slotNumber: 5, imageName: getConfig('select_uni_slot_5', '') },
-        { slotNumber: 6, imageName: getConfig('select_uni_slot_6', '') },
-        { slotNumber: 7, imageName: getConfig('select_uni_slot_7', '') },
-        { slotNumber: 8, imageName: getConfig('select_uni_slot_8', '') },
-        { slotNumber: 9, imageName: getConfig('select_uni_slot_9', '') },
-        { slotNumber: 10, imageName: getConfig('select_uni_slot_10', '') },
-      ];
-      
-      for (const slot of slotConfigs) {
+      for (const slot of slotData) {
         const { slotNumber, imageName } = slot;
-        const configKey = `select_uni_slot_${slotNumber}`;
-        
-        // 디버깅: config에서 값을 제대로 가져오는지 확인
-        if (__DEV__) {
-          const rawValue = appConfig[configKey];
-          console.log(`[SelectUniScreen] 슬롯 ${slotNumber} config 확인:`, {
-            configKey,
-            imageName: imageName || '(빈 값)',
-            rawValue: rawValue || '(undefined)',
-            hasInConfig: configKey in appConfig,
-            viaGetConfig: getConfig(configKey, ''),
-          });
-        }
-        
-        // EMPTY 값과 빈 문자열 필터링
-        if (!imageName || imageName === 'EMPTY' || imageName.trim() === '') {
-          continue;
-        }
-        
-        const trimmedName = String(imageName).trim();
-        const cacheKey = `select_uni_slot_${slotNumber}_url_${trimmedName}`;
+        const cacheKey = `select_uni_slot_${slotNumber}_url_${imageName}`;
         
         try {
           // 캐시에서 먼저 확인
           const cachedUrl = await AsyncStorage.getItem(cacheKey);
           if (cachedUrl) {
-            urls[trimmedName] = { uri: cachedUrl };
+            urls[imageName] = { uri: cachedUrl };
             continue;
           }
           
-          // 캐시에 없으면 API 호출 (LoginScreen과 동일)
-          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(trimmedName)}`;
+          // Supabase Storage의 assets 폴더에서 이미지 가져오기
+          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=assets/${encodeURIComponent(imageName)}`;
           const response = await fetch(apiUrl);
           
-          // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
-          let data;
-          try {
-            const responseText = await response.text();
-            data = JSON.parse(responseText);
-          } catch (parseError) {
-            continue;
-          }
+          const responseText = await response.text();
+          const data = JSON.parse(responseText);
           
-          // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
           if (data.success && data.url) {
-            // 캐시에 저장
             await AsyncStorage.setItem(cacheKey, data.url);
-            urls[trimmedName] = { uri: data.url };
+            urls[imageName] = { uri: data.url };
           }
         } catch (error) {
           if (__DEV__) {
@@ -231,20 +172,10 @@ export default function SelectUniScreen() {
       }
       
       setImageUrls(urls);
-      
-      if (__DEV__ && Object.keys(urls).length > 0) {
-        console.log('[SelectUniScreen] 슬롯 이미지 URL 로드 완료:', {
-          count: Object.keys(urls).length,
-          imageNames: Object.keys(urls),
-        });
-      }
     };
     
-    // configLoading이 false일 때만 실행 (select_uni_slots_count와 동일한 조건)
-    if (!configLoading) {
-      loadSlotImageUrls();
-    }
-  }, [fontsLoaded, configLoading, appConfig, getConfig]);
+    loadSlotImages();
+  }, [fontsLoaded, configLoading, slotData]);
 
   // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
   useEffect(() => {
@@ -303,70 +234,19 @@ export default function SelectUniScreen() {
     loadMainIconImage();
   }, [fontsLoaded, configLoading, getConfig]);
 
-  // 슬롯 이미지 배열 생성 (최대 10개 완전 하드코딩, getConfig 사용, 2열 그리드로 배치) - useMemo로 메모이제이션하여 불필요한 재생성 방지
+  // 슬롯 이미지 배열: slotData에 이미지 URL 추가
   const slotImages = useMemo(() => {
-    const cols = 2; // 2열 고정
-    
-    // 각 슬롯을 완전히 하드코딩하여 getConfig로 가져오기 (select_uni_slots_count와 동일한 방식)
-    const slots = [
-      { slotNumber: 1, imageName: getConfig('select_uni_slot_1', ''), row: 1, col: 1 },
-      { slotNumber: 2, imageName: getConfig('select_uni_slot_2', ''), row: 1, col: 2 },
-      { slotNumber: 3, imageName: getConfig('select_uni_slot_3', ''), row: 2, col: 1 },
-      { slotNumber: 4, imageName: getConfig('select_uni_slot_4', ''), row: 2, col: 2 },
-      { slotNumber: 5, imageName: getConfig('select_uni_slot_5', ''), row: 3, col: 1 },
-      { slotNumber: 6, imageName: getConfig('select_uni_slot_6', ''), row: 3, col: 2 },
-      { slotNumber: 7, imageName: getConfig('select_uni_slot_7', ''), row: 4, col: 1 },
-      { slotNumber: 8, imageName: getConfig('select_uni_slot_8', ''), row: 4, col: 2 },
-      { slotNumber: 9, imageName: getConfig('select_uni_slot_9', ''), row: 5, col: 1 },
-      { slotNumber: 10, imageName: getConfig('select_uni_slot_10', ''), row: 5, col: 2 },
-    ];
-    
-    // 각 슬롯에 대해 이미지 URL 추가
-    const images = slots.map(slot => {
-      const validImageName = (slot.imageName && slot.imageName !== 'EMPTY' && slot.imageName.trim() !== '') ? slot.imageName : null;
-      const imageUrl = validImageName ? imageUrls[validImageName] : null;
-      
-      return {
-        slotNumber: slot.slotNumber,
-        row: slot.row,
-        col: slot.col,
-        imageName: validImageName,
-        imageUrl
-      };
-    });
-    
-    // slotsCount만큼만 반환 (나머지는 제거)
-    return images.slice(0, slotsCount);
-  }, [slotsCount, imageUrls, getConfig]);
-  
-  // 슬롯 이미지 배열 상태 로깅 (변경 시에만 출력)
-  const slotImagesLogRef = useRef('');
-  useEffect(() => {
-    if (__DEV__ && slotsCount > 0) {
-      const currentState = JSON.stringify(slotImages.map(s => ({ name: s.imageName, hasUrl: !!s.imageUrl })));
-      if (currentState !== slotImagesLogRef.current) {
-        console.log('[SelectUniScreen] 슬롯 이미지 배열 상태:', {
-          slotsCount,
-          totalSlots: slotImages.length,
-          slotsWithImage: slotImages.filter(s => s.imageName).length,
-          slotsWithUrl: slotImages.filter(s => s.imageUrl).length,
-          details: slotImages.map((s, i) => ({
-            slot: i + 1,
-            imageName: s.imageName || '(없음)',
-            hasUrl: !!s.imageUrl,
-          })),
-        });
-        slotImagesLogRef.current = currentState;
-      }
-    }
-  }, [slotImages, slotsCount]);
+    return slotData.map(slot => ({
+      ...slot,
+      imageUrl: imageUrls[slot.imageName] || null,
+    }));
+  }, [slotData, imageUrls]);
 
   // 모달 높이 계산 (슬롯 개수에 따라, 2열 그리드)
   const calculateModalHeight = () => {
-    const cols = 2; // 2열 고정
-    const rows = Math.ceil(slotsCount / cols);
+    const rows = Math.ceil(slotsCount / 2);
     const slotsHeight = rows * slotHeight + (rows - 1) * slotGap;
-    return slotsHeight + modalPaddingTop + modalPaddingBottom + 100; // 타이틀과 여백 포함
+    return slotsHeight + modalPaddingTop + modalPaddingBottom + 100;
   };
 
   const allAgreed = agreePrivacy && agreeTerms;
@@ -384,35 +264,21 @@ export default function SelectUniScreen() {
     }
     
     // 학교 선택 후 SignUp으로 이동
-    // selectedUniversity(displayName)에서 이미지 파일명과 소문자 코드 찾기 (최대 10개 완전 하드코딩, getConfig 사용)
+    // selectedUniversity(displayName)에서 이미지 파일명과 소문자 코드 찾기
     let selectedImageFileName = null;
     let selectedUniversityCode = null;
     
-    // 각 슬롯을 완전히 하드코딩하여 getConfig로 가져오기 (select_uni_slots_count와 동일한 방식)
-    const slotConfigs = [
-      getConfig('select_uni_slot_1', ''),
-      getConfig('select_uni_slot_2', ''),
-      getConfig('select_uni_slot_3', ''),
-      getConfig('select_uni_slot_4', ''),
-      getConfig('select_uni_slot_5', ''),
-      getConfig('select_uni_slot_6', ''),
-      getConfig('select_uni_slot_7', ''),
-      getConfig('select_uni_slot_8', ''),
-      getConfig('select_uni_slot_9', ''),
-      getConfig('select_uni_slot_10', ''),
-    ];
-    
-    for (const imageName of slotConfigs) {
+    for (const slot of slotData) {
+      const imageName = slot.imageName;
       if (imageName) {
         const baseName = imageName.replace('-icon.png', '').replace('.png', '').split('-')[0].toLowerCase();
-        const universityCode = baseName; // 소문자 코드
-        // display_name config 확인 (getConfig 사용)
-        const displayName = getConfig(`${baseName}_display_name`, '');
+        const universityCode = baseName;
+        const displayName = appConfig[`${baseName}_display_name`] || '';
         const universityDisplayName = displayName || baseName.charAt(0).toUpperCase() + baseName.slice(1).toLowerCase();
         
         if (universityDisplayName === selectedUniversity) {
           selectedImageFileName = imageName;
-          selectedUniversityCode = universityCode; // users 테이블에 저장할 소문자 코드
+          selectedUniversityCode = universityCode;
           break;
         }
       }
@@ -794,23 +660,21 @@ export default function SelectUniScreen() {
                   rowGap: slotGap,
                   width: '100%',
                 }}>
-                  {slotImages.map((slotData, index) => {
-                    // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                    const imageName = slotData.imageName || getConfig(`select_uni_slot_${slotData.slotNumber}`, '');
-                    const imageSource = slotData.imageUrl;
-                    let universityCode = null; // users 테이블에 저장할 소문자 코드
-                    let universityDisplayName = null; // 표시용 display name
+                  {slotImages.map((slot) => {
+                    const imageName = slot.imageName;
+                    const imageSource = slot.imageUrl;
+                    let universityCode = null;
+                    let universityDisplayName = null;
+                    
                     if (imageName) {
-                      // 파일명에서 소문자 코드 추출 (예: cornell-icon.png -> cornell)
                       universityCode = imageName.split('-')[0].toLowerCase();
-                      // display_name config 확인하여 표시용 이름 가져오기 (getConfig 사용)
-                      const displayName = getConfig(`${universityCode}_display_name`, '');
+                      const displayName = appConfig[`${universityCode}_display_name`] || '';
                       universityDisplayName = displayName || universityCode.charAt(0).toUpperCase() + universityCode.slice(1);
                     }
                     
                     return (
                       <TouchableOpacity
-                        key={slotData.slotNumber}
+                        key={slot.slotNumber}
                         onPress={() => {
                           if (universityCode && universityDisplayName && imageName) {
                             handleUniSelect(universityDisplayName, universityCode, imageName);
@@ -825,7 +689,7 @@ export default function SelectUniScreen() {
                             width: slotWidth,
                             height: slotHeight,
                             borderRadius: slotBorderRadius,
-                            borderWidth: imageSource ? 0 : slotBorderWidth, // continue as admin과 동일: 이미지가 있으면 점선 없음
+                            borderWidth: imageSource ? 0 : slotBorderWidth,
                             borderColor: slotBorderColor,
                             borderStyle: slotBorderStyle,
                             justifyContent: 'center',
@@ -837,25 +701,10 @@ export default function SelectUniScreen() {
                           {imageSource ? (
                             <Image
                               source={imageSource}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                              }}
+                              style={{ width: '100%', height: '100%' }}
                               resizeMode="contain"
-                              {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
-                              onError={(error) => {
-                                if (__DEV__ && Platform.OS === 'ios') {
-                                  console.error(`[SelectUniScreen] iOS 이미지 로드 실패 (slot ${index + 1}):`, {
-                                    error: error.nativeEvent?.error,
-                                    uri: imageSource.uri,
-                                    imageName: imageName
-                                  });
-                                }
-                              }}
-                              onLoad={() => {}}
                             />
                           ) : (
-                            // 이미지가 로딩 중일 때 표시할 플레이스홀더
                             <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
                               {__DEV__ && imageName && (
                                 <Text style={{ fontSize: 10, color: '#9ca3af' }}>Loading...</Text>
