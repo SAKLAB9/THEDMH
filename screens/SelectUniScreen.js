@@ -23,36 +23,6 @@ export default function SelectUniScreen() {
   const [imageUrls, setImageUrls] = useState({}); // Supabase Storage 이미지 URL 캐시
   const [iconImageUrl, setIconImageUrl] = useState(null); // 메인 아이콘 이미지 URL
 
-  // config 상태 확인 및 디버깅
-  useEffect(() => {
-    if (__DEV__ && !configLoading) {
-      const allKeys = Object.keys(appConfig);
-      const selectUniKeys = allKeys.filter(k => k.includes('select_uni'));
-      const loginAdminKeys = allKeys.filter(k => k.includes('login_admin'));
-      
-      console.log('[SelectUniScreen] Config 상태 확인:', {
-        totalKeys: allKeys.length,
-        selectUniKeysCount: selectUniKeys.length,
-        loginAdminKeysCount: loginAdminKeys.length,
-        selectUniKeys: selectUniKeys,
-        loginAdminKeys: loginAdminKeys.slice(0, 5), // 처음 5개만
-      });
-      
-      // select_uni_slot_1_image부터 4까지 확인
-      for (let i = 1; i <= 4; i++) {
-        const key = `select_uni_slot_${i}_image`;
-        const value = appConfig[key];
-        const viaGetConfig = getConfig(key, '');
-        console.log(`[SelectUniScreen] ${key}:`, {
-          inAppConfig: key in appConfig,
-          rawValue: value,
-          viaGetConfig: viaGetConfig,
-          type: typeof value,
-        });
-      }
-    }
-  }, [appConfig, configLoading, getConfig]);
-
   // 화면이 포커스될 때마다 설정 강제 새로고침 (최적화: 5분 이내면 스킵)
   // 무한 루프 방지를 위해 ref로 새로고침 시도 여부 추적
   const refreshAttemptedRef = useRef(false);
@@ -159,7 +129,7 @@ export default function SelectUniScreen() {
 
   // Supabase Storage에서 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
   useEffect(() => {
-    if (!fontsLoaded) return;
+    if (!fontsLoaded || configLoading) return; // LoginScreen과 동일하게 configLoading 체크
     
     const loadSlotImageUrls = async () => {
       const urls = {};
@@ -167,8 +137,19 @@ export default function SelectUniScreen() {
       // 각 슬롯의 이미지 파일명을 가져와서 API 호출 (LoginScreen 방식)
       for (let i = 1; i <= slotsCount; i++) {
         const configKey = `select_uni_slot_${i}_image`;
-        // config가 로드되지 않았어도 기본값 사용하지 않음 (빈 문자열)
-        const imageName = getConfig(configKey, '');
+        const imageName = getConfig(configKey, ''); // LoginScreen과 동일
+        
+        // 디버깅: config에서 값을 제대로 가져오는지 확인
+        if (__DEV__) {
+          const rawValue = appConfig[configKey];
+          console.log(`[SelectUniScreen] 슬롯 ${i} config 확인:`, {
+            configKey,
+            imageName: imageName || '(빈 값)',
+            rawValue: rawValue || '(undefined)',
+            hasInConfig: configKey in appConfig,
+            allSelectUniKeys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
+          });
+        }
         
         // EMPTY 값과 빈 문자열 필터링
         if (!imageName || imageName === 'EMPTY' || imageName.trim() === '') {
@@ -225,7 +206,7 @@ export default function SelectUniScreen() {
     if (slotsCount > 0) {
       loadSlotImageUrls();
     }
-  }, [fontsLoaded, slotsCount, slotImageNamesString, getConfig]);
+  }, [fontsLoaded, configLoading, slotsCount, slotImageNamesString, getConfig, appConfig]);
 
   // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
   useEffect(() => {
