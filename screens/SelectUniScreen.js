@@ -351,15 +351,12 @@ export default function SelectUniScreen() {
   const slotImages = [];
   for (let i = 1; i <= slotsCount; i++) {
     const imageName = getConfig(`select_uni_slot_${i}_image`, '');
-    if (imageName) {
-      const imageUrl = imageUrls[imageName];
-      if (__DEV__ && Platform.OS === 'ios' && !imageUrl) {
-        console.warn(`[SelectUniScreen] iOS 이미지 URL 없음 (slot ${i}):`, imageName, 'imageUrls:', Object.keys(imageUrls));
-      }
-      slotImages.push(imageUrl || null);
-    } else {
-      slotImages.push(null);
+    const imageUrl = imageName ? imageUrls[imageName] : null;
+    if (__DEV__ && Platform.OS === 'ios' && imageName && !imageUrl) {
+      console.warn(`[SelectUniScreen] iOS 이미지 URL 없음 (slot ${i}):`, imageName, 'imageUrls:', Object.keys(imageUrls));
     }
+    // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
+    slotImages.push({ imageName, imageUrl });
   }
 
   // 모달 높이 계산 (슬롯 개수에 따라)
@@ -786,9 +783,10 @@ export default function SelectUniScreen() {
                   rowGap: slotGap,
                   width: '100%',
                 }}>
-                  {slotImages.map((imageSource, index) => {
+                  {slotImages.map((slotData, index) => {
                     // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                    const imageName = getConfig(`select_uni_slot_${index + 1}_image`, '');
+                    const imageName = slotData.imageName || getConfig(`select_uni_slot_${index + 1}_image`, '');
+                    const imageSource = slotData.imageUrl;
                     let universityCode = null; // users 테이블에 저장할 소문자 코드
                     let universityDisplayName = null; // 표시용 display name
                     if (imageName) {
@@ -825,7 +823,7 @@ export default function SelectUniScreen() {
                             overflow: imageSource ? 'hidden' : 'visible',
                           }}
                         >
-                          {imageSource && (
+                          {imageSource ? (
                             <Image
                               source={imageSource}
                               style={{
@@ -849,6 +847,13 @@ export default function SelectUniScreen() {
                                 }
                               }}
                             />
+                          ) : (
+                            // 이미지가 로딩 중일 때 표시할 플레이스홀더
+                            <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                              {__DEV__ && imageName && (
+                                <Text style={{ fontSize: 10, color: '#9ca3af' }}>Loading...</Text>
+                              )}
+                            </View>
                           )}
                         </View>
                       </TouchableOpacity>

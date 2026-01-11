@@ -608,7 +608,8 @@ export default function LoginScreen() {
   for (let i = 1; i <= adminSlotsCount; i++) {
     const imageName = getConfig(`login_admin_slot_${i}_image`, '');
     const imageUrl = imageName ? adminImageUrls[imageName] : null;
-    adminSlotImages.push(imageUrl);
+    // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
+    adminSlotImages.push({ imageName, imageUrl });
   }
 
   // Admin 모달 높이 계산 (슬롯 개수에 따라)
@@ -1067,9 +1068,10 @@ export default function LoginScreen() {
                     rowGap: adminSlotGap,
                     width: '100%',
                   }}>
-                    {adminSlotImages.map((imageSource, index) => {
+                    {adminSlotImages.map((slotData, index) => {
                       // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                      const imageName = getConfig(`login_admin_slot_${index + 1}_image`, '');
+                      const imageName = slotData.imageName || getConfig(`login_admin_slot_${index + 1}_image`, '');
+                      const imageSource = slotData.imageUrl;
                       let universityCode = null; // users 테이블에 저장할 소문자 코드
                       let universityDisplayName = null; // 표시용 display name
                       if (imageName) {
@@ -1118,7 +1120,7 @@ export default function LoginScreen() {
                               overflow: imageSource ? 'hidden' : 'visible',
                           }}
                         >
-                            {imageSource && (
+                            {imageSource ? (
                               <Image
                                 source={imageSource}
                                 style={{
@@ -1128,12 +1130,23 @@ export default function LoginScreen() {
                                 resizeMode="contain"
                                 {...(Platform.OS !== 'ios' ? { cache: 'force-cache' } : {})}
                                 onError={(error) => {
-                                  console.error(`[LoginScreen] Admin 이미지 로드 실패 (slot ${index + 1}):`, error.nativeEvent.error);
+                                  if (__DEV__) {
+                                    console.error(`[LoginScreen] Admin 이미지 로드 실패 (slot ${index + 1}):`, error.nativeEvent.error);
+                                  }
                                 }}
                                 onLoad={() => {
-                                  console.log(`[LoginScreen] Admin 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
+                                  if (__DEV__) {
+                                    console.log(`[LoginScreen] Admin 이미지 로드 성공 (slot ${index + 1}):`, imageSource.uri);
+                                  }
                                 }}
                               />
+                            ) : (
+                              // 이미지가 로딩 중일 때 표시할 플레이스홀더
+                              <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                                {__DEV__ && (
+                                  <Text style={{ fontSize: 10, color: '#9ca3af' }}>Loading...</Text>
+                                )}
+                              </View>
                             )}
                         </View>
                       </TouchableOpacity>
