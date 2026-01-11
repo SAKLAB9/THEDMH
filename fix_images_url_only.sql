@@ -74,6 +74,7 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
+                       OR img LIKE ''%%qgtwkhkmdsaypnsnrpbf.supabase.co%%''
                 );
             ', table_name);
             
@@ -128,6 +129,7 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
+                       OR img LIKE ''%%qgtwkhkmdsaypnsnrpbf.supabase.co%%''
                 );
             ', table_name);
             
@@ -182,6 +184,7 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
+                       OR img LIKE ''%%qgtwkhkmdsaypnsnrpbf.supabase.co%%''
                 );
             ', table_name);
             
@@ -236,6 +239,7 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
+                       OR img LIKE ''%%qgtwkhkmdsaypnsnrpbf.supabase.co%%''
                 );
             ', table_name);
             
@@ -290,6 +294,7 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
+                       OR img LIKE ''%%qgtwkhkmdsaypnsnrpbf.supabase.co%%''
                 );
             ', table_name);
             
