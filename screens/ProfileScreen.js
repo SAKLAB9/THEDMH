@@ -197,9 +197,6 @@ export default function ProfileScreen() {
       }
       
       setLogoImageUrl({ uri: urlData.publicUrl });
-      } catch (error) {
-        setLogoImageUrl(null);
-      }
     };
     
     loadLogoImage();
