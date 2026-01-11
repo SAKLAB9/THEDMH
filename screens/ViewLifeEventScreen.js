@@ -160,21 +160,22 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   const { lifeEventId, lifeEventPreview } = route.params || {};
   const [lifeEvent, setLifeEvent] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
-  const [viewsUpdated, setViewsUpdated] = useState(false); // 서버에서 뷰수가 업데이트되었는지 추적
+  const [viewsIncremented, setViewsIncremented] = useState(false); // 뷰수가 이미 증가되었는지 추적 (중복 방지)
   
   // lifeEventPreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
-    if (lifeEventPreview && !lifeEvent) {
+    if (lifeEventPreview && !lifeEvent && !viewsIncremented) {
       // 기본 정보만 있는 preview 데이터로 즉시 표시
-      // 뷰수는 서버에서 증가시키므로 여기서는 증가시키지 않음
-      // 서버 응답을 받으면 증가된 뷰수로 업데이트됨
+      // 뷰수는 즉시 +1 표시 (낙관적 업데이트)
       setLifeEvent({
         ...lifeEventPreview,
+        views: (lifeEventPreview.views || 0) + 1, // 즉시 +1 표시
         content_blocks: [], // 내용은 아직 없음
         images: [] // 이미지도 아직 없음
       });
+      setViewsIncremented(true); // 뷰수 증가 표시
     }
-  }, [lifeEventPreview, lifeEvent]);
+  }, [lifeEventPreview, lifeEvent, viewsIncremented]);
 
   // 경조사 탭 (useMemo로 감싸서 config 변경 시 재생성)
   const lifeEventTabs = React.useMemo(() => {
