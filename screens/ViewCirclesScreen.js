@@ -94,7 +94,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
   const { university } = useUniversity();
   const { getConfig, getColorConfig } = useAppConfig();
   const config = { getColorConfig };
-  const { circleId, selectedChannel } = route?.params || {};
+  const { circleId, selectedChannel, circlePreview } = route?.params || {};
   
   // selectedChannel에 따라 university와 색상 결정
   const targetUniversity = useMemo(() => {
@@ -107,7 +107,19 @@ export default function ViewCirclesScreen({ route, navigation }) {
     buttonTextColor: uniColors.buttonTextColor,
   }), [uniColors]);
   const [circle, setCircle] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  
+  // circlePreview가 있으면 즉시 표시 (성능 최적화)
+  useEffect(() => {
+    if (circlePreview && !circle) {
+      // 기본 정보만 있는 preview 데이터로 즉시 표시
+      setCircle({
+        ...circlePreview,
+        content_blocks: [], // 내용은 아직 없음
+        images: [] // 이미지도 아직 없음
+      });
+    }
+  }, [circlePreview, circle]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [comments, setComments] = useState([]);
@@ -192,13 +204,20 @@ export default function ViewCirclesScreen({ route, navigation }) {
     loadCurrentUser();
   }, [loadCurrentUser]);
 
+  // 초기 로드
+  useEffect(() => {
+    if (circleId) {
+      loadCircle(false); // 캐시 확인 후 로드
+    }
+  }, [circleId, targetUniversity, loadCircle]);
+  
   // 화면이 포커스될 때마다 currentUser와 관심리스트 다시 로드
   useFocusEffect(
     React.useCallback(() => {
       loadCurrentUser();
       if (circleId) {
-        // 수정 후 돌아왔을 때 데이터 새로고침
-        loadCircle();
+        // 수정 후 돌아왔을 때 데이터 새로고침 (캐시 확인)
+        loadCircle(false);
       }
     }, [loadCurrentUser, circleId, loadCircle])
   );

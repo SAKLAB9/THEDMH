@@ -380,7 +380,7 @@ export default function CirclesScreen({ navigation, route }) {
     }
   };
 
-  // Circles 데이터 로드 함수
+  // Circles 데이터 로드 함수 (뷰수/댓글수는 캐시 안 쓰고 항상 최신)
   const loadCirclesData = React.useCallback(async () => {
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
       const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
@@ -392,12 +392,66 @@ export default function CirclesScreen({ navigation, route }) {
 
       try {
         const universityCode = targetUni.toLowerCase();
+        const cacheKey = `circles_${universityCode}`;
+        const cacheTimestampKey = `circles_timestamp_${universityCode}`;
+        const CACHE_DURATION = 2 * 60 * 1000; // 2분
         
-        const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
+        // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
+        const cachedData = await AsyncStorage.getItem(cacheKey);
+        const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+        const now = Date.now();
+        
+        // 캐시가 있고 2분 이내면 캐시 사용 (뷰수/댓글수는 별도로 최신 데이터 가져오기)
+        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
+          const cachedCircles = JSON.parse(cachedData);
+          
+          // 뷰수/댓글수만 최신 데이터로 업데이트
+          try {
+            const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
+              headers: { 'Cache-Control': 'no-cache' }
+            });
+            if (circlesResponse.ok) {
+              const circlesData = await circlesResponse.json();
+              if (circlesData.success && circlesData.circles) {
+                // 캐시된 데이터와 최신 데이터를 병합 (뷰수/댓글수만 업데이트)
+                const updatedCircles = cachedCircles.map(cachedCircle => {
+                  const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
+                  if (latestCircle) {
+                    return {
+                      ...cachedCircle,
+                      views: latestCircle.views,
+                      commentCount: latestCircle.commentCount
+                    };
+                  }
+                  return cachedCircle;
+                });
+                setSavedCircles(updatedCircles);
+                return;
+              }
+            }
+          } catch (error) {
+            // 뷰수/댓글수 업데이트 실패해도 캐시된 데이터 사용
+            if (__DEV__) {
+              console.warn('[CirclesScreen] 뷰수/댓글수 업데이트 실패, 캐시 사용:', error);
+            }
+          }
+          
+          // 뷰수/댓글수 업데이트 실패 시 캐시된 데이터 사용
+          setSavedCircles(cachedCircles);
+          return;
+        }
+        
+        // 캐시가 없거나 만료되었으면 새로 로드
+        const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
+          headers: { 'Cache-Control': 'no-cache' }
+        });
         if (circlesResponse.ok) {
           const circlesData = await circlesResponse.json();
           if (circlesData.success && circlesData.circles) {
             setSavedCircles(circlesData.circles);
+            // 캐시 저장 (뷰수/댓글수 제외하고 나머지만)
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
+            await AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
             if (__DEV__) {
               console.log('[CirclesScreen] Circles 로드 성공:', circlesData.circles.length);
             }
@@ -416,13 +470,29 @@ export default function CirclesScreen({ navigation, route }) {
               error: errorText
             });
           }
-          setSavedCircles([]);
+          // 오류 시 캐시된 데이터가 있으면 사용
+          if (cachedData) {
+            setSavedCircles(JSON.parse(cachedData));
+          } else {
+            setSavedCircles([]);
+          }
         }
       } catch (error) {
         if (__DEV__) {
           console.error('[CirclesScreen] Circles 로드 실패:', error);
         }
-        setSavedCircles([]);
+        // 에러 발생 시 캐시된 데이터가 있으면 사용
+        try {
+          const cacheKey = `circles_${targetUni.toLowerCase()}`;
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            setSavedCircles(JSON.parse(cachedData));
+          } else {
+            setSavedCircles([]);
+          }
+        } catch {
+          setSavedCircles([]);
+        }
       }
   }, [university, selectedChannel]);
 
@@ -1272,7 +1342,8 @@ export default function CirclesScreen({ navigation, route }) {
                   }}
                       onPress={() => navigation.navigate('ViewCircles', { 
                         circleId: circle.id,
-                        selectedChannel: selectedChannel
+                        selectedChannel: selectedChannel,
+                        circlePreview: circle // 기본 정보를 즉시 표시하기 위해 전달
                       })}
                 >
                       <View style={{ flex: 1 }}>
