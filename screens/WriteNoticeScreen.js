@@ -563,10 +563,18 @@ export default function WriteNoticeScreen({ navigation, route }) {
         }
         
         // 공지사항 목록 캐시 무효화 (새 글이 추가되거나 수정되었으므로)
-        const noticesCacheKey = `home_notices_${universityCode}`;
-        const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
-        await AsyncStorage.removeItem(noticesCacheKey);
-        await AsyncStorage.removeItem(cacheTimestampKey);
+        // channelPrefix를 포함한 새로운 형식과 오래된 형식 모두 무효화 (하위 호환성)
+        const channelPrefix = universityCode === 'miuhub' ? 'miuhub' : 'school';
+        const noticesCacheKey = `home_notices_${channelPrefix}_${universityCode}`;
+        const cacheTimestampKey = `home_data_timestamp_${channelPrefix}_${universityCode}`;
+        const oldNoticesCacheKey = `home_notices_${universityCode}`;
+        const oldCacheTimestampKey = `home_data_timestamp_${universityCode}`;
+        await Promise.all([
+          AsyncStorage.removeItem(noticesCacheKey),
+          AsyncStorage.removeItem(cacheTimestampKey),
+          AsyncStorage.removeItem(oldNoticesCacheKey),
+          AsyncStorage.removeItem(oldCacheTimestampKey)
+        ]);
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
