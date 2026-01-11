@@ -292,8 +292,7 @@ export default function SignUpScreen({ route }) {
           options: {
             data: {
               university: selectedUni, // 학교 정보 (필수)
-            },
-            emailRedirectTo: `${API_BASE_URL}/auth/confirm.html`, // 이메일 인증 후 리다이렉트 URL
+            }
           }
         });
 
@@ -332,6 +331,11 @@ export default function SignUpScreen({ route }) {
           // 사용자에게는 성공 메시지를 보여주되, 관리자에게는 로그로 알림
         }
 
+        // 사용자 정보 저장
+        const userEmail = authData.user.email;
+        await AsyncStorage.setItem('currentUserId', userEmail);
+        await AsyncStorage.setItem('currentUserEmail', userEmail);
+
         // UniversityContext 업데이트
         // 표시용으로는 displayName 사용, 저장용으로는 소문자 코드 사용
         if (selectedUni) {
@@ -341,8 +345,9 @@ export default function SignUpScreen({ route }) {
           await AsyncStorage.setItem('currentUserUniversity', displayName);
         }
 
-        alert('회원가입이 완료되었습니다. 이메일 인증을 완료해주세요.');
-        navigation.navigate('Login');
+        // 회원가입 성공 후 바로 메인 화면으로 이동 (이메일 인증 불필요)
+        alert('회원가입이 완료되었습니다.');
+        navigation.replace('Main');
       } else {
         // Supabase가 설정되지 않은 경우
         setIsLoading(false);
