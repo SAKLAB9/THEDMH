@@ -18,17 +18,48 @@ function ImageBlock({ uri }) {
   const [imageSize, setImageSize] = useState({ width: maxImageWidth, height: 200 });
   const [imageError, setImageError] = useState(false);
 
-  // 이미지 URI를 절대 경로로 변환
+  // 이미지 URI를 절대 경로로 변환 및 경로 수정
   const getImageUri = (uri) => {
     if (!uri) return null;
-    // 이미 절대 경로인 경우 (http://, https://, data:)
-    if (uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('data:')) {
+    
+    // data: URL은 그대로 반환
+    if (uri.startsWith('data:')) {
       return uri;
     }
+    
+    // Supabase Storage URL인 경우 경로 수정
+    if (uri.includes('supabase.co/storage/v1/object/public/images/')) {
+      // /images/nyu/images/ -> /images/nyu/ 로 수정 (중복된 /images/ 제거)
+      // 또는 /images/nyu/board_images/ -> /images/nyu/ 로 수정
+      // 또는 /images/nyu/circle_images/ -> /images/nyu/ 로 수정
+      let fixedUri = uri.replace(/\/images\/([^\/]+)\/images\//g, '/images/$1/');
+      fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/board_images\//g, '/images/$1/');
+      fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/circle_images\//g, '/images/$1/');
+      
+      // 파일명에서 접두사 확인 및 경로 재구성
+      // URL에서 파일명 추출
+      const urlMatch = fixedUri.match(/\/([^\/]+)\/([^\/]+)$/);
+      if (urlMatch) {
+        const [, folder, filename] = urlMatch;
+        // 파일명에 접두사가 있으면 그대로, 없으면 notice_ 추가하지 않음 (이미 저장된 파일)
+        // 실제 Storage 경로는 학교이름/파일명 형식
+        // URL이 /images/nyu/image_xxx.jpg 형식이면 그대로 사용
+        return fixedUri;
+      }
+      
+      return fixedUri;
+    }
+    
+    // 이미 절대 경로인 경우 (http://, https://)
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      return uri;
+    }
+    
     // 상대 경로인 경우 절대 경로로 변환
     if (uri.startsWith('/')) {
       return `${API_BASE_URL}${uri}`;
     }
+    
     // 그 외의 경우
     return `${API_BASE_URL}/${uri}`;
   };
