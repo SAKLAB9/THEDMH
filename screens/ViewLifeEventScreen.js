@@ -137,21 +137,67 @@ export default function ViewLifeEventScreen({ route, navigation }) {
       setLoading(true);
       try {
         const universityCode = university.toLowerCase();
-        console.log(`[ViewLifeEventScreen] 경조사 로드 시작: lifeEventId=${lifeEventId}, university=${university}, universityCode=${universityCode}`);
-        const url = `${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`;
-        console.log(`[ViewLifeEventScreen] 요청 URL: ${url}`);
+        const cacheKey = `lifeevent_${lifeEventId}_${universityCode}`;
         
+        // 캐시에서 먼저 확인
+        try {
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            const parsedData = JSON.parse(cachedData);
+            const cacheAge = Date.now() - (parsedData.timestamp || 0);
+            const CACHE_DURATION = 5 * 60 * 1000; // 5분
+            
+            if (cacheAge < CACHE_DURATION && parsedData.lifeEvent) {
+              // 캐시된 데이터를 먼저 표시
+              setLifeEvent(parsedData.lifeEvent);
+              setLoading(false);
+              
+              // 백그라운드에서 새 데이터 가져오기
+              fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
+                .then(response => {
+                  if (response.ok) {
+                    return response.json();
+                  }
+                  return null;
+                })
+                .then(data => {
+                  if (data && data.success && data.lifeEvent) {
+                    AsyncStorage.setItem(cacheKey, JSON.stringify({
+                      lifeEvent: data.lifeEvent,
+                      timestamp: Date.now()
+                    })).catch(() => {});
+                    setLifeEvent(data.lifeEvent);
+                  }
+                })
+                .catch(() => {});
+              
+              return; // 캐시가 있으면 여기서 종료
+            }
+          }
+        } catch (cacheError) {
+          // 캐시 읽기 오류는 무시하고 API 호출 계속
+        }
+        
+        const url = `${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`;
         const response = await fetch(url);
-        console.log(`[ViewLifeEventScreen] 응답 상태: ${response.status}, ${response.statusText}`);
         
         if (response.ok) {
           const data = await response.json();
-          console.log(`[ViewLifeEventScreen] 응답 데이터:`, data);
           if (data.success && data.lifeEvent) {
+            // 캐시에 저장
+            try {
+              await AsyncStorage.setItem(cacheKey, JSON.stringify({
+                lifeEvent: data.lifeEvent,
+                timestamp: Date.now()
+              }));
+            } catch (cacheError) {
+              // 캐시 저장 실패는 무시
+            }
             setLifeEvent(data.lifeEvent);
-            console.log(`[ViewLifeEventScreen] 경조사 로드 성공`);
           } else {
-            console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음:`, data);
+            if (__DEV__) {
+              console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음`);
+            }
             Alert.alert('오류', '경조사를 찾을 수 없습니다.');
             if (navigation.canGoBack()) {
               navigation.goBack();
@@ -160,11 +206,10 @@ export default function ViewLifeEventScreen({ route, navigation }) {
             }
           }
         } else {
-          const errorData = await response.json().catch((err) => {
-            console.error(`[ViewLifeEventScreen] JSON 파싱 실패:`, err);
-            return { error: '경조사를 불러올 수 없습니다.' };
-          });
-          console.error(`[ViewLifeEventScreen] 서버 오류 응답:`, errorData);
+          const errorData = await response.json().catch(() => ({ error: '경조사를 불러올 수 없습니다.' }));
+          if (__DEV__) {
+            console.error(`[ViewLifeEventScreen] 서버 오류:`, errorData);
+          }
           Alert.alert('오류', errorData.error || '경조사를 불러올 수 없습니다.');
           if (navigation.canGoBack()) {
             navigation.goBack();
@@ -173,9 +218,9 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           }
         }
       } catch (error) {
-        console.error('[ViewLifeEventScreen] 경조사 로드 오류:', error);
-        console.error('[ViewLifeEventScreen] 오류 상세:', error.message);
-        console.error('[ViewLifeEventScreen] 오류 스택:', error.stack);
+        if (__DEV__) {
+          console.error('[ViewLifeEventScreen] 경조사 로드 오류:', error);
+        }
         Alert.alert('오류', '경조사를 불러오는 중 오류가 발생했습니다.');
         if (navigation.canGoBack()) {
           navigation.goBack();

@@ -131,21 +131,67 @@ export default function ViewNoticeScreen({ route, navigation }) {
       setLoading(true);
       try {
         const universityCode = university.toLowerCase();
-        console.log(`[ViewNoticeScreen] 공지사항 로드 시작: noticeId=${noticeId}, university=${university}, universityCode=${universityCode}`);
-        const url = `${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`;
-        console.log(`[ViewNoticeScreen] 요청 URL: ${url}`);
+        const cacheKey = `notice_${noticeId}_${universityCode}`;
         
+        // 캐시에서 먼저 확인
+        try {
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            const parsedData = JSON.parse(cachedData);
+            const cacheAge = Date.now() - (parsedData.timestamp || 0);
+            const CACHE_DURATION = 5 * 60 * 1000; // 5분
+            
+            if (cacheAge < CACHE_DURATION && parsedData.notice) {
+              // 캐시된 데이터를 먼저 표시
+              setNotice(parsedData.notice);
+              setLoading(false);
+              
+              // 백그라운드에서 새 데이터 가져오기
+              fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
+                .then(response => {
+                  if (response.ok) {
+                    return response.json();
+                  }
+                  return null;
+                })
+                .then(data => {
+                  if (data && data.success && data.notice) {
+                    AsyncStorage.setItem(cacheKey, JSON.stringify({
+                      notice: data.notice,
+                      timestamp: Date.now()
+                    })).catch(() => {});
+                    setNotice(data.notice);
+                  }
+                })
+                .catch(() => {});
+              
+              return; // 캐시가 있으면 여기서 종료
+            }
+          }
+        } catch (cacheError) {
+          // 캐시 읽기 오류는 무시하고 API 호출 계속
+        }
+        
+        const url = `${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`;
         const response = await fetch(url);
-        console.log(`[ViewNoticeScreen] 응답 상태: ${response.status}, ${response.statusText}`);
         
         if (response.ok) {
           const data = await response.json();
-          console.log(`[ViewNoticeScreen] 응답 데이터:`, data);
           if (data.success && data.notice) {
+            // 캐시에 저장
+            try {
+              await AsyncStorage.setItem(cacheKey, JSON.stringify({
+                notice: data.notice,
+                timestamp: Date.now()
+              }));
+            } catch (cacheError) {
+              // 캐시 저장 실패는 무시
+            }
             setNotice(data.notice);
-            console.log(`[ViewNoticeScreen] 공지사항 로드 성공`);
           } else {
-            console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음:`, data);
+            if (__DEV__) {
+              console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음`);
+            }
             Alert.alert('오류', '공지사항을 찾을 수 없습니다.');
             if (navigation.canGoBack()) {
               navigation.goBack();
@@ -154,11 +200,10 @@ export default function ViewNoticeScreen({ route, navigation }) {
             }
           }
         } else {
-          const errorData = await response.json().catch((err) => {
-            console.error(`[ViewNoticeScreen] JSON 파싱 실패:`, err);
-            return { error: '공지사항을 불러올 수 없습니다.' };
-          });
-          console.error(`[ViewNoticeScreen] 서버 오류 응답:`, errorData);
+          const errorData = await response.json().catch(() => ({ error: '공지사항을 불러올 수 없습니다.' }));
+          if (__DEV__) {
+            console.error(`[ViewNoticeScreen] 서버 오류:`, errorData);
+          }
           Alert.alert('오류', errorData.error || '공지사항을 불러올 수 없습니다.');
           if (navigation.canGoBack()) {
             navigation.goBack();
@@ -167,9 +212,9 @@ export default function ViewNoticeScreen({ route, navigation }) {
           }
         }
       } catch (error) {
-        console.error('[ViewNoticeScreen] 공지사항 로드 오류:', error);
-        console.error('[ViewNoticeScreen] 오류 상세:', error.message);
-        console.error('[ViewNoticeScreen] 오류 스택:', error.stack);
+        if (__DEV__) {
+          console.error('[ViewNoticeScreen] 공지사항 로드 오류:', error);
+        }
         Alert.alert('오류', '공지사항을 불러오는 중 오류가 발생했습니다.');
         if (navigation.canGoBack()) {
           navigation.goBack();
