@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLoginColors } from '../utils/uniColors';
 import { useAppConfig } from '../contexts/AppConfigContext';
-import API_BASE_URL from '../config/api';
+import { supabase } from '../config/supabase';
 
 // 이미지 파일 맵핑은 더 이상 사용하지 않음 - 모든 이미지는 Supabase Storage에서 로드
 
@@ -192,17 +192,25 @@ export default function SelectUniScreen() {
             continue;
           }
           
-          // Supabase Storage의 assets 폴더에서 이미지 가져오기
-          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=assets/${encodeURIComponent(imageName)}`;
-          const response = await fetch(apiUrl);
-          
-          const responseText = await response.text();
-          const data = JSON.parse(responseText);
-          
-          if (data.success && data.url) {
-            await AsyncStorage.setItem(cacheKey, data.url);
-            urls[imageName] = { uri: data.url };
+          // Supabase Storage에서 직접 이미지 URL 가져오기
+          if (!supabase) {
+            continue;
           }
+          
+          const filePath = `assets/${imageName}`;
+          const { data: urlData, error: urlError } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          
+          if (urlError || !urlData?.publicUrl) {
+            if (__DEV__) {
+              console.error(`[SelectUniScreen] 슬롯 ${slotNumber} URL 생성 실패:`, urlError);
+            }
+            continue;
+          }
+          
+          await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+          urls[imageName] = { uri: urlData.publicUrl };
         } catch (error) {
           if (__DEV__) {
             console.error(`[SelectUniScreen] 슬롯 ${slotNumber} 이미지 로드 실패:`, error.message);
@@ -240,28 +248,28 @@ export default function SelectUniScreen() {
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
-        // 캐시에 없으면 API 호출 (LoginScreen과 동일)
-        const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
-        const response = await fetch(apiUrl);
-        
-        // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
-        let data;
-        try {
-          const responseText = await response.text();
-          data = JSON.parse(responseText);
-        } catch (parseError) {
+        // 캐시에 없으면 Supabase Storage에서 직접 가져오기
+        if (!supabase) {
           setIconImageUrl(null);
           return;
         }
         
-        // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
-        if (data.success && data.url) {
-          // 캐시에 저장 (24시간 유효)
-          await AsyncStorage.setItem(cacheKey, data.url);
-          setIconImageUrl({ uri: data.url });
-        } else {
+        const filePath = `assets/${iconImageName}`;
+        const { data: urlData, error: urlError } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+        
+        if (urlError || !urlData?.publicUrl) {
+          if (__DEV__) {
+            console.error('[SelectUniScreen] 메인 아이콘 URL 생성 실패:', urlError);
+          }
           setIconImageUrl(null);
+          return;
         }
+        
+        // 캐시에 저장
+        await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+        setIconImageUrl({ uri: urlData.publicUrl });
       } catch (error) {
         if (__DEV__) {
           console.error('[SelectUniScreen] 메인 아이콘 로드 실패:', error);

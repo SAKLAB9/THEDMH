@@ -6,7 +6,7 @@ import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
-import API_BASE_URL, { testServerConnection } from '../config/api';
+import { supabase } from '../config/supabase';
 import { useUniversity } from '../contexts/UniversityContext';
 import { getLoginColors } from '../utils/uniColors';
 import { getCategoryPassword } from './categoryPasswords';
@@ -356,28 +356,28 @@ export default function LoginScreen() {
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
-        // 캐시에 없으면 API 호출
-        const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
-        const response = await fetch(apiUrl);
-        
-        // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
-        let data;
-        try {
-          const responseText = await response.text();
-          data = JSON.parse(responseText);
-        } catch (parseError) {
+        // 캐시에 없으면 Supabase Storage에서 직접 가져오기
+        if (!supabase) {
           setIconImageUrl(null);
           return;
         }
         
-        // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
-        if (data.success && data.url) {
-          // 캐시에 저장 (24시간 유효)
-          await AsyncStorage.setItem(cacheKey, data.url);
-          setIconImageUrl({ uri: data.url });
-        } else {
+        const filePath = `assets/${iconImageName}`;
+        const { data: urlData, error: urlError } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+        
+        if (urlError || !urlData?.publicUrl) {
+          if (__DEV__) {
+            console.error('[LoginScreen] 아이콘 URL 생성 실패:', urlError);
+          }
           setIconImageUrl(null);
+          return;
         }
+        
+        // 캐시에 저장
+        await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+        setIconImageUrl({ uri: urlData.publicUrl });
       } catch (error) {
         console.error('[LoginScreen] 아이콘 로드 실패:', error);
         setIconImageUrl(null);
@@ -434,124 +434,36 @@ export default function LoginScreen() {
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
-        // 캐시에 없으면 API 호출
-        const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
-        
-        // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ filenames: imageNames }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.success && data.urls) {
-            // 캐시에 저장 (24시간 유효)
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
-            
-            // URL 객체로 변환
-            const urls = {};
-            Object.keys(data.urls).forEach(imageName => {
-              urls[imageName] = { uri: data.urls[imageName] };
-            });
-            setAdminImageUrls(urls);
-          } else {
-            // API 응답 실패 시 조용히 처리 (기존 imageUrls 유지)
-            // setAdminImageUrls({}) 제거 - 기존 이미지 유지
-          }
-        } else {
-          // HTTP 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
-          if (__DEV__) {
-            console.warn(`[LoginScreen] Admin 이미지 API HTTP 에러 (${Platform.OS}), Supabase에서 직접 생성:`, {
-              status: response.status,
-              statusText: response.statusText
-            });
-          }
-          
-          // Supabase Storage에서 직접 URL 생성
-          try {
-            const { supabase } = require('../config/supabase');
-            if (supabase) {
-              const urls = {};
-              imageNames.forEach(imageName => {
-                const trimmedName = String(imageName).trim();
-                if (trimmedName) {
-                  const filePath = `assets/${trimmedName}`;
-                  const { data: urlData } = supabase.storage
-                    .from('images')
-                    .getPublicUrl(filePath);
-                  urls[trimmedName] = urlData.publicUrl;
-                }
-              });
-              
-              // 캐시에 저장
-              await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
-              
-              // URL 객체로 변환
-              const urlObjects = {};
-              Object.keys(urls).forEach(imageName => {
-                urlObjects[imageName] = { uri: urls[imageName] };
-              });
-              
-              setAdminImageUrls(urlObjects);
-              
-              if (__DEV__ && Platform.OS === 'ios') {
-                console.log(`[LoginScreen] iOS Admin 이미지 Supabase 직접 URL 생성 성공:`, Object.keys(urlObjects).length, '개');
-              }
-            }
-          } catch (fallbackError) {
-            if (__DEV__) {
-              console.warn(`[LoginScreen] Admin 이미지 Supabase 직접 URL 생성 실패:`, fallbackError.message);
-            }
-          }
-        }
-      } catch (error) {
-        // 네트워크 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
-        if (__DEV__) {
-          console.warn(`[LoginScreen] Admin 이미지 로드 실패 (${Platform.OS}), Supabase에서 직접 생성:`, error.message);
+        // 캐시에 없으면 Supabase Storage에서 직접 가져오기
+        if (!supabase) {
+          setAdminImageUrls({});
+          return;
         }
         
         // Supabase Storage에서 직접 URL 생성
-        try {
-          const { supabase } = require('../config/supabase');
-          if (supabase) {
-            const urls = {};
-            imageNames.forEach(imageName => {
-              const trimmedName = String(imageName).trim();
-              if (trimmedName) {
-                const filePath = `assets/${trimmedName}`;
-                const { data: urlData } = supabase.storage
-                  .from('images')
-                  .getPublicUrl(filePath);
-                urls[trimmedName] = urlData.publicUrl;
-              }
-            });
-            
-            // 캐시에 저장
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
-            
-            // URL 객체로 변환
-            const urlObjects = {};
-            Object.keys(urls).forEach(imageName => {
-              urlObjects[imageName] = { uri: urls[imageName] };
-            });
-            
-            setAdminImageUrls(urlObjects);
-            
-            if (__DEV__ && Platform.OS === 'ios') {
-              console.log(`[LoginScreen] iOS Admin 이미지 Supabase 직접 URL 생성 성공 (에러 후):`, Object.keys(urlObjects).length, '개');
+        const urls = {};
+        imageNames.forEach(imageName => {
+          const trimmedName = String(imageName).trim();
+          if (trimmedName) {
+            const filePath = `assets/${trimmedName}`;
+            const { data: urlData } = supabase.storage
+              .from('images')
+              .getPublicUrl(filePath);
+            if (urlData?.publicUrl) {
+              urls[trimmedName] = urlData.publicUrl;
             }
           }
-        } catch (fallbackError) {
-          if (__DEV__) {
-            console.warn(`[LoginScreen] Admin 이미지 Supabase 직접 URL 생성 실패:`, fallbackError.message);
-          }
-        }
-      }
+        });
+        
+        // 캐시에 저장
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+        
+        // URL 객체로 변환
+        const urlObjects = {};
+        Object.keys(urls).forEach(imageName => {
+          urlObjects[imageName] = { uri: urls[imageName] };
+        });
+        setAdminImageUrls(urlObjects);
     };
     
     loadAdminImageUrls();
