@@ -1425,8 +1425,16 @@ app.post('/api/notices', async (req, res) => {
           const seqName = seqResult.rows[0]?.seq_name;
           
           if (seqName) {
-            // 시퀀스 재설정 (true를 사용하여 다음 nextval()이 maxId + 1을 반환하도록)
-            await pool.query(`SELECT setval($1, $2, true)`, [seqName, maxId]);
+            // 현재 시퀀스 값 확인
+            const currValResult = await pool.query(`SELECT last_value FROM ${seqName}`);
+            const currVal = parseInt(currValResult.rows[0]?.last_value || 0, 10);
+            
+            // 최대 ID와 현재 시퀀스 값 중 더 큰 값 사용
+            const targetVal = Math.max(maxId, currVal);
+            
+            // 시퀀스 재설정 (false를 사용하여 다음 nextval()이 targetVal + 1을 반환하도록)
+            // setval(seq, value, false)는 다음 nextval()이 value + 1을 반환
+            await pool.query(`SELECT setval($1, $2, false)`, [seqName, targetVal]);
           }
         } catch (seqError) {
           // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
