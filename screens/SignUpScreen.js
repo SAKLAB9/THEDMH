@@ -292,7 +292,8 @@ export default function SignUpScreen({ route }) {
           options: {
             data: {
               university: selectedUni, // 학교 정보 (필수)
-            }
+            },
+            emailRedirectTo: `${API_BASE_URL}/auth/confirm.html`, // 이메일 인증 후 리다이렉트 URL
           }
         });
 

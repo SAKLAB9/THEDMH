@@ -41,6 +41,12 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// 정적 파일 서빙 (HTML 페이지 등)
+const publicPath = path.join(__dirname, 'public');
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+}
+
 // 루트 경로 핸들러 (Vercel 404 방지)
 app.get('/', (req, res) => {
   res.status(200).json({ 
