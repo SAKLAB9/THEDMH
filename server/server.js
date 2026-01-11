@@ -2684,34 +2684,12 @@ app.put('/api/life-events/:id', async (req, res) => {
           });
         }
 
-        // 새로운 이미지 저장 및 URL 수집
-        const savedImageUrls = [...oldImages];
-        if (images && images.length > 0) {
-          for (let i = 0; i < images.length; i++) {
-            const imageData = images[i];
-            if (imageData && imageData.startsWith('data:image')) {
-              const timestamp = Date.now();
-              const filename = `notice_${timestamp}_${i}.jpg`;
-              try {
-                const imageUrl = await saveImage(imageData, filename, universityCode);
-                savedImageUrls.push(imageUrl);
-              } catch (error) {
-                console.error(`[경조사 수정] 이미지 저장 실패:`, error);
-              }
-            } else if (imageData && imageData.startsWith('http')) {
-              if (!savedImageUrls.includes(imageData)) {
-                savedImageUrls.push(imageData);
-              }
-            }
-          }
-        }
-
-        // contentBlocks의 이미지도 업로드 및 업데이트
+        // contentBlocks의 이미지도 업로드 및 업데이트 (base64만 업로드)
         const updatedContentBlocks = await Promise.all((contentBlocks || []).map(async (block, index) => {
           if (block.type === 'image' && block.uri) {
             if (block.uri.startsWith('data:image')) {
               const timestamp = Date.now();
-              const filename = `notice_${timestamp}_block_${index}.jpg`;
+              const filename = `lifeevent_${timestamp}_block_${index}.jpg`;
               try {
                 const imageUrl = await saveImage(block.uri, filename, universityCode);
                 return { ...block, uri: imageUrl };
@@ -2724,25 +2702,47 @@ app.put('/api/life-events/:id', async (req, res) => {
           return block;
         }));
 
-        // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
+        // 새로운 이미지 URL 수집 (실제 사용되는 이미지만 수집)
         const newImageUrls = new Set();
-        savedImageUrls.forEach(url => {
-          if (url) {
-            newImageUrls.add(url);
+
+        // images 배열에서 새로운 이미지 저장 및 수집 (빈 배열도 유효한 값으로 처리)
+        const finalImages = Array.isArray(images) ? images : [];
+        for (let i = 0; i < finalImages.length; i++) {
+          const imageData = finalImages[i];
+          if (imageData && imageData.startsWith('data:image')) {
+            // base64 이미지 업로드
+            const timestamp = Date.now();
+            const filename = `lifeevent_${timestamp}_${i}.jpg`;
+            try {
+              const imageUrl = await saveImage(imageData, filename, universityCode);
+              newImageUrls.add(imageUrl);
+            } catch (error) {
+              console.error(`[경조사 수정] 이미지 저장 실패:`, error);
+            }
+          } else if (imageData && imageData.startsWith('http')) {
+            // 이미 업로드된 이미지 URL
+            newImageUrls.add(imageData);
           }
-        });
+        }
+
+        // contentBlocks의 이미지 URL 수집
         updatedContentBlocks.forEach(block => {
           if (block.type === 'image' && block.uri) {
             newImageUrls.add(block.uri);
           }
         });
 
-        // 삭제된 이미지 찾기
+        // 삭제된 이미지 찾기 (storage 삭제는 나중에 처리)
+        const deletedImageUrls = [];
         oldImageUrls.forEach(url => {
           if (!newImageUrls.has(url)) {
-            deleteImageFile(url);
+            deletedImageUrls.push(url);
+            console.log(`[경조사 수정] 삭제할 이미지 (나중에 처리): ${url}`);
           }
         });
+
+        // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
+        const savedImageUrls = Array.from(newImageUrls);
 
         // 경조사 업데이트
         const result = await pool.query(
