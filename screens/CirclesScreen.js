@@ -673,25 +673,8 @@ export default function CirclesScreen({ navigation, route }) {
       
       const refreshData = async () => {
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
-        // 먼저 selectedChannel이 방금 변경되었는지 확인
-        const currentSelectedChannel = selectedChannelRef.current;
-        console.log('[DEBUG refreshData] 시작:', { 
-          selectedChannel, 
-          selectedChannelRef: currentSelectedChannel,
-          routeParams: route?.params?.selectedChannel 
-        });
-        
-        // selectedChannel이 방금 변경되었다면 refreshData를 완전히 스킵
-        // (loadCirclesData가 이미 처리 중이거나 처리했음)
-        if (currentSelectedChannel !== selectedChannel) {
-          console.log('[DEBUG refreshData] 스킵 (selectedChannel이 방금 변경됨, loadCirclesData가 처리함):', { 
-            refValue: currentSelectedChannel, 
-            current: selectedChannel 
-          });
-          return;
-        }
-        
         let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
+        console.log('[DEBUG refreshData] 시작:', { selectedChannel, routeParams: route?.params?.selectedChannel });
         
         // route.params가 있고 selectedChannel과 다를 때만 업데이트
         if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
