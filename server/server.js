@@ -2242,11 +2242,26 @@ app.get('/api/life-events', async (req, res) => {
         FROM ${tableName}`;
         const params = [];
         let paramIndex = 1;
+        const whereConditions = [];
         
         if (category && category !== '전체') {
-          query += ` WHERE category = $${paramIndex}`;
+          whereConditions.push(`category = $${paramIndex}`);
           params.push(category);
           paramIndex++;
+        }
+        
+        // since 파라미터가 있으면 특정 시간 이후의 데이터만 가져오기
+        if (since) {
+          const sinceTimestamp = parseInt(since, 10);
+          if (!isNaN(sinceTimestamp)) {
+            whereConditions.push(`EXTRACT(EPOCH FROM created_at) * 1000 > $${paramIndex}`);
+            params.push(sinceTimestamp);
+            paramIndex++;
+          }
+        }
+        
+        if (whereConditions.length > 0) {
+          query += ` WHERE ${whereConditions.join(' AND ')}`;
         }
         
         query += ` ORDER BY created_at DESC`;
