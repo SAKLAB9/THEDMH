@@ -713,8 +713,11 @@ export default function CirclesScreen({ navigation, route }) {
         }
       };
       
-      // 즉시 새로고침
-      refreshData();
+      // selectedChannel이 변경 중이 아닐 때만 즉시 새로고침
+      // selectedChannel 변경은 loadCirclesData가 처리하므로 refreshData는 스킵
+      if (!route?.params?.selectedChannel || route.params.selectedChannel === selectedChannel) {
+        refreshData();
+      }
       
       // 2분(120초)마다 자동 새로고침 (새 글 확인)
       intervalRef.current = setInterval(() => {
@@ -728,7 +731,7 @@ export default function CirclesScreen({ navigation, route }) {
           intervalRef.current = null;
         }
       };
-    }, [route?.params?.selectedChannel, university, loadConfig])
+    }, [route?.params?.selectedChannel, university, loadConfig, selectedChannel])
   );
 
   // API에서 불러온 Circles만 사용
