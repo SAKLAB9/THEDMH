@@ -690,13 +690,7 @@ export default function SelectUniScreen() {
                               style={{ width: '100%', height: '100%' }}
                               resizeMode="contain"
                             />
-                          ) : (
-                            <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
-                              {__DEV__ && imageName && (
-                                <Text style={{ fontSize: 10, color: '#9ca3af' }}>Loading...</Text>
-                              )}
-                            </View>
-                          )}
+                          ) : null}
                         </View>
                       </TouchableOpacity>
                     );

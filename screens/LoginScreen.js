@@ -1054,14 +1054,7 @@ export default function LoginScreen() {
                                   }
                                 }}
                               />
-                            ) : (
-                              // 이미지가 로딩 중일 때 표시할 플레이스홀더
-                              <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
-                                {__DEV__ && (
-                                  <Text style={{ fontSize: 10, color: '#9ca3af' }}>Loading...</Text>
-                                )}
-                              </View>
-                            )}
+                            ) : null}
                         </View>
                       </TouchableOpacity>
                       );
