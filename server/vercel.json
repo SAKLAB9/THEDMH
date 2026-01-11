@@ -6,6 +6,10 @@
       "dest": "/api/config.js"
     },
     {
+      "src": "/api/supabase-image-url",
+      "dest": "/api/supabase-image-url.js"
+    },
+    {
       "src": "/api/cleanup-unused-images",
       "dest": "/api/cleanup-unused-images.js"
     },
