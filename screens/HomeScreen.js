@@ -310,14 +310,23 @@ export default function HomeScreen({ navigation }) {
           fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
         ]);
         
-        // 공지사항 처리
+        // 공지사항 처리 (응답 텍스트를 받는 즉시 파싱)
         if (noticesResponse.ok) {
-          const noticesData = await noticesResponse.json();
-          if (noticesData.success && noticesData.notices) {
-            setSavedNotices(noticesData.notices);
-          } else {
+          const noticesText = await noticesResponse.text();
+          try {
+            const noticesData = JSON.parse(noticesText);
+            if (noticesData.success && noticesData.notices) {
+              // 즉시 표시
+              setSavedNotices(noticesData.notices);
+            } else {
+              if (__DEV__) {
+                console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+              }
+              setSavedNotices([]);
+            }
+          } catch (parseError) {
             if (__DEV__) {
-              console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+              console.error('[HomeScreen] 공지사항 JSON 파싱 오류:', parseError);
             }
             setSavedNotices([]);
           }
@@ -332,14 +341,23 @@ export default function HomeScreen({ navigation }) {
           setSavedNotices([]);
         }
 
-        // 경조사 처리
+        // 경조사 처리 (응답 텍스트를 받는 즉시 파싱)
         if (lifeEventsResponse.ok) {
-          const lifeEventsData = await lifeEventsResponse.json();
-          if (lifeEventsData.success && lifeEventsData.lifeEvents) {
-            setSavedLifeEvents(lifeEventsData.lifeEvents);
-          } else {
+          const lifeEventsText = await lifeEventsResponse.text();
+          try {
+            const lifeEventsData = JSON.parse(lifeEventsText);
+            if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+              // 즉시 표시
+              setSavedLifeEvents(lifeEventsData.lifeEvents);
+            } else {
+              if (__DEV__) {
+                console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+              }
+              setSavedLifeEvents([]);
+            }
+          } catch (parseError) {
             if (__DEV__) {
-              console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+              console.error('[HomeScreen] 경조사 JSON 파싱 오류:', parseError);
             }
             setSavedLifeEvents([]);
           }
@@ -463,28 +481,36 @@ export default function HomeScreen({ navigation }) {
               Promise.all([
                 fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
                 fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
-              ]).then(([noticesResponse, lifeEventsResponse]) => {
+              ]).then(async ([noticesResponse, lifeEventsResponse]) => {
                 
-                // 공지사항 업데이트
+                // 공지사항 업데이트 (응답 텍스트를 받는 즉시 파싱)
                 if (noticesResponse.ok) {
-                  noticesResponse.json().then(noticesData => {
+                  try {
+                    const noticesText = await noticesResponse.text();
+                    const noticesData = JSON.parse(noticesText);
                     if (noticesData.success && noticesData.notices) {
+                      setSavedNotices(noticesData.notices);
                       AsyncStorage.setItem(noticesCacheKey, JSON.stringify(noticesData.notices)).catch(() => {});
                       AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
-                      setSavedNotices(noticesData.notices);
                     }
-                  }).catch(() => {});
+                  } catch (parseError) {
+                    // 파싱 오류는 무시
+                  }
                 }
                 
-                // 경조사 업데이트
+                // 경조사 업데이트 (응답 텍스트를 받는 즉시 파싱)
                 if (lifeEventsResponse.ok) {
-                  lifeEventsResponse.json().then(lifeEventsData => {
+                  try {
+                    const lifeEventsText = await lifeEventsResponse.text();
+                    const lifeEventsData = JSON.parse(lifeEventsText);
                     if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+                      setSavedLifeEvents(lifeEventsData.lifeEvents);
                       AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(lifeEventsData.lifeEvents)).catch(() => {});
                       AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
-                      setSavedLifeEvents(lifeEventsData.lifeEvents);
                     }
-                  }).catch(() => {});
+                  } catch (parseError) {
+                    // 파싱 오류는 무시
+                  }
                 }
               }).catch(() => {});
               
@@ -519,21 +545,26 @@ export default function HomeScreen({ navigation }) {
             fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
           ]);
           
-          // 공지사항 처리
+          // 공지사항 처리 (응답 텍스트를 받는 즉시 파싱)
           if (noticesResponse.ok) {
-            const noticesData = await noticesResponse.json();
-            if (noticesData.success && noticesData.notices) {
-              // 캐시에 저장
-              try {
-                await AsyncStorage.setItem(noticesCacheKey, JSON.stringify(noticesData.notices));
-                await AsyncStorage.setItem(cacheTimestampKey, Date.now().toString());
-              } catch (cacheError) {
-                // 캐시 저장 실패는 무시
+            const noticesText = await noticesResponse.text();
+            try {
+              const noticesData = JSON.parse(noticesText);
+              if (noticesData.success && noticesData.notices) {
+                // 즉시 표시
+                setSavedNotices(noticesData.notices);
+                // 캐시에 저장 (비동기, 블로킹하지 않음)
+                AsyncStorage.setItem(noticesCacheKey, JSON.stringify(noticesData.notices)).catch(() => {});
+                AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
+              } else {
+                if (__DEV__) {
+                  console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+                }
+                setSavedNotices([]);
               }
-              setSavedNotices(noticesData.notices);
-            } else {
+            } catch (parseError) {
               if (__DEV__) {
-                console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+                console.error('[HomeScreen] 공지사항 JSON 파싱 오류:', parseError);
               }
               setSavedNotices([]);
             }
@@ -553,21 +584,26 @@ export default function HomeScreen({ navigation }) {
             }
           }
 
-          // 경조사 처리
+          // 경조사 처리 (응답 텍스트를 받는 즉시 파싱)
           if (lifeEventsResponse.ok) {
-            const lifeEventsData = await lifeEventsResponse.json();
-            if (lifeEventsData.success && lifeEventsData.lifeEvents) {
-              // 캐시에 저장
-              try {
-                await AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(lifeEventsData.lifeEvents));
-                await AsyncStorage.setItem(cacheTimestampKey, Date.now().toString());
-              } catch (cacheError) {
-                // 캐시 저장 실패는 무시
+            const lifeEventsText = await lifeEventsResponse.text();
+            try {
+              const lifeEventsData = JSON.parse(lifeEventsText);
+              if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+                // 즉시 표시
+                setSavedLifeEvents(lifeEventsData.lifeEvents);
+                // 캐시에 저장 (비동기, 블로킹하지 않음)
+                AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(lifeEventsData.lifeEvents)).catch(() => {});
+                AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
+              } else {
+                if (__DEV__) {
+                  console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+                }
+                setSavedLifeEvents([]);
               }
-              setSavedLifeEvents(lifeEventsData.lifeEvents);
-            } else {
+            } catch (parseError) {
               if (__DEV__) {
-                console.error('[HomeScreen] 경조사 데이터 형식 오류:', lifeEventsData);
+                console.error('[HomeScreen] 경조사 JSON 파싱 오류:', parseError);
               }
               setSavedLifeEvents([]);
             }
