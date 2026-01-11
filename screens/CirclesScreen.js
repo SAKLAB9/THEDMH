@@ -412,9 +412,14 @@ export default function CirclesScreen({ navigation, route }) {
           fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
             headers: { 'Cache-Control': 'no-cache' }
           })
-            .then(response => {
+            .then(async response => {
               if (response.ok) {
-                return response.json();
+                const responseText = await response.text();
+                try {
+                  return JSON.parse(responseText);
+                } catch (e) {
+                  return null;
+                }
               }
               return null;
             })
@@ -452,19 +457,22 @@ export default function CirclesScreen({ navigation, route }) {
           headers: { 'Cache-Control': 'no-cache' }
         });
         if (circlesResponse.ok) {
-          const circlesData = await circlesResponse.json();
-          if (circlesData.success && circlesData.circles) {
-            setSavedCircles(circlesData.circles);
-            // 캐시 저장 (뷰수/댓글수 제외하고 나머지만)
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
-            await AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
-            if (__DEV__) {
-              console.log('[CirclesScreen] Circles 로드 성공:', circlesData.circles.length);
-            }
-          } else {
-            if (__DEV__) {
-              console.log('[CirclesScreen] Circles 데이터 없음 또는 실패:', circlesData);
-            }
+          // 응답 텍스트를 받는 즉시 파싱 (성능 최적화)
+          const circlesText = await circlesResponse.text();
+          try {
+            const circlesData = JSON.parse(circlesText);
+            if (circlesData.success && circlesData.circles) {
+              setSavedCircles(circlesData.circles);
+              // 캐시 저장 (뷰수/댓글수 제외하고 나머지만)
+              await AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
+              await AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
+              if (__DEV__) {
+                console.log('[CirclesScreen] Circles 로드 성공:', circlesData.circles.length);
+              }
+            } else {
+              if (__DEV__) {
+                console.log('[CirclesScreen] Circles 데이터 없음 또는 실패:', circlesData);
+              }
             setSavedCircles([]);
           }
         } else {
