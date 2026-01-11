@@ -614,13 +614,15 @@ export default function CirclesScreen({ navigation, route }) {
                   try {
                     const circlesData = JSON.parse(responseText);
                     if (circlesData && circlesData.success && circlesData.circles) {
-                      // 뷰수만 업데이트 (기존 데이터 유지)
+                      // 뷰수와 마감 상태 업데이트 (기존 데이터 유지)
                       const updatedCircles = cachedCircles.map(cachedCircle => {
                         const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
                         if (latestCircle) {
                           return {
                             ...cachedCircle,
-                            views: latestCircle.views
+                            views: latestCircle.views,
+                            isClosed: latestCircle.isClosed || false,
+                            closedAt: latestCircle.closedAt
                           };
                         }
                         return cachedCircle;
