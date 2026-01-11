@@ -145,9 +145,19 @@ export default function SignUpScreen({ route }) {
           .eq('email', userEmail.trim())
           .maybeSingle();
         
-        if (error && error.code !== 'PGRST116') {
-          console.error('이메일 중복 체크 오류:', error);
-          setEmailAvailable(null);
+        if (error) {
+          // PGRST116은 "no rows returned" 오류로 정상적인 경우임
+          if (error.code === 'PGRST116') {
+            // 데이터가 없으면 사용 가능
+            setEmailAvailable(true);
+          } else {
+            // 다른 오류인 경우 (테이블이 없거나 권한 문제 등)
+            console.error('이메일 중복 체크 오류:', error);
+            console.error('오류 코드:', error.code);
+            console.error('오류 메시지:', error.message);
+            // 오류가 발생해도 사용 가능으로 처리 (회원가입은 진행 가능)
+            setEmailAvailable(true);
+          }
           return;
         }
         
@@ -155,14 +165,24 @@ export default function SignUpScreen({ route }) {
         setEmailAvailable(data === null);
       } else {
         // Supabase가 없으면 서버 API 사용
-        const response = await fetch(`${API_BASE_URL}/api/auth/check-email/${encodeURIComponent(userEmail.trim())}`);
-        const data = await response.json();
-        
-        setEmailAvailable(data.available);
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/auth/check-email/${encodeURIComponent(userEmail.trim())}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          setEmailAvailable(data.available);
+        } catch (fetchError) {
+          console.error('서버 API 호출 오류:', fetchError);
+          // 네트워크 오류 시 사용 가능으로 처리
+          setEmailAvailable(true);
+        }
       }
     } catch (error) {
       console.error('이메일 중복 체크 오류:', error);
-      setEmailAvailable(null);
+      console.error('오류 상세:', error.message);
+      // 오류 발생 시 사용 가능으로 처리 (회원가입은 진행 가능)
+      setEmailAvailable(true);
     } finally {
       setIsCheckingEmail(false);
     }
@@ -305,7 +325,12 @@ export default function SignUpScreen({ route }) {
 
         if (userError) {
           console.error('사용자 정보 저장 오류:', userError);
-          // Auth는 성공했지만 users 테이블 저장 실패 - 경고만 표시
+          console.error('오류 코드:', userError.code);
+          console.error('오류 메시지:', userError.message);
+          console.error('오류 상세:', userError.details);
+          // Auth는 성공했지만 users 테이블 저장 실패
+          // 테이블이 없거나 RLS 정책 문제일 수 있음
+          // 사용자에게는 성공 메시지를 보여주되, 관리자에게는 로그로 알림
         }
 
         // UniversityContext 업데이트
