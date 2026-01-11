@@ -67,6 +67,8 @@ export default function SelectUniScreen() {
 
   // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
+    if (!fontsLoaded) return; // 폰트가 로드되지 않았으면 실행하지 않음
+    
     const loadImageUrls = async () => {
       // 모든 이미지 파일명 수집
       const imageNames = [];
@@ -77,7 +79,18 @@ export default function SelectUniScreen() {
         }
       }
       
+      if (__DEV__) {
+        console.log(`[SelectUniScreen] 슬롯 이미지 로드 시작:`, {
+          slotsCount,
+          imageNames,
+          imageNamesLength: imageNames.length
+        });
+      }
+      
       if (imageNames.length === 0) {
+        if (__DEV__) {
+          console.warn(`[SelectUniScreen] 이미지 파일명이 없음`);
+        }
         setImageUrls({});
         return;
       }
@@ -352,11 +365,29 @@ export default function SelectUniScreen() {
   for (let i = 1; i <= slotsCount; i++) {
     const imageName = getConfig(`select_uni_slot_${i}_image`, '');
     const imageUrl = imageName ? imageUrls[imageName] : null;
-    if (__DEV__ && Platform.OS === 'ios' && imageName && !imageUrl) {
-      console.warn(`[SelectUniScreen] iOS 이미지 URL 없음 (slot ${i}):`, imageName, 'imageUrls:', Object.keys(imageUrls));
+    if (__DEV__) {
+      if (imageName && !imageUrl) {
+        console.warn(`[SelectUniScreen] 이미지 URL 없음 (slot ${i}):`, {
+          imageName,
+          imageUrlsKeys: Object.keys(imageUrls),
+          imageUrlsLength: Object.keys(imageUrls).length,
+          hasImageUrl: !!imageUrls[imageName]
+        });
+      } else if (imageName && imageUrl) {
+        console.log(`[SelectUniScreen] 이미지 URL 있음 (slot ${i}):`, imageName, imageUrl.uri);
+      }
     }
     // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
     slotImages.push({ imageName, imageUrl });
+  }
+  
+  if (__DEV__) {
+    console.log(`[SelectUniScreen] 슬롯 이미지 배열 생성 완료:`, {
+      slotsCount,
+      slotImagesLength: slotImages.length,
+      imageUrlsCount: Object.keys(imageUrls).length,
+      slotImagesWithUrl: slotImages.filter(s => s.imageUrl).length
+    });
   }
 
   // 모달 높이 계산 (슬롯 개수에 따라)
