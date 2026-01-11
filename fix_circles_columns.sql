@@ -8,14 +8,14 @@
 
 DO $$
 DECLARE
-    table_name TEXT := 'nyu_circles';
+    tbl_name TEXT := 'nyu_circles';
     col_name TEXT;
     col_type TEXT;
     result_msg TEXT;
     column_exists BOOLEAN;
 BEGIN
     RAISE NOTICE '========================================';
-    RAISE NOTICE '테이블: %', table_name;
+    RAISE NOTICE '테이블: %', tbl_name;
     RAISE NOTICE '========================================';
     
     -- 1. region 컬럼 추가 (지역)
@@ -24,7 +24,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -32,7 +32,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -45,7 +45,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -53,7 +53,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -66,7 +66,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -74,7 +74,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -87,7 +87,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -95,7 +95,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -108,7 +108,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -116,7 +116,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -129,7 +129,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -137,7 +137,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -150,7 +150,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -158,7 +158,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -171,7 +171,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -179,7 +179,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -192,7 +192,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -200,7 +200,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -213,7 +213,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -221,7 +221,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -234,7 +234,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -242,7 +242,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -255,7 +255,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -263,7 +263,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -276,7 +276,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -284,7 +284,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -297,7 +297,7 @@ BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
-        AND table_name = table_name 
+        AND table_name = tbl_name 
         AND column_name = col_name
     ) INTO column_exists;
     
@@ -305,7 +305,7 @@ BEGIN
         RAISE NOTICE '[SKIP] % 컬럼이 이미 존재합니다.', col_name;
     ELSE
         BEGIN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+            EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
             RAISE NOTICE '[SUCCESS] % 컬럼 추가 완료', col_name;
         EXCEPTION WHEN OTHERS THEN
             RAISE NOTICE '[FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -313,7 +313,7 @@ BEGIN
     END IF;
     
     RAISE NOTICE '========================================';
-    RAISE NOTICE '작업 완료: %', table_name;
+    RAISE NOTICE '작업 완료: %', tbl_name;
     RAISE NOTICE '========================================';
 END $$;
 
@@ -323,7 +323,7 @@ END $$;
 
 DO $$
 DECLARE
-    table_name TEXT;
+    tbl_name TEXT;
     col_name TEXT;
     col_type TEXT;
     column_exists BOOLEAN;
@@ -349,13 +349,13 @@ BEGIN
     RAISE NOTICE '모든 circles 테이블에 컬럼 추가 시작';
     RAISE NOTICE '========================================';
     
-    FOR table_name IN 
+    FOR tbl_name IN 
         SELECT tablename FROM pg_tables 
         WHERE schemaname = 'public' 
         AND tablename LIKE '%_circles'
     LOOP
         RAISE NOTICE '';
-        RAISE NOTICE '--- 테이블: % ---', table_name;
+        RAISE NOTICE '--- 테이블: % ---', tbl_name;
         
         FOREACH col_record SLICE 1 IN ARRAY columns_to_add
         LOOP
@@ -365,7 +365,7 @@ BEGIN
             SELECT EXISTS (
                 SELECT 1 FROM information_schema.columns 
                 WHERE table_schema = 'public' 
-                AND table_name = table_name 
+                AND information_schema.columns.table_name = tbl_name 
                 AND column_name = col_name
             ) INTO column_exists;
             
@@ -373,7 +373,7 @@ BEGIN
                 RAISE NOTICE '  [SKIP] % 컬럼이 이미 존재합니다.', col_name;
             ELSE
                 BEGIN
-                    EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', table_name, col_name, col_type);
+                    EXECUTE format('ALTER TABLE %I ADD COLUMN %I %s', tbl_name, col_name, col_type);
                     RAISE NOTICE '  [SUCCESS] % 컬럼 추가 완료', col_name;
                 EXCEPTION WHEN OTHERS THEN
                     RAISE NOTICE '  [FAILED] % 컬럼 추가 실패: %', col_name, SQLERRM;
@@ -381,7 +381,7 @@ BEGIN
             END IF;
         END LOOP;
         
-        RAISE NOTICE '--- % 완료 ---', table_name;
+        RAISE NOTICE '--- % 완료 ---', tbl_name;
     END LOOP;
     
     RAISE NOTICE '';
