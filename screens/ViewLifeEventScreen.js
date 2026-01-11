@@ -157,9 +157,21 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     primary: uniColors.primary || '#000000',
     buttonTextColor: uniColors.buttonTextColor || '#FFFFFF',
   }), [uniColors]);
-  const { lifeEventId } = route.params;
+  const { lifeEventId, lifeEventPreview } = route.params || {};
   const [lifeEvent, setLifeEvent] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  
+  // lifeEventPreview가 있으면 즉시 표시 (성능 최적화)
+  useEffect(() => {
+    if (lifeEventPreview && !lifeEvent) {
+      // 기본 정보만 있는 preview 데이터로 즉시 표시
+      setLifeEvent({
+        ...lifeEventPreview,
+        content_blocks: [], // 내용은 아직 없음
+        images: [] // 이미지도 아직 없음
+      });
+    }
+  }, [lifeEventPreview, lifeEvent]);
 
   // 경조사 탭 (useMemo로 감싸서 config 변경 시 재생성)
   const lifeEventTabs = React.useMemo(() => {
@@ -208,37 +220,75 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     }, [loadCurrentUser])
   );
 
-  // 경조사 데이터 로드
-  useEffect(() => {
-    const loadLifeEvent = async () => {
-      if (!lifeEventId || !university || !university.trim()) {
-        return;
-      }
-      try {
-        const universityCode = university.toLowerCase();
-        const cacheKey = `lifeevent_${lifeEventId}_${universityCode}`;
-        
-        // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
-        let cachedLifeEvent = null;
-        let cacheTimestamp = null;
+  // 경조사 데이터 로드 함수 (content_blocks와 images만 로드)
+  const loadLifeEvent = React.useCallback(async (forceRefresh = false) => {
+    if (!lifeEventId || !university || !university.trim()) {
+      return;
+    }
+    try {
+      const universityCode = university.toLowerCase();
+      const cacheKey = `lifeevent_${lifeEventId}_${universityCode}`;
+      const contentCacheKey = `lifeevent_content_${lifeEventId}_${universityCode}`;
+      
+      // 강제 새로고침이면 캐시 무효화
+      if (forceRefresh) {
         try {
-          const cachedData = await AsyncStorage.getItem(cacheKey);
-          if (cachedData) {
-            const parsedData = JSON.parse(cachedData);
-            cacheTimestamp = parsedData.timestamp || 0;
-            const cacheAge = Date.now() - cacheTimestamp;
-            const CACHE_DURATION = 5 * 60 * 1000; // 5분
-            
-            if (cacheAge < CACHE_DURATION && parsedData.lifeEvent) {
-              cachedLifeEvent = parsedData.lifeEvent;
-            }
-          }
-        } catch (cacheError) {
-          // 캐시 읽기 오류는 무시
+          await AsyncStorage.removeItem(cacheKey);
+          await AsyncStorage.removeItem(contentCacheKey);
+        } catch (e) {
+          // 캐시 삭제 실패는 무시
         }
-        
-        // 캐시가 있으면 즉시 표시하고 로딩 종료
-        if (cachedLifeEvent) {
+      }
+      
+      // content_blocks와 images 캐시 확인
+      let cachedContent = null;
+      let cacheTimestamp = null;
+      try {
+        const cachedData = await AsyncStorage.getItem(contentCacheKey);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          cacheTimestamp = parsedData.timestamp || 0;
+          const cacheAge = Date.now() - cacheTimestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5분
+          
+          if (cacheAge < CACHE_DURATION && parsedData.content) {
+            cachedContent = parsedData.content;
+            // 캐시된 내용으로 업데이트 (기본 정보는 유지)
+            if (lifeEvent) {
+              setLifeEvent({
+                ...lifeEvent,
+                content_blocks: cachedContent.content_blocks || [],
+                images: cachedContent.images || [],
+                text_content: cachedContent.text_content || ''
+              });
+            }
+            return; // 캐시가 있으면 여기서 종료
+          }
+        }
+      } catch (cacheError) {
+        // 캐시 읽기 오류는 무시
+      }
+      
+      // 전체 캐시 확인 (하위 호환성)
+      let cachedLifeEvent = null;
+      try {
+        const cachedData = await AsyncStorage.getItem(cacheKey);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          cacheTimestamp = parsedData.timestamp || 0;
+          const cacheAge = Date.now() - cacheTimestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5분
+          
+          if (cacheAge < CACHE_DURATION && parsedData.lifeEvent) {
+            cachedLifeEvent = parsedData.lifeEvent;
+          }
+        }
+      } catch (cacheError) {
+        // 캐시 읽기 오류는 무시
+      }
+      
+      // 전체 캐시가 있고 강제 새로고침이 아니면 즉시 표시하고 백그라운드 업데이트
+      if (cachedLifeEvent && !forceRefresh) {
           // content_blocks 파싱 확인 (캐시에서 가져온 데이터도 파싱 필요)
           let lifeEvent = { ...cachedLifeEvent };
           if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
@@ -307,52 +357,90 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           try {
             const data = JSON.parse(responseText);
             if (data.success && data.lifeEvent) {
-              let lifeEvent = { ...data.lifeEvent };
+              let fullLifeEvent = { ...data.lifeEvent };
               
-              // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
-              if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
-                try {
-                  const parsedBlocks = JSON.parse(lifeEvent.content_blocks);
-                  // 텍스트 블록만 먼저 표시
-                  const textBlocks = Array.isArray(parsedBlocks) 
-                    ? parsedBlocks.filter(block => block.type === 'text')
-                    : [];
+              // lifeEventPreview가 있으면 기본 정보는 유지하고 content_blocks와 images만 업데이트
+              if (lifeEventPreview && lifeEvent) {
+                // content_blocks 파싱
+                let contentBlocks = [];
+                if (fullLifeEvent.content_blocks) {
+                  if (typeof fullLifeEvent.content_blocks === 'string') {
+                    try {
+                      contentBlocks = JSON.parse(fullLifeEvent.content_blocks);
+                    } catch (e) {
+                      contentBlocks = [];
+                    }
+                  } else if (Array.isArray(fullLifeEvent.content_blocks)) {
+                    contentBlocks = fullLifeEvent.content_blocks;
+                  }
+                }
+                
+                // 기본 정보는 유지하고 내용만 업데이트
+                setLifeEvent({
+                  ...lifeEvent,
+                  content_blocks: contentBlocks,
+                  images: fullLifeEvent.images || [],
+                  text_content: fullLifeEvent.text_content || ''
+                });
+                
+                // content만 별도 캐시에 저장
+                AsyncStorage.setItem(contentCacheKey, JSON.stringify({
+                  content: {
+                    content_blocks: contentBlocks,
+                    images: fullLifeEvent.images || [],
+                    text_content: fullLifeEvent.text_content || ''
+                  },
+                  timestamp: Date.now()
+                })).catch(() => {});
+              } else {
+                // lifeEventPreview가 없으면 전체 데이터 표시
+                let lifeEvent = { ...fullLifeEvent };
+                
+                // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
+                if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
+                  try {
+                    const parsedBlocks = JSON.parse(lifeEvent.content_blocks);
+                    // 텍스트 블록만 먼저 표시
+                    const textBlocks = Array.isArray(parsedBlocks) 
+                      ? parsedBlocks.filter(block => block.type === 'text')
+                      : [];
+                    lifeEvent.content_blocks = textBlocks;
+                    // 텍스트만 먼저 표시
+                    setLifeEvent(lifeEvent);
+                    
+                    // 이미지 블록 추가 (백그라운드에서)
+                    setTimeout(() => {
+                      if (Array.isArray(parsedBlocks)) {
+                        lifeEvent.content_blocks = parsedBlocks;
+                        setLifeEvent({ ...lifeEvent });
+                      }
+                    }, 0);
+                  } catch (e) {
+                    lifeEvent.content_blocks = [];
+                    setLifeEvent(lifeEvent);
+                  }
+                } else if (Array.isArray(lifeEvent.content_blocks)) {
+                  // 이미 배열이면 텍스트 블록만 먼저 표시
+                  const textBlocks = lifeEvent.content_blocks.filter(block => block.type === 'text');
                   lifeEvent.content_blocks = textBlocks;
-                  // 텍스트만 먼저 표시
                   setLifeEvent(lifeEvent);
                   
-                  // 이미지 블록 추가 (백그라운드에서)
+                  // 전체 블록 추가 (백그라운드에서)
                   setTimeout(() => {
-                    if (Array.isArray(parsedBlocks)) {
-                      lifeEvent.content_blocks = parsedBlocks;
-                      setLifeEvent({ ...lifeEvent });
-                    }
+                    lifeEvent.content_blocks = fullLifeEvent.content_blocks;
+                    setLifeEvent({ ...lifeEvent });
                   }, 0);
-                } catch (e) {
+                } else {
                   lifeEvent.content_blocks = [];
                   setLifeEvent(lifeEvent);
                 }
-              } else if (Array.isArray(lifeEvent.content_blocks)) {
-                // 이미 배열이면 텍스트 블록만 먼저 표시
-                const textBlocks = lifeEvent.content_blocks.filter(block => block.type === 'text');
-                lifeEvent.content_blocks = textBlocks;
-                setLifeEvent(lifeEvent);
                 
-                // 전체 블록 추가 (백그라운드에서)
-                setTimeout(() => {
-                  lifeEvent.content_blocks = data.lifeEvent.content_blocks;
-                  setLifeEvent({ ...lifeEvent });
-                }, 0);
-              } else {
-                lifeEvent.content_blocks = [];
-                setLifeEvent(lifeEvent);
+                // 전체 캐시에 저장 (비동기, 블로킹하지 않음)
+                AsyncStorage.setItem(cacheKey, JSON.stringify({
+                  lifeEvent: fullLifeEvent,
+                  timestamp: Date.now()
+                })).catch(() => {});
               }
-              
-              // 캐시에 저장 (비동기, 블로킹하지 않음)
-              AsyncStorage.setItem(cacheKey, JSON.stringify({
-                lifeEvent: data.lifeEvent,
-                timestamp: Date.now()
-              })).catch(() => {});
             } else {
               if (__DEV__) {
                 console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음`);
@@ -429,10 +517,24 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           }
         }
       }
-    };
+    }, [lifeEventId, university]);
 
-    loadLifeEvent();
-  }, [lifeEventId, university]);
+  // 초기 로드
+  useEffect(() => {
+    // lifeEventPreview가 있으면 이미 기본 정보가 표시되므로 content만 로드
+    // 없으면 전체 데이터 로드
+    loadLifeEvent(false);
+  }, [lifeEventId, university, loadLifeEvent]);
+
+  // 화면이 포커스될 때마다 currentUser만 새로고침
+  // 경조사는 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCurrentUser();
+      // 캐시가 있으면 캐시 사용, 없을 때만 API 호출 (강제 새로고침 제거)
+      loadLifeEvent(false);
+    }, [loadCurrentUser, loadLifeEvent])
+  );
 
   const handleDelete = async () => {
     if (!lifeEvent) return;

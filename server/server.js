@@ -2083,7 +2083,8 @@ app.get('/api/life-events', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        let query = `SELECT * FROM ${tableName}`;
+        // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
+        let query = `SELECT id, title, category, nickname, author, views, created_at, url FROM ${tableName}`;
         const params = [];
         let paramIndex = 1;
         
