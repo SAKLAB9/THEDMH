@@ -448,6 +448,43 @@ app.post('/api/upload-image', async (req, res) => {
   }
 });
 
+// 이미지 삭제 API
+app.delete('/api/delete-image', async (req, res) => {
+  try {
+    const { imageUrl, university } = req.body;
+    
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'imageUrl이 필요합니다.' });
+    }
+    
+    if (!university) {
+      return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+    }
+    
+    const universityCode = await normalizeUniversityFromRequest(university, pool);
+    if (!universityCode) {
+      return res.status(400).json({ error: '유효하지 않은 university입니다.' });
+    }
+    
+    const deleted = await deleteImageFile(imageUrl);
+    
+    if (deleted) {
+      res.json({
+        success: true,
+        message: '이미지가 삭제되었습니다.'
+      });
+    } else {
+      res.status(404).json({ 
+        success: false,
+        error: '이미지를 찾을 수 없거나 삭제에 실패했습니다.' 
+      });
+    }
+  } catch (error) {
+    console.error('[API delete-image] 오류:', error);
+    res.status(500).json({ error: '이미지 삭제 실패', message: error.message });
+  }
+});
+
 // Supabase Storage 이미지 URL 조회 API (SAK 서버와 동일한 방식)
 // Supabase Storage 이미지 URL 조회 API (단일 및 배치 지원)
 app.get('/api/supabase-image-url', async (req, res) => {

@@ -288,9 +288,16 @@ export default function WriteNoticeScreen({ navigation, route }) {
     }
   };
 
-  const deleteImageBlock = (imageBlockId) => {
+  const deleteImageBlock = async (imageBlockId) => {
+    // 삭제할 이미지 블록 찾기
+    const imageBlock = contentBlocks.find(block => block.id === imageBlockId);
+    const imageUrl = imageBlock?.uri;
+    
+    // 이미 서버에 업로드된 이미지인 경우 (http/https로 시작)
+    const isUploadedImage = imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'));
+    
     Alert.alert(
-      '오류',
+      '이미지 삭제',
       '이 이미지를 삭제하시겠습니까?',
       [
         {
@@ -300,7 +307,36 @@ export default function WriteNoticeScreen({ navigation, route }) {
         {
           text: '삭제',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // 이미 서버에 업로드된 이미지인 경우 storage에서도 삭제
+            if (isUploadedImage && university) {
+              try {
+                const response = await fetch(`${API_BASE_URL}/api/delete-image`, {
+                  method: 'DELETE',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    imageUrl: imageUrl,
+                    university: university.toLowerCase()
+                  }),
+                });
+                
+                if (!response.ok) {
+                  if (__DEV__) {
+                    console.warn('[WriteNoticeScreen] 이미지 삭제 실패:', await response.text());
+                  }
+                  // 삭제 실패해도 UI에서는 제거 (이미지는 나중에 cleanup으로 삭제 가능)
+                }
+              } catch (error) {
+                if (__DEV__) {
+                  console.warn('[WriteNoticeScreen] 이미지 삭제 오류:', error);
+                }
+                // 삭제 실패해도 UI에서는 제거
+              }
+            }
+            
+            // UI에서 이미지 블록 제거
             setContentBlocks(prevBlocks => {
               const newBlocks = prevBlocks.filter(block => block.id !== imageBlockId);
               // 빈 배열이 되면 빈 텍스트 블록 하나 추가
@@ -512,6 +548,28 @@ export default function WriteNoticeScreen({ navigation, route }) {
       }
 
       const result = await response.json();
+
+      // 저장 성공 시 캐시 무효화
+      try {
+        const universityCode = universityValue;
+        
+        // 수정 모드인 경우 해당 공지사항의 캐시 무효화
+        if (isEditMode && editNoticeId) {
+          const noticeCacheKey = `notice_${editNoticeId}_${universityCode}`;
+          await AsyncStorage.removeItem(noticeCacheKey);
+        }
+        
+        // 공지사항 목록 캐시 무효화 (새 글이 추가되거나 수정되었으므로)
+        const noticesCacheKey = `home_notices_${universityCode}`;
+        const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
+        await AsyncStorage.removeItem(noticesCacheKey);
+        await AsyncStorage.removeItem(cacheTimestampKey);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[WriteNoticeScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
 
       Alert.alert('성공', isEditMode ? '공지사항이 수정되었습니다.' : '공지사항이 등록되었습니다.', [
         {

@@ -195,95 +195,96 @@ export default function ViewNoticeScreen({ route, navigation }) {
     loadCurrentUser();
   }, [loadCurrentUser]);
 
-  // 화면이 포커스될 때마다 currentUser만 다시 로드
-  useFocusEffect(
-    React.useCallback(() => {
-      loadCurrentUser();
-    }, [loadCurrentUser])
-  );
-
-  // 공지사항 데이터 로드
-  useEffect(() => {
-    const loadNotice = async () => {
-      if (!noticeId || !university || !university.trim()) {
-        return;
-      }
-      try {
-        const universityCode = university.toLowerCase();
-        const cacheKey = `notice_${noticeId}_${universityCode}`;
-        
-        // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
-        let cachedNotice = null;
-        let cacheTimestamp = null;
+  // 공지사항 데이터 로드 함수
+  const loadNotice = React.useCallback(async (forceRefresh = false) => {
+    if (!noticeId || !university || !university.trim()) {
+      return;
+    }
+    try {
+      const universityCode = university.toLowerCase();
+      const cacheKey = `notice_${noticeId}_${universityCode}`;
+      
+      // 강제 새로고침이면 캐시 무효화
+      if (forceRefresh) {
         try {
-          const cachedData = await AsyncStorage.getItem(cacheKey);
-          if (cachedData) {
-            const parsedData = JSON.parse(cachedData);
-            cacheTimestamp = parsedData.timestamp || 0;
-            const cacheAge = Date.now() - cacheTimestamp;
-            const CACHE_DURATION = 5 * 60 * 1000; // 5분
-            
-            if (cacheAge < CACHE_DURATION && parsedData.notice) {
-              cachedNotice = parsedData.notice;
-            }
-          }
-        } catch (cacheError) {
-          // 캐시 읽기 오류는 무시
+          await AsyncStorage.removeItem(cacheKey);
+        } catch (e) {
+          // 캐시 삭제 실패는 무시
         }
-        
-        // 캐시가 있으면 즉시 표시하고 로딩 종료
-        if (cachedNotice) {
-          // content_blocks 파싱 확인 (캐시에서 가져온 데이터도 파싱 필요)
-          let notice = { ...cachedNotice };
-          if (notice.content_blocks && typeof notice.content_blocks === 'string') {
-            try {
-              notice.content_blocks = JSON.parse(notice.content_blocks);
-            } catch (e) {
-              notice.content_blocks = [];
-            }
+      }
+      
+      // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
+      let cachedNotice = null;
+      let cacheTimestamp = null;
+      try {
+        const cachedData = await AsyncStorage.getItem(cacheKey);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          cacheTimestamp = parsedData.timestamp || 0;
+          const cacheAge = Date.now() - cacheTimestamp;
+          const CACHE_DURATION = 5 * 60 * 1000; // 5분
+          
+          if (cacheAge < CACHE_DURATION && parsedData.notice) {
+            cachedNotice = parsedData.notice;
           }
-          if (!Array.isArray(notice.content_blocks)) {
+        }
+      } catch (cacheError) {
+        // 캐시 읽기 오류는 무시
+      }
+      
+      // 캐시가 있고 강제 새로고침이 아니면 즉시 표시하고 백그라운드 업데이트
+      if (cachedNotice && !forceRefresh) {
+        // content_blocks 파싱 확인 (캐시에서 가져온 데이터도 파싱 필요)
+        let notice = { ...cachedNotice };
+        if (notice.content_blocks && typeof notice.content_blocks === 'string') {
+          try {
+            notice.content_blocks = JSON.parse(notice.content_blocks);
+          } catch (e) {
             notice.content_blocks = [];
           }
-          // 텍스트는 즉시 표시하기 위해 먼저 설정
-          setNotice(notice);
-          
-          // 백그라운드에서 새 데이터 가져오기 (캐시가 오래되었을 때만)
-          const cacheAge = Date.now() - (cacheTimestamp || 0);
-          if (cacheAge > 2 * 60 * 1000) { // 2분 이상 지났을 때만 업데이트
-            fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
-              .then(response => {
-                if (response.ok) {
-                  return response.json();
-                }
-                return null;
-              })
-              .then(data => {
-                if (data && data.success && data.notice) {
-                  // content_blocks 파싱
-                  let updatedNotice = data.notice;
-                  if (updatedNotice.content_blocks && typeof updatedNotice.content_blocks === 'string') {
-                    try {
-                      updatedNotice.content_blocks = JSON.parse(updatedNotice.content_blocks);
-                    } catch (e) {
-                      updatedNotice.content_blocks = [];
-                    }
-                  }
-                  if (!Array.isArray(updatedNotice.content_blocks)) {
+        }
+        if (!Array.isArray(notice.content_blocks)) {
+          notice.content_blocks = [];
+        }
+        // 텍스트는 즉시 표시하기 위해 먼저 설정
+        setNotice(notice);
+        
+        // 백그라운드에서 새 데이터 가져오기 (캐시가 오래되었을 때만)
+        const cacheAge = Date.now() - (cacheTimestamp || 0);
+        if (cacheAge > 2 * 60 * 1000) { // 2분 이상 지났을 때만 업데이트
+          fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              return null;
+            })
+            .then(data => {
+              if (data && data.success && data.notice) {
+                // content_blocks 파싱
+                let updatedNotice = data.notice;
+                if (updatedNotice.content_blocks && typeof updatedNotice.content_blocks === 'string') {
+                  try {
+                    updatedNotice.content_blocks = JSON.parse(updatedNotice.content_blocks);
+                  } catch (e) {
                     updatedNotice.content_blocks = [];
                   }
-                  AsyncStorage.setItem(cacheKey, JSON.stringify({
-                    notice: updatedNotice,
-                    timestamp: Date.now()
-                  })).catch(() => {});
-                  setNotice(updatedNotice);
                 }
-              })
-              .catch(() => {});
-          }
-          
-          return; // 캐시가 있으면 여기서 종료
+                if (!Array.isArray(updatedNotice.content_blocks)) {
+                  updatedNotice.content_blocks = [];
+                }
+                AsyncStorage.setItem(cacheKey, JSON.stringify({
+                  notice: updatedNotice,
+                  timestamp: Date.now()
+                })).catch(() => {});
+                setNotice(updatedNotice);
+              }
+            })
+            .catch(() => {});
         }
+        
+        return; // 캐시가 있으면 여기서 종료
+      }
         
         // 캐시가 없으면 API 호출 (타임아웃 설정)
         const controller = new AbortController();
@@ -423,10 +424,21 @@ export default function ViewNoticeScreen({ route, navigation }) {
           }
         }
       }
-    };
+    }, [noticeId, university]);
 
-    loadNotice();
-  }, [noticeId, university]);
+  // 초기 로드
+  useEffect(() => {
+    loadNotice(false);
+  }, [noticeId, university, loadNotice]);
+
+  // 화면이 포커스될 때마다 currentUser와 공지사항 데이터 새로고침
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCurrentUser();
+      // 수정 후 돌아왔을 때를 대비해 강제 새로고침
+      loadNotice(true);
+    }, [loadCurrentUser, loadNotice])
+  );
 
   // 작성 날짜 포맷 함수 (다른 게시판과 동일한 형식)
   const formatDate = (dateString) => {
