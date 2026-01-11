@@ -6,24 +6,8 @@ import Constants from 'expo-constants';
 // 모바일과 컴퓨터가 같은 Wi-Fi에 연결되어 있어야 함
 
 // 환경 변수에서 API URL을 가져올 수 있도록 설정
+// 모든 config와 이미지는 Supabase에서 직접 가져오므로, API_BASE_URL은 다른 서버 API 호출에만 사용
 const getApiBaseUrl = () => {
-  // 개발 환경에서는 항상 로컬 서버 사용 (app.json 설정 무시)
-  if (__DEV__) {
-    // 환경 변수로 포트 설정 가능 (기본값: 3000, THE동문회 서버 포트)
-    const devPort = process.env.EXPO_PUBLIC_SERVER_PORT || '3000';
-    
-    if (Platform.OS === 'web') {
-      // 웹에서는 localhost 사용
-      return `http://localhost:${devPort}`;
-    } else {
-      // 모바일에서는 IP 주소 사용
-      // 주의: 실제 IP 주소로 변경해야 합니다
-      // 터미널에서 'ipconfig' (Windows) 또는 'ifconfig' (Mac/Linux)로 확인
-      return `http://192.168.10.102:${devPort}`;
-    }
-  }
-
-  // 프로덕션 환경
   // app.json의 extra 섹션에서 가져오기 (우선순위 1)
   const apiUrlFromConfig = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL;
   if (apiUrlFromConfig) {
