@@ -310,14 +310,16 @@ BEGIN
             EXECUTE format('
                 UPDATE %I 
                 SET images = (
-                    SELECT array_agg(
-                        regexp_replace(
-                            unnest(images),
+                    SELECT array_agg(fixed_img)
+                    FROM (
+                        SELECT regexp_replace(
+                            img,
                             ''/images/([^/]+)/images/'',
                             ''/images/\1/'',
                             ''g''
-                        )
-                    )
+                        ) AS fixed_img
+                        FROM unnest(images) AS img
+                    ) AS fixed_images
                 )
                 WHERE images IS NOT NULL 
                 AND array_length(images, 1) > 0
