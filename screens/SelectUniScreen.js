@@ -112,24 +112,18 @@ export default function SelectUniScreen() {
   const modalWidthPercent = 90;
   const modalMaxWidth = 400;
 
-  // 슬롯 이미지 파일명들 가져오기 (최대 10개 하드코딩, 2열 그리드)
+  // 슬롯 이미지 파일명들 가져오기 (최대 10개 하드코딩, 순차 번호)
   // appConfig 객체가 변경되면 재계산 (config 값 변경 감지)
   const slotImageNames = useMemo(() => {
     const names = [];
-    const maxSlots = 10; // 최대 10개 하드코딩 (5행 2열)
-    const cols = 2; // 2열 고정
+    const maxSlots = 10; // 최대 10개 하드코딩
     
-    // 1_1, 1_2, 2_1, 2_2, ... 5_1, 5_2까지 하드코딩
-    for (let row = 1; row <= 5; row++) {
-      for (let col = 1; col <= cols; col++) {
-        const slotIndex = (row - 1) * cols + col;
-        if (slotIndex > maxSlots) break;
-        
-        const configKey = `select_uni_slot_${row}_${col}`;
-        // appConfig에서 직접 가져오기
-        const imageName = appConfig[configKey] || '';
-        names.push(imageName);
-      }
+    // 1, 2, 3, 4, ... 10까지 순차 번호로 하드코딩
+    for (let i = 1; i <= maxSlots; i++) {
+      const configKey = `select_uni_slot_${i}`;
+      // appConfig에서 직접 가져오기
+      const imageName = appConfig[configKey] || '';
+      names.push(imageName);
     }
     return names;
   }, [appConfig]);
@@ -146,66 +140,60 @@ export default function SelectUniScreen() {
     const loadSlotImageUrls = async () => {
       const urls = {};
       const maxSlots = 10; // 최대 10개 하드코딩
-      const cols = 2; // 2열 고정
       
-      // 1_1, 1_2, 2_1, 2_2, ... 5_1, 5_2까지 하드코딩하여 appConfig에서 직접 가져오기
-      for (let row = 1; row <= 5; row++) {
-        for (let col = 1; col <= cols; col++) {
-          const slotIndex = (row - 1) * cols + col;
-          if (slotIndex > maxSlots) break;
-          
-          const configKey = `select_uni_slot_${row}_${col}`;
-          // appConfig에서 직접 가져오기
-          const imageName = appConfig[configKey] || '';
-          
-          // 디버깅: config에서 값을 제대로 가져오는지 확인
-          if (__DEV__) {
-            console.log(`[SelectUniScreen] 슬롯 ${row}_${col} (위치 ${slotIndex}) config 확인:`, {
-              configKey,
-              imageName: imageName || '(빈 값)',
-              hasInConfig: configKey in appConfig,
-            });
-          }
-          
-          // EMPTY 값과 빈 문자열 필터링
-          if (!imageName || imageName === 'EMPTY' || imageName.trim() === '') {
+      // 1, 2, 3, 4, ... 10까지 순차 번호로 하드코딩하여 appConfig에서 직접 가져오기
+      for (let i = 1; i <= maxSlots; i++) {
+        const configKey = `select_uni_slot_${i}`;
+        // appConfig에서 직접 가져오기
+        const imageName = appConfig[configKey] || '';
+        
+        // 디버깅: config에서 값을 제대로 가져오는지 확인
+        if (__DEV__) {
+          console.log(`[SelectUniScreen] 슬롯 ${i} config 확인:`, {
+            configKey,
+            imageName: imageName || '(빈 값)',
+            hasInConfig: configKey in appConfig,
+          });
+        }
+        
+        // EMPTY 값과 빈 문자열 필터링
+        if (!imageName || imageName === 'EMPTY' || imageName.trim() === '') {
+          continue;
+        }
+        
+        const trimmedName = String(imageName).trim();
+        const cacheKey = `select_uni_slot_${i}_url_${trimmedName}`;
+        
+        try {
+          // 캐시에서 먼저 확인
+          const cachedUrl = await AsyncStorage.getItem(cacheKey);
+          if (cachedUrl) {
+            urls[trimmedName] = { uri: cachedUrl };
             continue;
           }
           
-          const trimmedName = String(imageName).trim();
-          const cacheKey = `select_uni_slot_${row}_${col}_url_${trimmedName}`;
+          // 캐시에 없으면 API 호출 (LoginScreen과 동일)
+          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(trimmedName)}`;
+          const response = await fetch(apiUrl);
           
+          // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
+          let data;
           try {
-            // 캐시에서 먼저 확인
-            const cachedUrl = await AsyncStorage.getItem(cacheKey);
-            if (cachedUrl) {
-              urls[trimmedName] = { uri: cachedUrl };
-              continue;
-            }
-            
-            // 캐시에 없으면 API 호출 (LoginScreen과 동일)
-            const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(trimmedName)}`;
-            const response = await fetch(apiUrl);
-            
-            // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
-            let data;
-            try {
-              const responseText = await response.text();
-              data = JSON.parse(responseText);
-            } catch (parseError) {
-              continue;
-            }
-            
-            // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
-            if (data.success && data.url) {
-              // 캐시에 저장
-              await AsyncStorage.setItem(cacheKey, data.url);
-              urls[trimmedName] = { uri: data.url };
-            }
-          } catch (error) {
-            if (__DEV__) {
-              console.error(`[SelectUniScreen] 슬롯 ${row}_${col} 이미지 로드 실패:`, error.message);
-            }
+            const responseText = await response.text();
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            continue;
+          }
+          
+          // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
+          if (data.success && data.url) {
+            // 캐시에 저장
+            await AsyncStorage.setItem(cacheKey, data.url);
+            urls[trimmedName] = { uri: data.url };
+          }
+        } catch (error) {
+          if (__DEV__) {
+            console.error(`[SelectUniScreen] 슬롯 ${i} 이미지 로드 실패:`, error.message);
           }
         }
       }
@@ -283,33 +271,33 @@ export default function SelectUniScreen() {
     loadMainIconImage();
   }, [fontsLoaded, configLoading, getConfig]);
 
-  // 슬롯 이미지 배열 생성 (최대 10개 하드코딩, 2열 그리드) - useMemo로 메모이제이션하여 불필요한 재생성 방지
+  // 슬롯 이미지 배열 생성 (최대 10개 하드코딩, 순차 번호, 2열 그리드로 배치) - useMemo로 메모이제이션하여 불필요한 재생성 방지
   const slotImages = useMemo(() => {
     const images = [];
     const maxSlots = 10; // 최대 10개 하드코딩
     const cols = 2; // 2열 고정
     
-    // 1_1, 1_2, 2_1, 2_2, ... 5_1, 5_2까지 하드코딩하여 appConfig에서 직접 가져오기
-    for (let row = 1; row <= 5; row++) {
-      for (let col = 1; col <= cols; col++) {
-        const slotIndex = (row - 1) * cols + col;
-        if (slotIndex > maxSlots) break;
-        
-        const configKey = `select_uni_slot_${row}_${col}`;
-        // appConfig에서 직접 가져오기
-        const imageName = appConfig[configKey] || '';
-        // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
-        const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
-        const imageUrl = validImageName ? imageUrls[validImageName] : null;
-        // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
-        images.push({ 
-          row, 
-          col, 
-          slotIndex,
-          imageName: validImageName, 
-          imageUrl 
-        });
-      }
+    // 1, 2, 3, 4, ... 10까지 순차 번호로 하드코딩하여 appConfig에서 직접 가져오기
+    for (let i = 1; i <= maxSlots; i++) {
+      const configKey = `select_uni_slot_${i}`;
+      // appConfig에서 직접 가져오기
+      const imageName = appConfig[configKey] || '';
+      // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
+      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
+      const imageUrl = validImageName ? imageUrls[validImageName] : null;
+      
+      // 2열 그리드에서의 위치 계산
+      const row = Math.ceil(i / cols);
+      const col = ((i - 1) % cols) + 1;
+      
+      // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
+      images.push({ 
+        slotNumber: i,
+        row, 
+        col, 
+        imageName: validImageName, 
+        imageUrl 
+      });
     }
     
     // slotsCount만큼만 반환 (나머지는 제거)
@@ -361,35 +349,28 @@ export default function SelectUniScreen() {
     }
     
     // 학교 선택 후 SignUp으로 이동
-    // selectedUniversity(displayName)에서 이미지 파일명과 소문자 코드 찾기 (최대 10개 하드코딩)
+    // selectedUniversity(displayName)에서 이미지 파일명과 소문자 코드 찾기 (최대 10개 하드코딩, 순차 번호)
     let selectedImageFileName = null;
     let selectedUniversityCode = null;
     const maxSlots = 10; // 최대 10개 하드코딩
-    const cols = 2; // 2열 고정
     
-    for (let row = 1; row <= 5; row++) {
-      for (let col = 1; col <= cols; col++) {
-        const slotIndex = (row - 1) * cols + col;
-        if (slotIndex > maxSlots) break;
+    for (let i = 1; i <= maxSlots; i++) {
+      const configKey = `select_uni_slot_${i}`;
+      // appConfig에서 직접 가져오기
+      const imageName = appConfig[configKey] || '';
+      if (imageName) {
+        const baseName = imageName.replace('-icon.png', '').replace('.png', '').split('-')[0].toLowerCase();
+        const universityCode = baseName; // 소문자 코드
+        // display_name config 확인
+        const displayName = appConfig[`${baseName}_display_name`] || '';
+        const universityDisplayName = displayName || baseName.charAt(0).toUpperCase() + baseName.slice(1).toLowerCase();
         
-        const configKey = `select_uni_slot_${row}_${col}`;
-        // appConfig에서 직접 가져오기
-        const imageName = appConfig[configKey] || '';
-        if (imageName) {
-          const baseName = imageName.replace('-icon.png', '').replace('.png', '').split('-')[0].toLowerCase();
-          const universityCode = baseName; // 소문자 코드
-          // display_name config 확인
-          const displayName = appConfig[`${baseName}_display_name`] || '';
-          const universityDisplayName = displayName || baseName.charAt(0).toUpperCase() + baseName.slice(1).toLowerCase();
-          
-          if (universityDisplayName === selectedUniversity) {
-            selectedImageFileName = imageName;
-            selectedUniversityCode = universityCode; // users 테이블에 저장할 소문자 코드
-            break;
-          }
+        if (universityDisplayName === selectedUniversity) {
+          selectedImageFileName = imageName;
+          selectedUniversityCode = universityCode; // users 테이블에 저장할 소문자 코드
+          break;
         }
       }
-      if (selectedImageFileName) break; // 찾았으면 외부 루프도 중단
     }
     
     try {
@@ -770,7 +751,7 @@ export default function SelectUniScreen() {
                 }}>
                   {slotImages.map((slotData, index) => {
                     // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                    const configKey = `select_uni_slot_${slotData.row}_${slotData.col}`;
+                    const configKey = `select_uni_slot_${slotData.slotNumber}`;
                     const imageName = slotData.imageName || appConfig[configKey] || '';
                     const imageSource = slotData.imageUrl;
                     let universityCode = null; // users 테이블에 저장할 소문자 코드
@@ -785,7 +766,7 @@ export default function SelectUniScreen() {
                     
                     return (
                       <TouchableOpacity
-                        key={`${slotData.row}_${slotData.col}`}
+                        key={slotData.slotNumber}
                         onPress={() => {
                           if (universityCode && universityDisplayName && imageName) {
                             handleUniSelect(universityDisplayName, universityCode, imageName);
