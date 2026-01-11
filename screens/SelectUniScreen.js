@@ -12,7 +12,7 @@ import API_BASE_URL from '../config/api';
 
 export default function SelectUniScreen() {
   const navigation = useNavigation();
-  const { getConfig, getConfigNumber, getColorConfig, config: appConfig } = useAppConfig();
+  const { getConfig, getConfigNumber, getColorConfig, config: appConfig, loading: configLoading } = useAppConfig();
   const LOGIN_COLORS = getLoginColors(getConfig);
   const [iconModalVisible, setIconModalVisible] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
@@ -34,7 +34,8 @@ export default function SelectUniScreen() {
   }
 
   // 슬롯 설정 가져오기 (select_uni_* 키 사용)
-  const slotsCount = getConfigNumber('select_uni_slots_count', 6);
+  // config가 로드되기 전에는 기본값 사용하지 않음 (0으로 설정)
+  const slotsCount = configLoading ? 0 : getConfigNumber('select_uni_slots_count', 4);
   const slotWidth = 100;
   const slotHeight = 100;
   const slotGap = 24;
@@ -67,13 +68,16 @@ export default function SelectUniScreen() {
 
   // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
-    if (!fontsLoaded) return; // 폰트가 로드되지 않았으면 실행하지 않음
+    if (!fontsLoaded || configLoading) return; // 폰트와 config가 로드되지 않았으면 실행하지 않음
     
     const loadImageUrls = async () => {
       // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`select_uni_slot_${i}_image`, '');
+        if (__DEV__) {
+          console.log(`[SelectUniScreen] 슬롯 ${i} 이미지 파일명:`, imageName, 'config:', appConfig[`select_uni_slot_${i}_image`]);
+        }
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
@@ -82,9 +86,11 @@ export default function SelectUniScreen() {
       
       if (__DEV__) {
         console.log(`[SelectUniScreen] 슬롯 이미지 로드 시작:`, {
+          configLoading,
           slotsCount,
           imageNames,
-          imageNamesLength: imageNames.length
+          imageNamesLength: imageNames.length,
+          configKeys: Object.keys(appConfig).filter(k => k.startsWith('select_uni_slot'))
         });
       }
       
@@ -249,7 +255,7 @@ export default function SelectUniScreen() {
     if (slotsCount > 0) {
       loadImageUrls();
     }
-  }, [fontsLoaded, slotsCount, slotImageNamesString, getConfig]);
+  }, [fontsLoaded, configLoading, slotsCount, slotImageNamesString, getConfig, appConfig]);
 
   // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
