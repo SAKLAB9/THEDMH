@@ -5425,30 +5425,41 @@ app.post('/api/reports', async (req, res) => {
 // App Config 조회 API
 app.get('/api/config', async (req, res) => {
   try {
+    console.log('[API Config] 요청 받음');
+    console.log('[API Config] USE_DATABASE:', USE_DATABASE);
+    console.log('[API Config] pool 존재:', !!pool);
+    
     if (USE_DATABASE && pool) {
       try {
-      const query = 'SELECT key, value FROM app_config';
-      
-      const result = await pool.query(query);
-      
-      const config = {};
-      result.rows.forEach(row => {
-        config[row.key] = row.value;
-      });
-      res.json({
-        success: true,
-        config: config
-      });
+        const query = 'SELECT key, value FROM app_config';
+        console.log('[API Config] 쿼리 실행:', query);
+        
+        const result = await pool.query(query);
+        console.log('[API Config] 조회된 레코드 수:', result.rows.length);
+        
+        const config = {};
+        result.rows.forEach(row => {
+          config[row.key] = row.value;
+        });
+        
+        console.log('[API Config] 반환할 config 키 목록:', Object.keys(config));
+        res.json({
+          success: true,
+          config: config
+        });
       } catch (error) {
+        console.error('[API Config] 데이터베이스 오류:', error);
         res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
+      console.warn('[API Config] 데이터베이스 연결 없음 - 빈 config 반환');
       res.json({
         success: true,
         config: {}
       });
     }
   } catch (error) {
+    console.error('[API Config] 일반 오류:', error);
     res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
   }
 });

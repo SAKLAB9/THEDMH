@@ -49,22 +49,33 @@ export const AppConfigProvider = ({ children }) => {
         ? `${API_BASE_URL}/api/config?university=${encodeURIComponent(university.toLowerCase())}`
         : `${API_BASE_URL}/api/config`;
       
+      console.log('[AppConfig] API 호출 URL:', url);
+      console.log('[AppConfig] API_BASE_URL:', API_BASE_URL);
+      
       const response = await fetch(url);
+      
+      console.log('[AppConfig] 응답 상태:', response.status, response.statusText);
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('[AppConfig] API 오류:', response.status, errorText);
         throw new Error(`설정을 불러올 수 없습니다. Status: ${response.status}`);
       }
       
       const result = await response.json();
+      console.log('[AppConfig] API 응답:', result);
+      console.log('[AppConfig] config 키 개수:', result.config ? Object.keys(result.config).length : 0);
       
       if (result.success && result.config) {
+        console.log('[AppConfig] config 저장:', Object.keys(result.config));
         setConfig(result.config);
         setLastUpdated(Date.now());
         
         // 캐시에 저장
         await AsyncStorage.setItem('app_config', JSON.stringify(result.config));
         await AsyncStorage.setItem('app_config_updated', Date.now().toString());
+      } else {
+        console.warn('[AppConfig] config가 비어있음:', result);
       }
     } catch (error) {
       // 실패 시 캐시된 설정 사용
