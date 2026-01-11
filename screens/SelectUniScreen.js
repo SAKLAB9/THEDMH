@@ -127,207 +127,83 @@ export default function SelectUniScreen() {
     return slotImageNames.join(',');
   }, [slotImageNames]);
 
-  // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
-  const lastImageLoadStateRef = useRef(''); // 마지막 이미지 로드 상태 추적
-  
+  // Supabase Storage에서 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
   useEffect(() => {
-    if (!fontsLoaded || configLoading) {
-      return; // 폰트와 config가 로드되지 않았으면 실행하지 않음
-    }
+    if (!fontsLoaded) return;
     
-    const loadImageUrls = async () => {
-      // 모든 이미지 파일명 수집 (EMPTY 값 제외)
-      const imageNames = [];
-      const slotDetails = [];
+    const loadSlotImageUrls = async () => {
+      const urls = {};
       
+      // 각 슬롯의 이미지 파일명을 가져와서 API 호출 (LoginScreen 방식)
       for (let i = 1; i <= slotsCount; i++) {
         const configKey = `select_uni_slot_${i}_image`;
+        // config가 로드되지 않았어도 기본값 사용하지 않음 (빈 문자열)
         const imageName = getConfig(configKey, '');
-        const rawValue = appConfig[configKey];
-        
-        slotDetails.push({
-          slot: i,
-          configKey,
-          imageName: imageName || '(빈 값)',
-          rawValue: rawValue || '(undefined)',
-          hasInConfig: configKey in appConfig,
-        });
         
         // EMPTY 값과 빈 문자열 필터링
-        if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
-          imageNames.push(imageName);
-        }
-      }
-      
-      // 상태가 변경되었을 때만 로그 출력
-      const currentState = JSON.stringify({
-        slotsCount,
-        imageNamesCount: imageNames.length,
-        configKeys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
-      });
-      
-      if (__DEV__ && currentState !== lastImageLoadStateRef.current) {
-        console.log('[SelectUniScreen] 슬롯 config 확인:', slotDetails);
-        console.log('[SelectUniScreen] 이미지 파일명 수집 결과:', {
-          slotsCount,
-          imageNamesFound: imageNames.length,
-          imageNames: imageNames,
-          allSelectUniKeys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
-        });
-        lastImageLoadStateRef.current = currentState;
-      }
-      
-      if (imageNames.length === 0) {
-        setImageUrls({});
-        return;
-      }
-      
-      // 캐시 키 생성 (모든 파일명을 정렬하여 일관된 키 생성)
-      const sortedNames = [...imageNames].sort().join(',');
-      const cacheKey = `select_uni_image_urls_${sortedNames}`;
-      
-      try {
-        // 캐시에서 먼저 확인
-        const cachedUrls = await AsyncStorage.getItem(cacheKey);
-        if (cachedUrls) {
-          const parsedUrls = JSON.parse(cachedUrls);
-          // URL 객체로 변환
-          const urls = {};
-          Object.keys(parsedUrls).forEach(imageName => {
-            urls[imageName] = { uri: parsedUrls[imageName] };
-          });
-          setImageUrls(urls);
-          return; // 캐시에서 가져왔으므로 API 호출 생략
+        if (!imageName || imageName === 'EMPTY' || imageName.trim() === '') {
+          continue;
         }
         
-        // 캐시에 없으면 먼저 Supabase에서 직접 URL 생성 (즉시 표시)
-        // API는 백그라운드에서 시도하고 성공하면 캐시 업데이트
-        const { supabase } = require('../config/supabase');
-        if (supabase) {
-          const urls = {};
-          imageNames.forEach(imageName => {
-            const trimmedName = String(imageName).trim();
-            if (trimmedName) {
-              const filePath = `assets/${trimmedName}`;
-              const { data: urlData } = supabase.storage
-                .from('images')
-                .getPublicUrl(filePath);
-              urls[trimmedName] = urlData.publicUrl;
-            }
-          });
-          
-          // URL 객체로 변환하여 즉시 표시
-          const urlObjects = {};
-          Object.keys(urls).forEach(imageName => {
-            urlObjects[imageName] = { uri: urls[imageName] };
-          });
-          
-          setImageUrls(urlObjects);
-          
-          // 캐시에 저장
-          await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
-          
-          if (__DEV__) {
-            console.log('[SelectUniScreen] 이미지 URL 생성 완료:', {
-              count: Object.keys(urlObjects).length,
-              urls: Object.keys(urlObjects),
-            });
-          }
-        }
+        const trimmedName = String(imageName).trim();
+        const cacheKey = `select_uni_slot_${i}_url_${trimmedName}`;
         
-        // 백그라운드에서 API 호출 시도 (성공하면 캐시 업데이트)
         try {
-          const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
-          
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ filenames: imageNames }),
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.success && data.urls) {
-              // 캐시 업데이트
-              await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
-              
-              // URL 객체로 변환하여 업데이트
-              const urls = {};
-              Object.keys(data.urls).forEach(imageName => {
-                urls[imageName] = { uri: data.urls[imageName] };
-              });
-              
-              setImageUrls(urls);
-            }
-          } else {
-            if (__DEV__) {
-              console.warn(`[SelectUniScreen] API HTTP 에러:`, {
-                status: response.status,
-                statusText: response.statusText
-              });
-            }
+          // 캐시에서 먼저 확인
+          const cachedUrl = await AsyncStorage.getItem(cacheKey);
+          if (cachedUrl) {
+            urls[trimmedName] = { uri: cachedUrl };
+            continue;
           }
-        } catch (apiError) {
-          // API 실패는 무시 (이미 Supabase에서 직접 생성했으므로)
-          if (__DEV__) {
-            console.warn(`[SelectUniScreen] API 호출 실패 (무시됨):`, apiError.message);
+          
+          // 캐시에 없으면 API 호출 (LoginScreen과 동일)
+          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(trimmedName)}`;
+          const response = await fetch(apiUrl);
+          
+          // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
+          let data;
+          try {
+            const responseText = await response.text();
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            continue;
           }
-        }
-      } catch (error) {
-        // 전체 에러 처리
-        if (__DEV__) {
-          console.error(`[SelectUniScreen] 이미지 로드 실패:`, error.message);
-        }
-        
-        // 최후의 수단: Supabase에서 직접 URL 생성
-        try {
-          const { supabase } = require('../config/supabase');
-          if (supabase) {
-            const urls = {};
-            imageNames.forEach(imageName => {
-              const trimmedName = String(imageName).trim();
-              if (trimmedName) {
-                const filePath = `assets/${trimmedName}`;
-                const { data: urlData } = supabase.storage
-                  .from('images')
-                  .getPublicUrl(filePath);
-                urls[trimmedName] = urlData.publicUrl;
-              }
-            });
-            
+          
+          // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
+          if (data.success && data.url) {
             // 캐시에 저장
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
-            
-            // URL 객체로 변환
-            const urlObjects = {};
-            Object.keys(urls).forEach(imageName => {
-              urlObjects[imageName] = { uri: urls[imageName] };
-            });
-            
-            setImageUrls(urlObjects);
+            await AsyncStorage.setItem(cacheKey, data.url);
+            urls[trimmedName] = { uri: data.url };
           }
-        } catch (fallbackError) {
+        } catch (error) {
           if (__DEV__) {
-            console.error(`[SelectUniScreen] Supabase 직접 URL 생성 실패:`, fallbackError.message);
+            console.error(`[SelectUniScreen] 슬롯 ${i} 이미지 로드 실패:`, error.message);
           }
         }
+      }
+      
+      setImageUrls(urls);
+      
+      if (__DEV__ && Object.keys(urls).length > 0) {
+        console.log('[SelectUniScreen] 슬롯 이미지 URL 로드 완료:', {
+          count: Object.keys(urls).length,
+          imageNames: Object.keys(urls),
+        });
       }
     };
     
     if (slotsCount > 0) {
-      loadImageUrls();
+      loadSlotImageUrls();
     }
-  }, [fontsLoaded, configLoading, slotsCount, slotImageNamesString, getConfig, appConfig]);
+  }, [fontsLoaded, slotsCount, slotImageNamesString, getConfig]);
 
-  // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (캐싱 적용)
+  // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
   useEffect(() => {
     if (!fontsLoaded) return;
     
     const loadMainIconImage = async () => {
-      const iconImageName = getConfig('select_uni_icon_image', 'icon.png');
+      // config가 로드되지 않았어도 기본값 사용 (LoginScreen과 동일)
+      const iconImageName = getConfig('select_uni_icon_image') || 'icon.png';
       
       if (!iconImageName) {
         setIconImageUrl(null);
@@ -345,79 +221,38 @@ export default function SelectUniScreen() {
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
-        // 캐시에 없으면 API 호출
+        // 캐시에 없으면 API 호출 (LoginScreen과 동일)
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
-        
         const response = await fetch(apiUrl);
         
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.success && data.url) {
-            // 캐시에 저장 (24시간 유효)
-            await AsyncStorage.setItem(cacheKey, data.url);
-            setIconImageUrl({ uri: data.url });
-          } else {
-            // API 응답 실패 시 조용히 처리 (기존 iconImageUrl 유지)
-            // setIconImageUrl(null) 제거 - 기존 이미지 유지
-          }
-        } else {
-          // HTTP 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
-          if (__DEV__) {
-            console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}), Supabase에서 직접 생성:`, {
-              status: response.status,
-              statusText: response.statusText
-            });
-          }
-          
-          // Supabase Storage에서 직접 URL 생성
-          try {
-            const { supabase } = require('../config/supabase');
-            if (supabase) {
-              const filePath = `assets/${iconImageName}`;
-              const { data: urlData } = supabase.storage
-                .from('images')
-                .getPublicUrl(filePath);
-              
-            // 캐시에 저장
-            await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
-            setIconImageUrl({ uri: urlData.publicUrl });
-            }
-          } catch (fallbackError) {
-            if (__DEV__) {
-              console.warn(`[SelectUniScreen] 메인 아이콘 Supabase 직접 URL 생성 실패:`, fallbackError.message);
-            }
-          }
-        }
-      } catch (error) {
-        // 네트워크 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
-        if (__DEV__) {
-          console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}), Supabase에서 직접 생성:`, error.message);
+        // 응답 본문 파싱 (404여도 성공 데이터가 있을 수 있음)
+        let data;
+        try {
+          const responseText = await response.text();
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          setIconImageUrl(null);
+          return;
         }
         
-        // Supabase Storage에서 직접 URL 생성
-        try {
-          const { supabase } = require('../config/supabase');
-          if (supabase) {
-            const filePath = `assets/${iconImageName}`;
-            const { data: urlData } = supabase.storage
-              .from('images')
-              .getPublicUrl(filePath);
-            
-            // 캐시에 저장
-            await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
-            setIconImageUrl({ uri: urlData.publicUrl });
-          }
-        } catch (fallbackError) {
-          if (__DEV__) {
-            console.warn(`[SelectUniScreen] 메인 아이콘 Supabase 직접 URL 생성 실패:`, fallbackError.message);
-          }
+        // success가 true이고 url이 있으면 사용 (상태 코드와 무관)
+        if (data.success && data.url) {
+          // 캐시에 저장 (24시간 유효)
+          await AsyncStorage.setItem(cacheKey, data.url);
+          setIconImageUrl({ uri: data.url });
+        } else {
+          setIconImageUrl(null);
         }
+      } catch (error) {
+        if (__DEV__) {
+          console.error('[SelectUniScreen] 메인 아이콘 로드 실패:', error);
+        }
+        setIconImageUrl(null);
       }
     };
     
     loadMainIconImage();
-  }, [fontsLoaded, getConfig]);
+  }, [fontsLoaded, configLoading, getConfig]);
 
   // 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드) - useMemo로 메모이제이션하여 불필요한 재생성 방지
   const slotImages = useMemo(() => {
