@@ -199,7 +199,7 @@ export default function CirclesScreen({ navigation, route }) {
   // Partners 모달 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
   const slotImages = [];
   for (let i = 1; i <= slotsCount; i++) {
-    const imageName = getConfig(`select_uni_slot_${i}_image`, '');
+    const imageName = getConfig(`select_uni_slot_${i}`, '');
     if (imageName) {
       slotImages.push(partnersImageUrls[imageName] || null);
     } else {
