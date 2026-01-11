@@ -611,6 +611,22 @@ export default function CirclesScreen({ navigation, route }) {
     React.useCallback(() => {
       let isMounted = true;
       
+      // selectedChannel이 방금 변경되었다면 refreshData를 완전히 스킵
+      // (loadCirclesData가 이미 처리 중이거나 처리했음)
+      const lastSelectedChannel = selectedChannelRef.current;
+      const currentSelectedChannel = selectedChannel;
+      
+      // selectedChannelRef와 state가 다르면 방금 변경된 것이므로 모든 refreshData 스킵
+      if (lastSelectedChannel !== currentSelectedChannel) {
+        return () => {
+          isMounted = false;
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        };
+      }
+      
       // 모달이 방금 닫혔다면 refreshData를 실행하지 않음 (loadCirclesData가 이미 처리함)
       if (modalJustClosedRef.current) {
         modalJustClosedRef.current = false; // 리셋
@@ -632,16 +648,6 @@ export default function CirclesScreen({ navigation, route }) {
       }
       
       const refreshData = async () => {
-      // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
-      // (loadCirclesData가 이미 처리 중이거나 처리했음)
-      // selectedChannelRef를 사용하여 최신 값 확인 (클로저 문제 방지)
-      const currentSelectedChannel = selectedChannelRef.current;
-      const currentSelectedChannelFromState = selectedChannel;
-      
-      // selectedChannelRef와 state가 다르면 방금 변경된 것이므로 스킵
-      if (currentSelectedChannel !== currentSelectedChannelFromState) {
-        return;
-      }
       
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
         let currentChannel = currentSelectedChannel; // selectedChannelRef의 최신 값 사용
