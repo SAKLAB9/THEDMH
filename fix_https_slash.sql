@@ -1,6 +1,5 @@
--- 모든 테이블의 content_blocks에서 URL 변경
--- qgtwkhkmdsaypnsnrpbf.supabase.co -> waumfxamhuvhsblehsuf.supabase.co
--- 슬래시 중복 제거: // -> /
+-- https:/ -> https:// 수정
+-- 이미 잘못 업데이트된 content_blocks의 URL 수정
 
 -- ============================================
 -- 결과 저장용 임시 테이블 생성
@@ -18,7 +17,7 @@ TRUNCATE TABLE update_results;
 -- 학교별 테이블 - content_blocks 업데이트
 -- ============================================
 
--- 1. 공지사항 테이블 (content_blocks)
+-- 1. 공지사항 테이블
 DO $$
 DECLARE
     uni TEXT;
@@ -43,19 +42,9 @@ BEGIN
                                     ''{uri}'',
                                     to_jsonb(
                                         regexp_replace(
-                                            regexp_replace(
-                                                regexp_replace(
-                                                    block->>''uri'',
-                                                    ''qgtwkhkmdsaypnsnrpbf\.supabase\.co'',
-                                                    ''waumfxamhuvhsblehsuf.supabase.co'',
-                                                    ''g''
-                                                ),
-                                                ''(https?:\/)\/+'',
-                                                ''\1/'',
-                                                ''g''
-                                            ),
-                                            ''([^:]\/)\/+'',
-                                            ''\1/'',
+                                            block->>''uri'',
+                                            ''https:/'',
+                                            ''https://'',
                                             ''g''
                                         )
                                     )
@@ -67,11 +56,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-                    WHERE block->>''type'' = ''image''
-                    AND block->>''uri'' LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                )
+                AND content_blocks::text LIKE ''%%https:/%%''
             ', table_name);
             
             EXECUTE sql_text;
@@ -85,7 +70,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 2. 경조사 테이블 (content_blocks)
+-- 2. 경조사 테이블
 DO $$
 DECLARE
     uni TEXT;
@@ -110,19 +95,9 @@ BEGIN
                                     ''{uri}'',
                                     to_jsonb(
                                         regexp_replace(
-                                            regexp_replace(
-                                                regexp_replace(
-                                                    block->>''uri'',
-                                                    ''qgtwkhkmdsaypnsnrpbf\.supabase\.co'',
-                                                    ''waumfxamhuvhsblehsuf.supabase.co'',
-                                                    ''g''
-                                                ),
-                                                ''(https?:\/)\/+'',
-                                                ''\1/'',
-                                                ''g''
-                                            ),
-                                            ''([^:]\/)\/+'',
-                                            ''\1/'',
+                                            block->>''uri'',
+                                            ''https:/'',
+                                            ''https://'',
                                             ''g''
                                         )
                                     )
@@ -134,11 +109,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-                    WHERE block->>''type'' = ''image''
-                    AND block->>''uri'' LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                )
+                AND content_blocks::text LIKE ''%%https:/%%''
             ', table_name);
             
             EXECUTE sql_text;
@@ -152,7 +123,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 3. 게시판 테이블 (content_blocks)
+-- 3. 게시판 테이블
 DO $$
 DECLARE
     uni TEXT;
@@ -177,19 +148,9 @@ BEGIN
                                     ''{uri}'',
                                     to_jsonb(
                                         regexp_replace(
-                                            regexp_replace(
-                                                regexp_replace(
-                                                    block->>''uri'',
-                                                    ''qgtwkhkmdsaypnsnrpbf\.supabase\.co'',
-                                                    ''waumfxamhuvhsblehsuf.supabase.co'',
-                                                    ''g''
-                                                ),
-                                                ''(https?:\/)\/+'',
-                                                ''\1/'',
-                                                ''g''
-                                            ),
-                                            ''([^:]\/)\/+'',
-                                            ''\1/'',
+                                            block->>''uri'',
+                                            ''https:/'',
+                                            ''https://'',
                                             ''g''
                                         )
                                     )
@@ -201,11 +162,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-                    WHERE block->>''type'' = ''image''
-                    AND block->>''uri'' LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                )
+                AND content_blocks::text LIKE ''%%https:/%%''
             ', table_name);
             
             EXECUTE sql_text;
@@ -219,7 +176,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 4. 소모임 테이블 (content_blocks)
+-- 4. 소모임 테이블
 DO $$
 DECLARE
     uni TEXT;
@@ -244,19 +201,9 @@ BEGIN
                                     ''{uri}'',
                                     to_jsonb(
                                         regexp_replace(
-                                            regexp_replace(
-                                                regexp_replace(
-                                                    block->>''uri'',
-                                                    ''qgtwkhkmdsaypnsnrpbf\.supabase\.co'',
-                                                    ''waumfxamhuvhsblehsuf.supabase.co'',
-                                                    ''g''
-                                                ),
-                                                ''(https?:\/)\/+'',
-                                                ''\1/'',
-                                                ''g''
-                                            ),
-                                            ''([^:]\/)\/+'',
-                                            ''\1/'',
+                                            block->>''uri'',
+                                            ''https:/'',
+                                            ''https://'',
                                             ''g''
                                         )
                                     )
@@ -268,11 +215,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-                    WHERE block->>''type'' = ''image''
-                    AND block->>''uri'' LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                )
+                AND content_blocks::text LIKE ''%%https:/%%''
             ', table_name);
             
             EXECUTE sql_text;
@@ -286,7 +229,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 5. 게시판 댓글 테이블 (content_blocks)
+-- 5. 게시판 댓글 테이블
 DO $$
 DECLARE
     uni TEXT;
@@ -311,19 +254,9 @@ BEGIN
                                     ''{uri}'',
                                     to_jsonb(
                                         regexp_replace(
-                                            regexp_replace(
-                                                regexp_replace(
-                                                    block->>''uri'',
-                                                    ''qgtwkhkmdsaypnsnrpbf\.supabase\.co'',
-                                                    ''waumfxamhuvhsblehsuf.supabase.co'',
-                                                    ''g''
-                                                ),
-                                                ''(https?:\/)\/+'',
-                                                ''\1/'',
-                                                ''g''
-                                            ),
-                                            ''([^:]\/)\/+'',
-                                            ''\1/'',
+                                            block->>''uri'',
+                                            ''https:/'',
+                                            ''https://'',
                                             ''g''
                                         )
                                     )
@@ -335,11 +268,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-                    WHERE block->>''type'' = ''image''
-                    AND block->>''uri'' LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                )
+                AND content_blocks::text LIKE ''%%https:/%%''
             ', table_name);
             
             EXECUTE sql_text;
@@ -353,7 +282,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 6. 소모임 댓글 테이블 (content_blocks)
+-- 6. 소모임 댓글 테이블
 DO $$
 DECLARE
     uni TEXT;
@@ -378,19 +307,9 @@ BEGIN
                                     ''{uri}'',
                                     to_jsonb(
                                         regexp_replace(
-                                            regexp_replace(
-                                                regexp_replace(
-                                                    block->>''uri'',
-                                                    ''qgtwkhkmdsaypnsnrpbf\.supabase\.co'',
-                                                    ''waumfxamhuvhsblehsuf.supabase.co'',
-                                                    ''g''
-                                                ),
-                                                ''(https?:\/)\/+'',
-                                                ''\1/'',
-                                                ''g''
-                                            ),
-                                            ''([^:]\/)\/+'',
-                                            ''\1/'',
+                                            block->>''uri'',
+                                            ''https:/'',
+                                            ''https://'',
                                             ''g''
                                         )
                                     )
@@ -402,11 +321,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND EXISTS (
-                    SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-                    WHERE block->>''type'' = ''image''
-                    AND block->>''uri'' LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                )
+                AND content_blocks::text LIKE ''%%https:/%%''
             ', table_name);
             
             EXECUTE sql_text;
@@ -424,7 +339,7 @@ END $$;
 -- MIUHub 및 공통 테이블
 -- ============================================
 
--- 7. MIUHub Featured 테이블 (content_blocks)
+-- 7. MIUHub Featured 테이블
 DO $$
 DECLARE
     updated_count INTEGER;
@@ -440,19 +355,9 @@ BEGIN
                             '{uri}',
                             to_jsonb(
                                 regexp_replace(
-                                    regexp_replace(
-                                        regexp_replace(
-                                            block->>'uri',
-                                            'qgtwkhkmdsaypnsnrpbf\.supabase\.co',
-                                            'waumfxamhuvhsblehsuf.supabase.co',
-                                            'g'
-                                        ),
-                                        '(https?:\/)\/+',
-                                        '\1/',
-                                        'g'
-                                    ),
-                                    '([^:]\/)\/+',
-                                    '\1/',
+                                    block->>'uri',
+                                    'https:/',
+                                    'https://',
                                     'g'
                                 )
                             )
@@ -464,11 +369,7 @@ BEGIN
         )
         WHERE content_blocks IS NOT NULL 
         AND content_blocks::text != '[]'
-        AND EXISTS (
-            SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-            WHERE block->>'type' = 'image'
-            AND block->>'uri' LIKE '%qgtwkhkmdsaypnsnrpbf%'
-        );
+        AND content_blocks::text LIKE '%https:/%';
         
         GET DIAGNOSTICS updated_count = ROW_COUNT;
         INSERT INTO update_results VALUES ('miuhub_featured', updated_count, 'Success');
@@ -481,7 +382,7 @@ BEGIN
     END;
 END $$;
 
--- 8. 팝업 테이블 (content_blocks)
+-- 8. 팝업 테이블
 DO $$
 DECLARE
     updated_count INTEGER;
@@ -497,19 +398,9 @@ BEGIN
                             '{uri}',
                             to_jsonb(
                                 regexp_replace(
-                                    regexp_replace(
-                                        regexp_replace(
-                                            block->>'uri',
-                                            'qgtwkhkmdsaypnsnrpbf\.supabase\.co',
-                                            'waumfxamhuvhsblehsuf.supabase.co',
-                                            'g'
-                                        ),
-                                        '(https?:\/)\/+',
-                                        '\1/',
-                                        'g'
-                                    ),
-                                    '([^:]\/)\/+',
-                                    '\1/',
+                                    block->>'uri',
+                                    'https:/',
+                                    'https://',
                                     'g'
                                 )
                             )
@@ -521,11 +412,7 @@ BEGIN
         )
         WHERE content_blocks IS NOT NULL 
         AND content_blocks::text != '[]'
-        AND EXISTS (
-            SELECT 1 FROM jsonb_array_elements(content_blocks::jsonb) AS block
-            WHERE block->>'type' = 'image'
-            AND block->>'uri' LIKE '%qgtwkhkmdsaypnsnrpbf%'
-        );
+        AND content_blocks::text LIKE '%https:/%';
         
         GET DIAGNOSTICS updated_count = ROW_COUNT;
         INSERT INTO update_results VALUES ('popups', updated_count, 'Success');
