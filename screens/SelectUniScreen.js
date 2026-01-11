@@ -94,21 +94,24 @@ export default function SelectUniScreen() {
     return null;
   }
 
-  // 모달 슬롯 설정
-  const slotWidth = 100;
-  const slotHeight = 100;
-  const slotGap = 24;
-  const slotBorderWidth = 2;
-  const slotBorderColor = '#d1d5db';
-  const slotBorderStyle = 'dashed';
-  const slotBackgroundColor = '#f9fafb';
-  const slotBorderRadius = 20;
-  const modalPaddingTop = 48;
-  const modalPaddingBottom = 48;
-  const modalPaddingLeft = 24;
-  const modalPaddingRight = 24;
-  const modalWidthPercent = 90;
-  const modalMaxWidth = 400;
+  // 모달 슬롯 설정 (app_config에서 가져오기)
+  const slotWidth = appConfig['select_uni_slot_width'] ? parseInt(appConfig['select_uni_slot_width'], 10) : 100;
+  const slotHeight = appConfig['select_uni_slot_height'] ? parseInt(appConfig['select_uni_slot_height'], 10) : 100;
+  const slotGap = appConfig['select_uni_slot_gap'] ? parseInt(appConfig['select_uni_slot_gap'], 10) : 24;
+  const slotBorderWidth = appConfig['select_uni_slot_border_width'] ? parseInt(appConfig['select_uni_slot_border_width'], 10) : 2;
+  const slotBorderColor = appConfig['select_uni_slot_border_color'] || '#d1d5db';
+  const slotBorderStyle = appConfig['select_uni_slot_border_style'] || 'dashed';
+  const slotBackgroundColor = appConfig['select_uni_slot_background_color'] || '#f9fafb';
+  const slotBorderRadius = appConfig['select_uni_slot_border_radius'] ? parseInt(appConfig['select_uni_slot_border_radius'], 10) : 20;
+  const modalPaddingTop = appConfig['select_uni_modal_padding_top'] ? parseInt(appConfig['select_uni_modal_padding_top'], 10) : 48;
+  const modalPaddingBottom = appConfig['select_uni_modal_padding_bottom'] ? parseInt(appConfig['select_uni_modal_padding_bottom'], 10) : 48;
+  const modalPaddingLeft = appConfig['select_uni_modal_padding_left'] ? parseInt(appConfig['select_uni_modal_padding_left'], 10) : 24;
+  const modalPaddingRight = appConfig['select_uni_modal_padding_right'] ? parseInt(appConfig['select_uni_modal_padding_right'], 10) : 24;
+  const modalWidthPercent = appConfig['select_uni_modal_width_percent'] ? parseInt(appConfig['select_uni_modal_width_percent'], 10) : 90;
+  const modalMaxWidth = appConfig['select_uni_modal_max_width'] ? parseInt(appConfig['select_uni_modal_max_width'], 10) : 400;
+  
+  // 모달 타이틀 색상 (app_config에서 가져오기)
+  const modalTitleColor = appConfig['select_uni_modal_title_color'] || LOGIN_COLORS.primary;
 
   // app_config에서 슬롯 개수 가져오기
   const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0);
@@ -119,7 +122,17 @@ export default function SelectUniScreen() {
     
     const slots = [];
     for (let i = 1; i <= slotsCount; i++) {
-      const imageName = appConfig[`select_uni_slot_${i}`] || '';
+      const configKey = `select_uni_slot_${i}`;
+      const imageName = appConfig[configKey] || '';
+      
+      if (__DEV__) {
+        console.log(`[SelectUniScreen] 슬롯 ${i} config 확인:`, {
+          configKey,
+          imageName: imageName || '(빈 값)',
+          hasInConfig: configKey in appConfig,
+        });
+      }
+      
       if (imageName && imageName.trim() !== '' && imageName !== 'EMPTY') {
         const row = Math.ceil(i / 2);
         const col = ((i - 1) % 2) + 1;
@@ -131,6 +144,15 @@ export default function SelectUniScreen() {
         });
       }
     }
+    
+    if (__DEV__) {
+      console.log('[SelectUniScreen] 슬롯 데이터 생성 완료:', {
+        slotsCount,
+        slotsFound: slots.length,
+        slotImageNames: slots.map(s => s.imageName),
+      });
+    }
+    
     return slots;
   }, [slotsCount, appConfig, configLoading]);
 
@@ -155,14 +177,35 @@ export default function SelectUniScreen() {
           
           // Supabase Storage의 assets 폴더에서 이미지 가져오기
           const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=assets/${encodeURIComponent(imageName)}`;
-          const response = await fetch(apiUrl);
           
+          if (__DEV__) {
+            console.log(`[SelectUniScreen] 슬롯 ${slotNumber} 이미지 로드 시도:`, {
+              imageName,
+              apiUrl,
+            });
+          }
+          
+          const response = await fetch(apiUrl);
           const responseText = await response.text();
           const data = JSON.parse(responseText);
           
           if (data.success && data.url) {
             await AsyncStorage.setItem(cacheKey, data.url);
             urls[imageName] = { uri: data.url };
+            
+            if (__DEV__) {
+              console.log(`[SelectUniScreen] 슬롯 ${slotNumber} 이미지 로드 성공:`, {
+                imageName,
+                url: data.url,
+              });
+            }
+          } else {
+            if (__DEV__) {
+              console.warn(`[SelectUniScreen] 슬롯 ${slotNumber} 이미지 로드 실패:`, {
+                imageName,
+                response: data,
+              });
+            }
           }
         } catch (error) {
           if (__DEV__) {
@@ -647,7 +690,7 @@ export default function SelectUniScreen() {
                   minHeight: calculateModalHeight(),
                 }}
               >
-                <Text className="text-xl font-bold mb-6 text-center" style={{ color: LOGIN_COLORS.primary }}>
+                <Text className="text-xl font-bold mb-6 text-center" style={{ color: modalTitleColor }}>
                   Select University
                 </Text>
                 
