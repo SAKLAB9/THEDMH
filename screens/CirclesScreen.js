@@ -612,7 +612,6 @@ export default function CirclesScreen({ navigation, route }) {
       
       // 모달이 방금 닫혔다면 refreshData를 실행하지 않음 (loadCirclesData가 이미 처리함)
       if (modalJustClosedRef.current) {
-        console.log('[DEBUG useFocusEffect] 모달이 방금 닫혔으므로 refreshData 스킵');
         modalJustClosedRef.current = false; // 리셋
         return () => {
           isMounted = false;
@@ -634,11 +633,9 @@ export default function CirclesScreen({ navigation, route }) {
       const refreshData = async () => {
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
         let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
-        console.log('[DEBUG refreshData] 시작:', { selectedChannel, routeParams: route?.params?.selectedChannel });
         
         // route.params가 있고 selectedChannel과 다를 때만 업데이트
         if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
-          console.log('[DEBUG refreshData] route.params에서 selectedChannel 업데이트:', route.params.selectedChannel);
           setSelectedChannel(route.params.selectedChannel);
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
         } else {
@@ -781,15 +778,8 @@ export default function CirclesScreen({ navigation, route }) {
       // selectedChannel 변경은 loadCirclesData가 처리하므로 refreshData는 스킵
       // 또한 화면이 이미 포커스되어 있고 selectedChannel이 변경되지 않았을 때만 실행
       const shouldRefresh = !route?.params?.selectedChannel || route.params.selectedChannel === selectedChannel;
-      console.log('[DEBUG useFocusEffect] refreshData 실행 여부:', { 
-        shouldRefresh, 
-        routeParams: route?.params?.selectedChannel, 
-        selectedChannel 
-      });
       if (shouldRefresh) {
         refreshData();
-      } else {
-        console.log('[DEBUG useFocusEffect] refreshData 스킵 (selectedChannel 변경 중)');
       }
       
       // 2분(120초)마다 자동 새로고침 (새 글 확인)
