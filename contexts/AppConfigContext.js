@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import API_BASE_URL from '../config/api';
+import { supabase } from '../config/supabase';
 
 const AppConfigContext = createContext();
 
@@ -67,58 +67,54 @@ export const AppConfigProvider = ({ children }) => {
         await AsyncStorage.removeItem('app_config_updated');
       }
 
-      // 서버에서 설정 가져오기
-      const url = university 
-        ? `${API_BASE_URL}/api/config?university=${encodeURIComponent(university.toLowerCase())}`
-        : `${API_BASE_URL}/api/config`;
-      
-      if (__DEV__) {
-        console.log('[AppConfigContext] Config API 호출:', url);
+      // Supabase에서 직접 설정 가져오기
+      if (!supabase) {
+        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
       }
       
-      const response = await fetch(url);
+      if (__DEV__) {
+        console.log('[AppConfigContext] Supabase에서 config 가져오기 시작');
+      }
       
-      if (!response.ok) {
-        const errorText = await response.text();
+      // app_config 테이블에서 모든 설정 가져오기
+      const { data, error } = await supabase
+        .from('app_config')
+        .select('key, value');
+      
+      if (error) {
         if (__DEV__) {
-          console.error('[AppConfigContext] API 응답 실패:', {
-            status: response.status,
-            statusText: response.statusText,
-            errorText,
-          });
+          console.error('[AppConfigContext] Supabase 조회 실패:', error);
         }
-        throw new Error(`설정을 불러올 수 없습니다. Status: ${response.status}`);
+        throw new Error(`설정을 불러올 수 없습니다: ${error.message}`);
       }
       
-      const result = await response.json();
-      
-      if (__DEV__) {
-        console.log('[AppConfigContext] API 응답:', {
-          success: result.success,
-          configKeys: result.config ? Object.keys(result.config).length : 0,
-          hasConfig: !!result.config,
+      if (data && data.length > 0) {
+        // config 객체 생성
+        const configObj = {};
+        data.forEach(row => {
+          configObj[row.key] = row.value;
         });
-      }
-      
-      if (result.success && result.config) {
+        
         if (__DEV__) {
-          const selectUniKeys = Object.keys(result.config).filter(k => k.includes('select_uni'));
+          const selectUniKeys = Object.keys(configObj).filter(k => k.includes('select_uni'));
           console.log('[AppConfigContext] Config 로드 성공:', {
-            totalKeys: Object.keys(result.config).length,
+            totalKeys: Object.keys(configObj).length,
             selectUniKeys: selectUniKeys.length,
             selectUniKeysList: selectUniKeys,
           });
         }
-        setConfig(result.config);
+        
+        setConfig(configObj);
         setLastUpdated(Date.now());
         
         // 캐시에 저장
-        await AsyncStorage.setItem('app_config', JSON.stringify(result.config));
+        await AsyncStorage.setItem('app_config', JSON.stringify(configObj));
         await AsyncStorage.setItem('app_config_updated', Date.now().toString());
       } else {
         if (__DEV__) {
-          console.warn('[AppConfigContext] API 응답에 config가 없음:', result);
+          console.warn('[AppConfigContext] Supabase에서 config 데이터 없음');
         }
+        setConfig({});
       }
     } catch (error) {
       if (__DEV__) {
