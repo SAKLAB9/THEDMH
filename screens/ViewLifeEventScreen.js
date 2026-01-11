@@ -551,21 +551,22 @@ export default function ViewLifeEventScreen({ route, navigation }) {
       }
     }, [lifeEventId, university]);
 
-  // 초기 로드
+  // 초기 로드 (뷰수 증가 포함)
   useEffect(() => {
     // lifeEventPreview가 있으면 이미 기본 정보가 표시되므로 content만 로드
     // 없으면 전체 데이터 로드
+    // 뷰수는 초기 로드 시에만 증가
+    viewsIncrementedRef.current = false; // lifeEventId가 변경되면 리셋
     loadLifeEvent(false);
-  }, [lifeEventId, university, loadLifeEvent]);
+    incrementViews(); // 뷰수 증가는 별도로 호출 (캐시 무관)
+  }, [lifeEventId, university, loadLifeEvent, incrementViews]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
-  // 경조사는 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
+  // 경조사 데이터는 로드하지 않음 (중복 호출 방지)
   useFocusEffect(
     React.useCallback(() => {
       loadCurrentUser();
-      // 캐시가 있으면 캐시 사용, 없을 때만 API 호출 (강제 새로고침 제거)
-      loadLifeEvent(false);
-    }, [loadCurrentUser, loadLifeEvent])
+    }, [loadCurrentUser])
   );
 
   const handleDelete = async () => {
