@@ -413,8 +413,10 @@ export default function CirclesScreen({ navigation, route }) {
 
   // Circles 데이터 로드 함수 (뷰수/댓글수는 캐시 안 쓰고 항상 최신)
   const loadCirclesData = React.useCallback(async (forceRefresh = false) => {
+      // selectedChannelRef를 사용하여 최신 값 확인 (클로저 문제 방지)
+      const currentSelectedChannel = selectedChannelRef.current;
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
-      const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
+      const targetUni = currentSelectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
       if (!targetUni || !targetUni.trim()) {
         setSavedCircles([]);
@@ -632,22 +634,22 @@ export default function CirclesScreen({ navigation, route }) {
       const refreshData = async () => {
       // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
       // (loadCirclesData가 이미 처리 중이거나 처리했음)
+      // selectedChannelRef를 사용하여 최신 값 확인 (클로저 문제 방지)
       const currentSelectedChannel = selectedChannelRef.current;
-      if (currentSelectedChannel !== selectedChannel) {
-        // selectedChannel이 방금 변경되었으므로 refreshData 스킵
+      const currentSelectedChannelFromState = selectedChannel;
+      
+      // selectedChannelRef와 state가 다르면 방금 변경된 것이므로 스킵
+      if (currentSelectedChannel !== currentSelectedChannelFromState) {
         return;
       }
       
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
-        let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
+        let currentChannel = currentSelectedChannel; // selectedChannelRef의 최신 값 사용
         
         // route.params가 있고 selectedChannel과 다를 때만 업데이트
-        if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
+        if (route?.params?.selectedChannel && route.params.selectedChannel !== currentSelectedChannel) {
           setSelectedChannel(route.params.selectedChannel);
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
-        } else {
-          // route.params가 없거나 동일하면 현재 selectedChannel 사용
-          currentChannel = selectedChannel;
         }
         
         // currentChannel에 따라 targetUni 결정
