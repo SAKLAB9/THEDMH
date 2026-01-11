@@ -1,19 +1,17 @@
 {
   "version": 2,
-  "buildCommand": "cd server && npm install",
-  "outputDirectory": "server",
   "routes": [
     {
       "src": "/api/cleanup-unused-images",
-      "dest": "/server/api/cleanup-unused-images.js"
+      "dest": "/api/cleanup-unused-images.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/server/server.js"
+      "dest": "/server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/server/server.js"
+      "dest": "/server.js"
     }
   ],
   "crons": [
