@@ -26,6 +26,7 @@ export default function SelectUniScreen() {
   // 화면이 포커스될 때마다 설정 강제 새로고침 (최적화: 5분 이내면 스킵)
   // 무한 루프 방지를 위해 ref로 새로고침 시도 여부 추적
   const refreshAttemptedRef = useRef(false);
+  const configLogRef = useRef(false); // 로그 출력 여부 추적
   
   useEffect(() => {
     const refreshConfig = async () => {
@@ -37,6 +38,10 @@ export default function SelectUniScreen() {
       // config가 비어있고 아직 새로고침을 시도하지 않았으면 한 번만 시도
       if (Object.keys(appConfig).length === 0 && !configLoading) {
         refreshAttemptedRef.current = true;
+        if (__DEV__ && !configLogRef.current) {
+          console.log('[SelectUniScreen] config가 비어있어 강제 새로고침 시도');
+          configLogRef.current = true;
+        }
         await loadConfig(null, true);
         return;
       }
@@ -57,6 +62,19 @@ export default function SelectUniScreen() {
     };
     refreshConfig();
   }, [loadConfig]); // appConfig 의존성 제거하여 무한 루프 방지
+  
+  // config 상태 로깅 (한 번만 출력)
+  useEffect(() => {
+    if (__DEV__ && !configLoading && Object.keys(appConfig).length > 0 && !configLogRef.current) {
+      const selectUniKeys = Object.keys(appConfig).filter(k => k.includes('select_uni'));
+      console.log('[SelectUniScreen] Config 로드 완료:', {
+        totalKeys: Object.keys(appConfig).length,
+        selectUniKeys: selectUniKeys.length,
+        selectUniKeysList: selectUniKeys,
+      });
+      configLogRef.current = true;
+    }
+  }, [appConfig, configLoading]);
 
   // 폰트 로드
   const [fontsLoaded] = useFonts({
@@ -102,6 +120,8 @@ export default function SelectUniScreen() {
   }, [slotImageNames]);
 
   // Supabase Storage에서 이미지 URL 가져오기 (캐싱 적용)
+  const imageLoadLogRef = useRef(false); // 이미지 로드 로그 출력 여부 추적
+  
   useEffect(() => {
     if (!fontsLoaded || configLoading) {
       return; // 폰트와 config가 로드되지 않았으면 실행하지 않음
@@ -113,10 +133,33 @@ export default function SelectUniScreen() {
       for (let i = 1; i <= slotsCount; i++) {
         const configKey = `select_uni_slot_${i}_image`;
         const imageName = getConfig(configKey, '');
+        const rawValue = appConfig[configKey];
+        
+        // 디버깅 로그 (한 번만 출력)
+        if (__DEV__ && !imageLoadLogRef.current) {
+          console.log(`[SelectUniScreen] 슬롯 ${i} config 확인:`, {
+            configKey,
+            imageName: imageName || '(빈 값)',
+            rawValue: rawValue || '(undefined)',
+            hasInConfig: configKey in appConfig,
+          });
+        }
+        
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
         }
+      }
+      
+      // 디버깅 로그 (한 번만 출력)
+      if (__DEV__ && !imageLoadLogRef.current) {
+        console.log('[SelectUniScreen] 이미지 파일명 수집 결과:', {
+          slotsCount,
+          imageNamesFound: imageNames.length,
+          imageNames: imageNames,
+          allSelectUniKeys: Object.keys(appConfig).filter(k => k.includes('select_uni')),
+        });
+        imageLoadLogRef.current = true;
       }
       
       if (imageNames.length === 0) {
@@ -168,6 +211,13 @@ export default function SelectUniScreen() {
           
           // 캐시에 저장
           await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+          
+          if (__DEV__) {
+            console.log('[SelectUniScreen] 이미지 URL 생성 완료:', {
+              count: Object.keys(urlObjects).length,
+              urls: Object.keys(urlObjects),
+            });
+          }
         }
         
         // 백그라운드에서 API 호출 시도 (성공하면 캐시 업데이트)
@@ -367,6 +417,28 @@ export default function SelectUniScreen() {
     }
     return images;
   }, [slotsCount, imageUrls, getConfig]);
+  
+  // 슬롯 이미지 배열 상태 로깅 (변경 시에만 출력)
+  const slotImagesLogRef = useRef('');
+  useEffect(() => {
+    if (__DEV__ && slotsCount > 0) {
+      const currentState = JSON.stringify(slotImages.map(s => ({ name: s.imageName, hasUrl: !!s.imageUrl })));
+      if (currentState !== slotImagesLogRef.current) {
+        console.log('[SelectUniScreen] 슬롯 이미지 배열 상태:', {
+          slotsCount,
+          totalSlots: slotImages.length,
+          slotsWithImage: slotImages.filter(s => s.imageName).length,
+          slotsWithUrl: slotImages.filter(s => s.imageUrl).length,
+          details: slotImages.map((s, i) => ({
+            slot: i + 1,
+            imageName: s.imageName || '(없음)',
+            hasUrl: !!s.imageUrl,
+          })),
+        });
+        slotImagesLogRef.current = currentState;
+      }
+    }
+  }, [slotImages, slotsCount]);
 
   // 모달 높이 계산 (슬롯 개수에 따라)
   const calculateModalHeight = () => {
