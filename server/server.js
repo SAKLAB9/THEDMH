@@ -1650,7 +1650,57 @@ app.get('/api/notices', async (req, res) => {
   }
 });
 
-// 공지사항 상세 조회 API
+// 공지사항 뷰수 증가 API (별도 엔드포인트)
+app.post('/api/notices/:id/increment-views', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { university } = req.query;
+    
+    if (!university) {
+      return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+    }
+    
+    if (USE_DATABASE && pool) {
+      try {
+        const universityCode = await normalizeUniversityFromRequest(university, pool);
+        if (!universityCode) {
+          return res.status(400).json({ error: '유효하지 않은 university입니다.' });
+        }
+        
+        const tableName = getNoticesTableName(universityCode);
+        const noticeId = parseInt(id, 10);
+        
+        if (isNaN(noticeId)) {
+          return res.status(400).json({ error: '유효하지 않은 공지사항 ID입니다.' });
+        }
+        
+        // 뷰수만 증가 (데이터 조회 없음)
+        const result = await pool.query(
+          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING views`,
+          [noticeId]
+        );
+        
+        if (result.rows.length === 0) {
+          return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
+        }
+        
+        res.json({
+          success: true,
+          views: result.rows[0].views
+        });
+      } catch (error) {
+        console.error('[공지사항 뷰수 증가] 오류:', error);
+        res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
+      }
+    } else {
+      res.status(500).json({ error: '데이터베이스가 설정되지 않았습니다.' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
+  }
+});
+
+// 공지사항 상세 조회 API (뷰수 증가 제거)
 app.get('/api/notices/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1680,17 +1730,16 @@ app.get('/api/notices/:id', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        // 뷰수 증가 및 데이터 조회 (컬럼 존재 여부 확인 제거 - 성능 최적화)
-        // views 컬럼이 없으면 에러가 발생하지만, 이미 모든 테이블에 views 컬럼이 있으므로 확인 불필요
+        // 데이터 조회만 (뷰수 증가는 별도 API로 분리)
         const noticeId = parseInt(id, 10);
         if (isNaN(noticeId)) {
           console.error(`[공지사항 상세 조회] 유효하지 않은 ID: ${id}`);
           return res.status(400).json({ error: '유효하지 않은 공지사항 ID입니다.' });
         }
         
-        console.log(`[공지사항 상세 조회] 쿼리 실행: UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 (noticeId=${noticeId})`);
+        console.log(`[공지사항 상세 조회] 쿼리 실행: SELECT * FROM ${tableName} WHERE id = $1 (noticeId=${noticeId})`);
         const result = await pool.query(
-          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING *`,
+          `SELECT * FROM ${tableName} WHERE id = $1`,
           [noticeId]
         );
         
@@ -2139,9 +2188,9 @@ app.get('/api/life-events/:id', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        // 뷰수 증가 및 데이터 조회
+        // 데이터 조회만 (뷰수 증가는 별도 API로 분리)
         const result = await pool.query(
-          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING *`,
+          `SELECT * FROM ${tableName} WHERE id = $1`,
           [id]
         );
         

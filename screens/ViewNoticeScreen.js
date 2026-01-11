@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Image, ActivityIndicator, Alert, TouchableOpacity, Dimensions, TextInput, Modal, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -161,6 +161,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
   const { noticeId, noticePreview } = route.params || {};
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  const viewsIncrementedRef = useRef(false); // 뷰수 증가 플래그 (한 번만 실행)
   
   // noticePreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
@@ -207,11 +208,43 @@ export default function ViewNoticeScreen({ route, navigation }) {
     loadCurrentUser();
   }, [loadCurrentUser]);
 
+  // 뷰수 증가 함수 (별도 호출)
+  const incrementViews = React.useCallback(async () => {
+    if (!noticeId || !university || !university.trim() || viewsIncrementedRef.current) {
+      return;
+    }
+    
+    try {
+      const universityCode = university.toLowerCase();
+      const response = await fetch(
+        `${API_BASE_URL}/api/notices/${noticeId}/increment-views?university=${encodeURIComponent(universityCode)}`,
+        { method: 'POST' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          viewsIncrementedRef.current = true;
+          // 뷰수 업데이트
+          if (notice) {
+            setNotice({ ...notice, views: data.views });
+          }
+        }
+      }
+    } catch (error) {
+      // 뷰수 증가 실패는 무시 (로그만 출력)
+      if (__DEV__) {
+        console.error('[ViewNoticeScreen] 뷰수 증가 실패:', error);
+      }
+    }
+  }, [noticeId, university, notice]);
+
   // 공지사항 데이터 로드 함수 (content_blocks와 images만 로드)
   const loadNotice = React.useCallback(async (forceRefresh = false) => {
     if (!noticeId || !university || !university.trim()) {
       return;
     }
+    
     try {
       const universityCode = university.toLowerCase();
       const cacheKey = `notice_${noticeId}_${universityCode}`;
@@ -506,21 +539,22 @@ export default function ViewNoticeScreen({ route, navigation }) {
       }
     }, [noticeId, university]);
 
-  // 초기 로드
+  // 초기 로드 (뷰수 증가 포함)
   useEffect(() => {
     // noticePreview가 있으면 이미 기본 정보가 표시되므로 content만 로드
     // 없으면 전체 데이터 로드
+    // 뷰수는 초기 로드 시에만 증가
+    viewsIncrementedRef.current = false; // noticeId가 변경되면 리셋
     loadNotice(false);
-  }, [noticeId, university, loadNotice]);
+    incrementViews(); // 뷰수 증가는 별도로 호출 (캐시 무관)
+  }, [noticeId, university, loadNotice, incrementViews]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
-  // 공지사항은 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
+  // 공지사항 데이터는 로드하지 않음 (중복 호출 방지)
   useFocusEffect(
     React.useCallback(() => {
       loadCurrentUser();
-      // 캐시가 있으면 캐시 사용, 없을 때만 API 호출 (강제 새로고침 제거)
-      loadNotice(false);
-    }, [loadCurrentUser, loadNotice])
+    }, [loadCurrentUser])
   );
 
   // 작성 날짜 포맷 함수 (다른 게시판과 동일한 형식)

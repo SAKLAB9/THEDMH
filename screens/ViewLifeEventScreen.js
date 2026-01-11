@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Image, ActivityIndicator, Alert, TouchableOpacity, Dimensions, TextInput, Modal, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -160,6 +160,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   const { lifeEventId, lifeEventPreview } = route.params || {};
   const [lifeEvent, setLifeEvent] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  const viewsIncrementedRef = useRef(false); // 뷰수 증가 플래그 (한 번만 실행)
   
   // lifeEventPreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
@@ -219,6 +220,37 @@ export default function ViewLifeEventScreen({ route, navigation }) {
       loadCurrentUser();
     }, [loadCurrentUser])
   );
+
+  // 뷰수 증가 함수 (별도 호출, 캐시 무관)
+  const incrementViews = React.useCallback(async () => {
+    if (!lifeEventId || !university || !university.trim() || viewsIncrementedRef.current) {
+      return;
+    }
+    
+    try {
+      const universityCode = university.toLowerCase();
+      const response = await fetch(
+        `${API_BASE_URL}/api/life-events/${lifeEventId}/increment-views?university=${encodeURIComponent(universityCode)}`,
+        { method: 'POST' }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          viewsIncrementedRef.current = true;
+          // 뷰수 업데이트
+          if (lifeEvent) {
+            setLifeEvent({ ...lifeEvent, views: data.views });
+          }
+        }
+      }
+    } catch (error) {
+      // 뷰수 증가 실패는 무시 (로그만 출력)
+      if (__DEV__) {
+        console.error('[ViewLifeEventScreen] 뷰수 증가 실패:', error);
+      }
+    }
+  }, [lifeEventId, university, lifeEvent]);
 
   // 경조사 데이터 로드 함수 (content_blocks와 images만 로드)
   const loadLifeEvent = React.useCallback(async (forceRefresh = false) => {
