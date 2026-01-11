@@ -298,7 +298,7 @@ export default function ViewBoardScreen({ route, navigation }) {
 
   // 게시글 데이터 로드 함수
   const loadBoard = React.useCallback(async () => {
-      if (!postId || !targetUniversity) {
+      if (!postId || !targetUniversity || !targetUniversity.trim()) {
         return;
       }
 
