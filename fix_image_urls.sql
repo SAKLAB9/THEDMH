@@ -1,4 +1,4 @@
--- 이미지 URL 경로 수정 SQL 스크립트
+-- 이미지 URL 경로 수정 SQL 스크립트 (테이블 존재 여부 확인 포함)
 -- Storage 구조: 학교이름/파일명 (예: nyu/image_xxx.jpg)
 -- 데이터베이스 URL: /images/nyu/images/image_xxx.jpg -> /images/nyu/image_xxx.jpg 로 수정
 
@@ -6,8 +6,19 @@
 -- 학교별 테이블 (7개) - 각 학교마다 실행 필요
 -- ============================================
 
+-- 헬퍼 함수: 테이블 존재 여부 확인
+CREATE OR REPLACE FUNCTION table_exists(table_name TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = table_exists.table_name
+    );
+END;
+$$ LANGUAGE plpgsql;
+
 -- 1. 공지사항 테이블 (content_blocks, images)
--- 예: nyu_notices, cornell_notices, usc_notices, columbia_notices 등
 DO $$
 DECLARE
     uni TEXT;
@@ -18,59 +29,79 @@ BEGIN
     LOOP
         table_name := uni || '_notices';
         
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
+        
         -- content_blocks의 이미지 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET content_blocks = (
-                SELECT jsonb_agg(
-                    CASE 
-                        WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
-                            jsonb_set(
-                                block,
-                                ''{uri}'',
-                                to_jsonb(
-                                    regexp_replace(
-                                        block->>''uri'',
-                                        ''/images/([^/]+)/images/'',
-                                        ''/images/\1/'',
-                                        ''g''
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET content_blocks = (
+                    SELECT jsonb_agg(
+                        CASE 
+                            WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
+                                jsonb_set(
+                                    block,
+                                    ''{uri}'',
+                                    to_jsonb(
+                                        regexp_replace(
+                                            block->>''uri'',
+                                            ''/images/([^/]+)/images/'',
+                                            ''/images/\1/'',
+                                            ''g''
+                                        )
                                     )
                                 )
-                            )
-                        ELSE block
-                    END
+                            ELSE block
+                        END
+                    )
+                    FROM jsonb_array_elements(content_blocks::jsonb) AS block
                 )
-                FROM jsonb_array_elements(content_blocks::jsonb) AS block
-            )
-            WHERE content_blocks IS NOT NULL 
-            AND content_blocks::text != ''[]''
-            AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
-        ', table_name);
+                WHERE content_blocks IS NOT NULL 
+                AND content_blocks::text != ''[]''
+                AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (content_blocks)', table_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
+        END;
         
         -- images 배열의 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET images = (
-                SELECT array_agg(fixed_img)
-                FROM (
-                    SELECT regexp_replace(
-                        img,
-                        ''/images/([^/]+)/images/'',
-                        ''/images/\1/'',
-                        ''g''
-                    ) AS fixed_img
-                    FROM unnest(images) AS img
-                ) AS fixed_images
-            )
-            WHERE images IS NOT NULL 
-            AND array_length(images, 1) > 0
-            AND EXISTS (
-                SELECT 1 FROM unnest(images) AS img 
-                WHERE img LIKE ''%%/images/%%/images/%%''
-            );
-        ', table_name);
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(fixed_img)
+                    FROM (
+                        SELECT regexp_replace(
+                            img,
+                            ''/images/([^/]+)/images/'',
+                            ''/images/\1/'',
+                            ''g''
+                        ) AS fixed_img
+                        FROM unnest(images) AS img
+                    ) AS fixed_images
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img 
+                    WHERE img LIKE ''%%/images/%%/images/%%''
+                );
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (images)', table_name;
+        EXCEPTION WHEN undefined_column THEN
+            RAISE NOTICE 'Table % does not have images column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+        END;
         
-        RAISE NOTICE 'Updated %', table_name;
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
@@ -85,59 +116,79 @@ BEGIN
     LOOP
         table_name := uni || '_life_events';
         
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
+        
         -- content_blocks의 이미지 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET content_blocks = (
-                SELECT jsonb_agg(
-                    CASE 
-                        WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
-                            jsonb_set(
-                                block,
-                                ''{uri}'',
-                                to_jsonb(
-                                    regexp_replace(
-                                        block->>''uri'',
-                                        ''/images/([^/]+)/images/'',
-                                        ''/images/\1/'',
-                                        ''g''
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET content_blocks = (
+                    SELECT jsonb_agg(
+                        CASE 
+                            WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
+                                jsonb_set(
+                                    block,
+                                    ''{uri}'',
+                                    to_jsonb(
+                                        regexp_replace(
+                                            block->>''uri'',
+                                            ''/images/([^/]+)/images/'',
+                                            ''/images/\1/'',
+                                            ''g''
+                                        )
                                     )
                                 )
-                            )
-                        ELSE block
-                    END
+                            ELSE block
+                        END
+                    )
+                    FROM jsonb_array_elements(content_blocks::jsonb) AS block
                 )
-                FROM jsonb_array_elements(content_blocks::jsonb) AS block
-            )
-            WHERE content_blocks IS NOT NULL 
-            AND content_blocks::text != ''[]''
-            AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
-        ', table_name);
+                WHERE content_blocks IS NOT NULL 
+                AND content_blocks::text != ''[]''
+                AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (content_blocks)', table_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
+        END;
         
         -- images 배열의 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET images = (
-                SELECT array_agg(fixed_img)
-                FROM (
-                    SELECT regexp_replace(
-                        img,
-                        ''/images/([^/]+)/images/'',
-                        ''/images/\1/'',
-                        ''g''
-                    ) AS fixed_img
-                    FROM unnest(images) AS img
-                ) AS fixed_images
-            )
-            WHERE images IS NOT NULL 
-            AND array_length(images, 1) > 0
-            AND EXISTS (
-                SELECT 1 FROM unnest(images) AS img 
-                WHERE img LIKE ''%%/images/%%/images/%%''
-            );
-        ', table_name);
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(fixed_img)
+                    FROM (
+                        SELECT regexp_replace(
+                            img,
+                            ''/images/([^/]+)/images/'',
+                            ''/images/\1/'',
+                            ''g''
+                        ) AS fixed_img
+                        FROM unnest(images) AS img
+                    ) AS fixed_images
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img 
+                    WHERE img LIKE ''%%/images/%%/images/%%''
+                );
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (images)', table_name;
+        EXCEPTION WHEN undefined_column THEN
+            RAISE NOTICE 'Table % does not have images column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+        END;
         
-        RAISE NOTICE 'Updated %', table_name;
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
@@ -152,59 +203,79 @@ BEGIN
     LOOP
         table_name := uni || '_board_posts';
         
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
+        
         -- content_blocks의 이미지 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET content_blocks = (
-                SELECT jsonb_agg(
-                    CASE 
-                        WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
-                            jsonb_set(
-                                block,
-                                ''{uri}'',
-                                to_jsonb(
-                                    regexp_replace(
-                                        block->>''uri'',
-                                        ''/images/([^/]+)/images/'',
-                                        ''/images/\1/'',
-                                        ''g''
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET content_blocks = (
+                    SELECT jsonb_agg(
+                        CASE 
+                            WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
+                                jsonb_set(
+                                    block,
+                                    ''{uri}'',
+                                    to_jsonb(
+                                        regexp_replace(
+                                            block->>''uri'',
+                                            ''/images/([^/]+)/images/'',
+                                            ''/images/\1/'',
+                                            ''g''
+                                        )
                                     )
                                 )
-                            )
-                        ELSE block
-                    END
+                            ELSE block
+                        END
+                    )
+                    FROM jsonb_array_elements(content_blocks::jsonb) AS block
                 )
-                FROM jsonb_array_elements(content_blocks::jsonb) AS block
-            )
-            WHERE content_blocks IS NOT NULL 
-            AND content_blocks::text != ''[]''
-            AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
-        ', table_name);
+                WHERE content_blocks IS NOT NULL 
+                AND content_blocks::text != ''[]''
+                AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (content_blocks)', table_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
+        END;
         
         -- images 배열의 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET images = (
-                SELECT array_agg(fixed_img)
-                FROM (
-                    SELECT regexp_replace(
-                        img,
-                        ''/images/([^/]+)/images/'',
-                        ''/images/\1/'',
-                        ''g''
-                    ) AS fixed_img
-                    FROM unnest(images) AS img
-                ) AS fixed_images
-            )
-            WHERE images IS NOT NULL 
-            AND array_length(images, 1) > 0
-            AND EXISTS (
-                SELECT 1 FROM unnest(images) AS img 
-                WHERE img LIKE ''%%/images/%%/images/%%''
-            );
-        ', table_name);
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(fixed_img)
+                    FROM (
+                        SELECT regexp_replace(
+                            img,
+                            ''/images/([^/]+)/images/'',
+                            ''/images/\1/'',
+                            ''g''
+                        ) AS fixed_img
+                        FROM unnest(images) AS img
+                    ) AS fixed_images
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img 
+                    WHERE img LIKE ''%%/images/%%/images/%%''
+                );
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (images)', table_name;
+        EXCEPTION WHEN undefined_column THEN
+            RAISE NOTICE 'Table % does not have images column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+        END;
         
-        RAISE NOTICE 'Updated %', table_name;
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
@@ -219,59 +290,79 @@ BEGIN
     LOOP
         table_name := uni || '_circles';
         
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
+        
         -- content_blocks의 이미지 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET content_blocks = (
-                SELECT jsonb_agg(
-                    CASE 
-                        WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
-                            jsonb_set(
-                                block,
-                                ''{uri}'',
-                                to_jsonb(
-                                    regexp_replace(
-                                        block->>''uri'',
-                                        ''/images/([^/]+)/images/'',
-                                        ''/images/\1/'',
-                                        ''g''
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET content_blocks = (
+                    SELECT jsonb_agg(
+                        CASE 
+                            WHEN block->>''type'' = ''image'' AND block->>''uri'' IS NOT NULL THEN
+                                jsonb_set(
+                                    block,
+                                    ''{uri}'',
+                                    to_jsonb(
+                                        regexp_replace(
+                                            block->>''uri'',
+                                            ''/images/([^/]+)/images/'',
+                                            ''/images/\1/'',
+                                            ''g''
+                                        )
                                     )
                                 )
-                            )
-                        ELSE block
-                    END
+                            ELSE block
+                        END
+                    )
+                    FROM jsonb_array_elements(content_blocks::jsonb) AS block
                 )
-                FROM jsonb_array_elements(content_blocks::jsonb) AS block
-            )
-            WHERE content_blocks IS NOT NULL 
-            AND content_blocks::text != ''[]''
-            AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
-        ', table_name);
+                WHERE content_blocks IS NOT NULL 
+                AND content_blocks::text != ''[]''
+                AND content_blocks::text LIKE ''%%/images/%%/images/%%'';
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (content_blocks)', table_name;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
+        END;
         
         -- images 배열의 URL 수정
-        EXECUTE format('
-            UPDATE %I 
-            SET images = (
-                SELECT array_agg(fixed_img)
-                FROM (
-                    SELECT regexp_replace(
-                        img,
-                        ''/images/([^/]+)/images/'',
-                        ''/images/\1/'',
-                        ''g''
-                    ) AS fixed_img
-                    FROM unnest(images) AS img
-                ) AS fixed_images
-            )
-            WHERE images IS NOT NULL 
-            AND array_length(images, 1) > 0
-            AND EXISTS (
-                SELECT 1 FROM unnest(images) AS img 
-                WHERE img LIKE ''%%/images/%%/images/%%''
-            );
-        ', table_name);
+        BEGIN
+            EXECUTE format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(fixed_img)
+                    FROM (
+                        SELECT regexp_replace(
+                            img,
+                            ''/images/([^/]+)/images/'',
+                            ''/images/\1/'',
+                            ''g''
+                        ) AS fixed_img
+                        FROM unnest(images) AS img
+                    ) AS fixed_images
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img 
+                    WHERE img LIKE ''%%/images/%%/images/%%''
+                );
+            ', table_name);
+            
+            RAISE NOTICE 'Updated % (images)', table_name;
+        EXCEPTION WHEN undefined_column THEN
+            RAISE NOTICE 'Table % does not have images column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
+        END;
         
-        RAISE NOTICE 'Updated %', table_name;
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
@@ -285,6 +376,12 @@ BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_raffles';
+        
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
         
         -- image_url 컬럼이 있으면 수정
         BEGIN
@@ -303,6 +400,8 @@ BEGIN
             RAISE NOTICE 'Updated % (image_url)', table_name;
         EXCEPTION WHEN undefined_column THEN
             RAISE NOTICE 'Table % does not have image_url column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (image_url): %', table_name, SQLERRM;
         END;
         
         -- images 배열이 있으면 수정
@@ -332,7 +431,11 @@ BEGIN
             RAISE NOTICE 'Updated % (images)', table_name;
         EXCEPTION WHEN undefined_column THEN
             RAISE NOTICE 'Table % does not have images column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (images): %', table_name, SQLERRM;
         END;
+        
+        RAISE NOTICE 'Completed %', table_name;
     END LOOP;
 END $$;
 
@@ -346,6 +449,12 @@ BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_board_comments';
+        
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
         
         -- content_blocks 또는 image_url 컬럼이 있으면 수정
         BEGIN
@@ -380,6 +489,8 @@ BEGIN
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
         EXCEPTION WHEN undefined_column THEN
             RAISE NOTICE 'Table % does not have content_blocks column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -395,6 +506,12 @@ BEGIN
     LOOP
         table_name := uni || '_circles_comments';
         
+        -- 테이블 존재 여부 확인
+        IF NOT table_exists(table_name) THEN
+            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            CONTINUE;
+        END IF;
+        
         -- content_blocks 또는 image_url 컬럼이 있으면 수정
         BEGIN
             EXECUTE format('
@@ -428,6 +545,8 @@ BEGIN
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
         EXCEPTION WHEN undefined_column THEN
             RAISE NOTICE 'Table % does not have content_blocks column', table_name;
+        WHEN OTHERS THEN
+            RAISE NOTICE 'Error updating % (content_blocks): %', table_name, SQLERRM;
         END;
     END LOOP;
 END $$;
@@ -439,32 +558,44 @@ END $$;
 -- 8. MIUHub Featured 테이블
 DO $$
 BEGIN
+    -- 테이블 존재 여부 확인
+    IF NOT table_exists('miuhub_featured') THEN
+        RAISE NOTICE 'Table miuhub_featured does not exist, skipping';
+        RETURN;
+    END IF;
+    
     -- content_blocks의 이미지 URL 수정
-    UPDATE miuhub_featured 
-    SET content_blocks = (
-        SELECT jsonb_agg(
-            CASE 
-                WHEN block->>'type' = 'image' AND block->>'uri' IS NOT NULL THEN
-                    jsonb_set(
-                        block,
-                        '{uri}',
-                        to_jsonb(
-                            regexp_replace(
-                                block->>'uri',
-                                '/images/([^/]+)/images/',
-                                '/images/\1/',
-                                'g'
+    BEGIN
+        UPDATE miuhub_featured 
+        SET content_blocks = (
+            SELECT jsonb_agg(
+                CASE 
+                    WHEN block->>'type' = 'image' AND block->>'uri' IS NOT NULL THEN
+                        jsonb_set(
+                            block,
+                            '{uri}',
+                            to_jsonb(
+                                regexp_replace(
+                                    block->>'uri',
+                                    '/images/([^/]+)/images/',
+                                    '/images/\1/',
+                                    'g'
+                                )
                             )
                         )
-                    )
-                ELSE block
-            END
+                    ELSE block
+                END
+            )
+            FROM jsonb_array_elements(content_blocks::jsonb) AS block
         )
-        FROM jsonb_array_elements(content_blocks::jsonb) AS block
-    )
-    WHERE content_blocks IS NOT NULL 
-    AND content_blocks::text != '[]'
-    AND content_blocks::text LIKE '%/images/%/images/%';
+        WHERE content_blocks IS NOT NULL 
+        AND content_blocks::text != '[]'
+        AND content_blocks::text LIKE '%/images/%/images/%';
+        
+        RAISE NOTICE 'Updated miuhub_featured (content_blocks)';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Error updating miuhub_featured (content_blocks): %', SQLERRM;
+    END;
     
     -- image_url 컬럼이 있으면 수정
     BEGIN
@@ -481,9 +612,9 @@ BEGIN
         RAISE NOTICE 'Updated miuhub_featured (image_url)';
     EXCEPTION WHEN undefined_column THEN
         RAISE NOTICE 'miuhub_featured does not have image_url column';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error updating miuhub_featured (image_url): %', SQLERRM;
     END;
-    
-    RAISE NOTICE 'Updated miuhub_featured';
 END $$;
 
 -- ============================================
@@ -493,57 +624,83 @@ END $$;
 -- 9. 팝업 테이블 (popups)
 DO $$
 BEGIN
+    -- 테이블 존재 여부 확인
+    IF NOT table_exists('popups') THEN
+        RAISE NOTICE 'Table popups does not exist, skipping';
+        RETURN;
+    END IF;
+    
     -- content_blocks의 이미지 URL 수정
-    UPDATE popups 
-    SET content_blocks = (
-        SELECT jsonb_agg(
-            CASE 
-                WHEN block->>'type' = 'image' AND block->>'uri' IS NOT NULL THEN
-                    jsonb_set(
-                        block,
-                        '{uri}',
-                        to_jsonb(
-                            regexp_replace(
-                                block->>'uri',
-                                '/images/([^/]+)/images/',
-                                '/images/\1/',
-                                'g'
+    BEGIN
+        UPDATE popups 
+        SET content_blocks = (
+            SELECT jsonb_agg(
+                CASE 
+                    WHEN block->>'type' = 'image' AND block->>'uri' IS NOT NULL THEN
+                        jsonb_set(
+                            block,
+                            '{uri}',
+                            to_jsonb(
+                                regexp_replace(
+                                    block->>'uri',
+                                    '/images/([^/]+)/images/',
+                                    '/images/\1/',
+                                    'g'
+                                )
                             )
                         )
-                    )
-                ELSE block
-            END
+                    ELSE block
+                END
+            )
+            FROM jsonb_array_elements(content_blocks::jsonb) AS block
         )
-        FROM jsonb_array_elements(content_blocks::jsonb) AS block
-    )
-    WHERE content_blocks IS NOT NULL 
-    AND content_blocks::text != '[]'
-    AND content_blocks::text LIKE '%/images/%/images/%';
-    
-    RAISE NOTICE 'Updated popups';
+        WHERE content_blocks IS NOT NULL 
+        AND content_blocks::text != '[]'
+        AND content_blocks::text LIKE '%/images/%/images/%';
+        
+        RAISE NOTICE 'Updated popups';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Error updating popups: %', SQLERRM;
+    END;
 END $$;
 
 -- 10. app_config 테이블 (설정 값에 이미지 URL이 있을 수 있음)
 DO $$
 BEGIN
-    -- value에 이미지 URL이 포함된 경우 수정
-    UPDATE app_config 
-    SET value = regexp_replace(
-        value,
-        '/images/([^/]+)/images/',
-        '/images/\1/',
-        'g'
-    )
-    WHERE value IS NOT NULL 
-    AND value LIKE '%/images/%/images/%';
+    -- 테이블 존재 여부 확인
+    IF NOT table_exists('app_config') THEN
+        RAISE NOTICE 'Table app_config does not exist, skipping';
+        RETURN;
+    END IF;
     
-    RAISE NOTICE 'Updated app_config';
+    -- value에 이미지 URL이 포함된 경우 수정
+    BEGIN
+        UPDATE app_config 
+        SET value = regexp_replace(
+            value,
+            '/images/([^/]+)/images/',
+            '/images/\1/',
+            'g'
+        )
+        WHERE value IS NOT NULL 
+        AND value LIKE '%/images/%/images/%';
+        
+        RAISE NOTICE 'Updated app_config';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Error updating app_config: %', SQLERRM;
+    END;
 END $$;
 
 -- 11. 기타 공통 테이블 (필요시 추가)
 -- 예: users 테이블의 profile_image_url 등
 DO $$
 BEGIN
+    -- 테이블 존재 여부 확인
+    IF NOT table_exists('users') THEN
+        RAISE NOTICE 'Table users does not exist, skipping';
+        RETURN;
+    END IF;
+    
     -- users 테이블의 profile_image_url 수정 (테이블이 있는 경우)
     BEGIN
         UPDATE users 
@@ -557,26 +714,17 @@ BEGIN
         AND profile_image_url LIKE '%/images/%/images/%';
         
         RAISE NOTICE 'Updated users (profile_image_url)';
-    EXCEPTION WHEN undefined_table THEN
-        RAISE NOTICE 'users table does not exist';
+    EXCEPTION WHEN undefined_column THEN
+        RAISE NOTICE 'users table does not have profile_image_url column';
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Error updating users: %', SQLERRM;
     END;
 END $$;
 
--- ============================================
--- 수정 결과 확인 쿼리
--- ============================================
+-- 헬퍼 함수 삭제
+DROP FUNCTION IF EXISTS table_exists(TEXT);
 
--- 수정된 레코드 수 확인 (예시)
--- SELECT 
---     'nyu_notices' as table_name,
---     COUNT(*) as updated_count
--- FROM nyu_notices
--- WHERE content_blocks::text LIKE '%/images/%/images/%'
---    OR EXISTS (
---        SELECT 1 FROM unnest(images) AS img 
---        WHERE img LIKE '%/images/%/images/%'
---    );
-
+-- 완료 메시지
 DO $$
 BEGIN
     RAISE NOTICE 'Image URL fix completed!';
