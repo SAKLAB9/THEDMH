@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
-import API_BASE_URL from '../config/api';
 import { getUniColors, getLoginColors } from '../utils/uniColors';
 import { supabase } from '../config/supabase';
 import { useAppConfig } from '../contexts/AppConfigContext';
@@ -47,23 +46,25 @@ export default function SignUpScreen({ route }) {
           return; // 캐시에서 가져왔으므로 API 호출 생략
         }
         
-        // 캐시에 없으면 API 호출
-        const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(selectedUniImage)}`;
-        const response = await fetch(apiUrl);
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.success && data.url) {
-            // 캐시에 저장 (24시간 유효)
-            await AsyncStorage.setItem(cacheKey, data.url);
-            setIconImageUrl({ uri: data.url });
-          } else {
-            setIconImageUrl(null);
-          }
-        } else {
+        // 캐시에 없으면 Supabase Storage에서 직접 가져오기
+        if (!supabase) {
           setIconImageUrl(null);
+          return;
         }
+        
+        const filePath = `assets/${selectedUniImage}`;
+        const { data: urlData, error: urlError } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+        
+        if (urlError || !urlData?.publicUrl) {
+          setIconImageUrl(null);
+          return;
+        }
+        
+        // 캐시에 저장
+        await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+        setIconImageUrl({ uri: urlData.publicUrl });
       } catch (error) {
         // 이미지 로드 실패 시 무시
         setIconImageUrl(null);

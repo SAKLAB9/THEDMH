@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Alert, M
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import API_BASE_URL from '../config/api';
+import { supabase } from '../config/supabase';
 import { useUniversity } from '../contexts/UniversityContext';
 import { useAppConfig } from '../contexts/AppConfigContext';
 import { getUniColors } from '../utils/uniColors';
@@ -171,31 +171,26 @@ export default function CirclesScreen({ navigation, route }) {
         return;
       }
       
-      try {
-        // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
-        const response = await fetch(`${API_BASE_URL}/api/supabase-image-url`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ filenames: imageNames }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.urls) {
-            // URL 객체로 변환
-            const urls = {};
-            Object.keys(data.urls).forEach(imageName => {
-              urls[imageName] = { uri: data.urls[imageName] };
-            });
-            setPartnersImageUrls(urls);
-          } else {
-            setPartnersImageUrls({});
+      // Supabase Storage에서 직접 이미지 URL 가져오기
+      if (!supabase) {
+        setPartnersImageUrls({});
+        return;
+      }
+      
+      const urls = {};
+      imageNames.forEach(imageName => {
+        const trimmedName = String(imageName).trim();
+        if (trimmedName) {
+          const filePath = `assets/${trimmedName}`;
+          const { data: urlData } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          if (urlData?.publicUrl) {
+            urls[trimmedName] = { uri: urlData.publicUrl };
           }
-        } else {
-          setPartnersImageUrls({});
         }
+      });
+      setPartnersImageUrls(urls);
       } catch (error) {
         // 에러 발생 시 빈 객체로 설정
         setPartnersImageUrls({});

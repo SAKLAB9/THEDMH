@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Image, ScrollView, Modal } from 'react-na
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import API_BASE_URL from '../config/api';
+import { supabase } from '../config/supabase';
 import { useUniversity } from '../contexts/UniversityContext';
 import { getUniColors } from '../utils/uniColors';
 import { useAppConfig } from '../contexts/AppConfigContext';
@@ -127,35 +127,26 @@ export default function HomeScreen({ navigation }) {
         return;
       }
       
-      try {
-        // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
-        const response = await fetch(`${API_BASE_URL}/api/supabase-image-url`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ filenames: imageNames }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.urls) {
-            // URL 객체로 변환
-            const urls = {};
-            Object.keys(data.urls).forEach(imageName => {
-              urls[imageName] = { uri: data.urls[imageName] };
-            });
-            setAdminImageUrls(urls);
-          } else {
-            setAdminImageUrls({});
-          }
-        } else {
-          setAdminImageUrls({});
-        }
-      } catch (error) {
-        // 에러 발생 시 빈 객체로 설정
+      // Supabase Storage에서 직접 이미지 URL 가져오기
+      if (!supabase) {
         setAdminImageUrls({});
+        return;
       }
+      
+      const urls = {};
+      imageNames.forEach(imageName => {
+        const trimmedName = String(imageName).trim();
+        if (trimmedName) {
+          const filePath = `assets/${trimmedName}`;
+          const { data: urlData } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          if (urlData?.publicUrl) {
+            urls[trimmedName] = { uri: urlData.publicUrl };
+          }
+        }
+      });
+      setAdminImageUrls(urls);
     };
     
     loadAdminImageUrls();
@@ -255,24 +246,26 @@ export default function HomeScreen({ navigation }) {
         // 이미지 파일명 생성 (예: Cornell.png)
         const imageFileName = `${universityDisplayName}.png`;
         
-        // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기
-        const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
-          fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
-          fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
-        ]);
-        
-        // 로고 이미지 처리
-        if (logoResponse.ok) {
-          const logoData = await logoResponse.json();
-          if (logoData.success && logoData.url) {
-            setLogoImageUrl({ uri: logoData.url });
+        // 로고 이미지 Supabase에서 직접 가져오기
+        if (supabase) {
+          const filePath = `assets/${imageFileName}`;
+          const { data: urlData } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          if (urlData?.publicUrl) {
+            setLogoImageUrl({ uri: urlData.publicUrl });
           } else {
             setLogoImageUrl(null);
           }
         } else {
           setLogoImageUrl(null);
         }
+        
+        // 공지사항, 경조사를 병렬로 불러오기
+        const [noticesResponse, lifeEventsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
+          fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+        ]);
         
         // 공지사항 처리
         if (noticesResponse.ok) {
@@ -378,24 +371,22 @@ export default function HomeScreen({ navigation }) {
               setSavedLifeEvents(cachedLifeEvents);
               
               // 백그라운드에서 새 데이터 가져오기 (캐시가 있으면 비동기로 업데이트)
+              // 로고 이미지 Supabase에서 직접 가져오기
+              if (!logoUrl && supabase) {
+                const filePath = `assets/${imageFileName}`;
+                const { data: urlData } = supabase.storage
+                  .from('images')
+                  .getPublicUrl(filePath);
+                if (urlData?.publicUrl) {
+                  AsyncStorage.setItem(logoCacheKey, urlData.publicUrl).catch(() => {});
+                  setLogoImageUrl({ uri: urlData.publicUrl });
+                }
+              }
+              
               Promise.all([
-                logoUrl 
-                  ? Promise.resolve(null)
-                  : fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
                 fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
                 fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
-              ]).then(([logoResponse, noticesResponse, lifeEventsResponse]) => {
-                // 로고 이미지 처리
-                if (logoResponse) {
-                  if (logoResponse.ok) {
-                    logoResponse.json().then(logoData => {
-                      if (logoData.success && logoData.url) {
-                        AsyncStorage.setItem(logoCacheKey, logoData.url).catch(() => {});
-                        setLogoImageUrl({ uri: logoData.url });
-                      }
-                    }).catch(() => {});
-                  }
-                }
+              ]).then(([noticesResponse, lifeEventsResponse]) => {
                 
                 // 공지사항 업데이트
                 if (noticesResponse.ok) {
@@ -426,36 +417,32 @@ export default function HomeScreen({ navigation }) {
             // 캐시 읽기 오류는 무시하고 API 호출 계속
           }
           
-          // 캐시가 없거나 만료되었으면 API 호출
-          // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
-          const promises = [
-            // 로고는 캐시가 없을 때만 API 호출
-            logoUrl 
-              ? Promise.resolve(null)
-              : fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
+          // 캐시가 없거나 만료되었으면 Supabase에서 직접 가져오기
+          // 로고 이미지 Supabase에서 직접 가져오기
+          if (!logoUrl && supabase) {
+            const filePath = `assets/${imageFileName}`;
+            const { data: urlData } = supabase.storage
+              .from('images')
+              .getPublicUrl(filePath);
+            if (urlData?.publicUrl) {
+              try {
+                await AsyncStorage.setItem(logoCacheKey, urlData.publicUrl);
+              } catch (cacheError) {
+                console.error('[HomeScreen] 로고 캐시 저장 오류:', cacheError);
+              }
+              setLogoImageUrl({ uri: urlData.publicUrl });
+            } else {
+              setLogoImageUrl(null);
+            }
+          }
+          
+          // 공지사항, 경조사를 병렬로 불러오기
+          const [noticesResponse, lifeEventsResponse] = await Promise.all([
             fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
             fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
-          ];
+          ]);
           
-          const [logoResponse, noticesResponse, lifeEventsResponse] = await Promise.all(promises);
-          
-          // 로고 이미지 처리
-          if (logoResponse) {
-            if (logoResponse.ok) {
-              const logoData = await logoResponse.json();
-              if (logoData.success && logoData.url) {
-                // 캐시에 저장
-                try {
-                  await AsyncStorage.setItem(logoCacheKey, logoData.url);
-                } catch (cacheError) {
-                  console.error('[HomeScreen] 로고 캐시 저장 오류:', cacheError);
-                }
-                setLogoImageUrl({ uri: logoData.url });
-              } else {
-                setLogoImageUrl(null);
-              }
-            } else {
-              if (__DEV__) {
+          if (__DEV__) {
                 console.error('[HomeScreen] 로고 이미지 로드 실패:', logoResponse.status);
               }
               setLogoImageUrl(null);

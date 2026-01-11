@@ -180,18 +180,23 @@ export default function ProfileScreen() {
       // 이미지 파일명 생성 (예: Cornell.png)
       const imageFileName = `${universityDisplayName}.png`;
       
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.url) {
-            setLogoImageUrl({ uri: data.url });
-          } else {
-            setLogoImageUrl(null);
-          }
-        } else {
-          setLogoImageUrl(null);
-        }
+      // Supabase Storage에서 직접 이미지 URL 가져오기
+      if (!supabase) {
+        setLogoImageUrl(null);
+        return;
+      }
+      
+      const filePath = `assets/${imageFileName}`;
+      const { data: urlData, error: urlError } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+      
+      if (urlError || !urlData?.publicUrl) {
+        setLogoImageUrl(null);
+        return;
+      }
+      
+      setLogoImageUrl({ uri: urlData.publicUrl });
       } catch (error) {
         setLogoImageUrl(null);
       }
