@@ -1617,7 +1617,8 @@ app.get('/api/notices', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        let query = `SELECT * FROM ${tableName}`;
+        // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
+        let query = `SELECT id, title, category, nickname, author, views, created_at, url FROM ${tableName}`;
         const params = [];
         let paramIndex = 1;
         
@@ -1679,28 +1680,8 @@ app.get('/api/notices/:id', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        // views 컬럼이 없으면 자동으로 추가
-        try {
-          const checkViewsResult = await pool.query(
-            `SELECT column_name 
-             FROM information_schema.columns 
-             WHERE table_schema = 'public' 
-               AND table_name = $1 
-               AND column_name = 'views'`,
-            [tableName]
-          );
-          
-          if (checkViewsResult.rows.length === 0) {
-            console.log(`[공지사항 상세 조회] views 컬럼이 없어 추가합니다: ${tableName}`);
-            await pool.query(`ALTER TABLE ${tableName} ADD COLUMN views INTEGER DEFAULT 0`);
-            console.log(`[공지사항 상세 조회] views 컬럼 추가 완료: ${tableName}`);
-          }
-        } catch (colError) {
-          console.error(`[공지사항 상세 조회] views 컬럼 확인/추가 실패:`, colError);
-          // 컬럼 추가 실패해도 계속 진행 (이미 있을 수도 있음)
-        }
-        
-        // 뷰수 증가 및 데이터 조회
+        // 뷰수 증가 및 데이터 조회 (컬럼 존재 여부 확인 제거 - 성능 최적화)
+        // views 컬럼이 없으면 에러가 발생하지만, 이미 모든 테이블에 views 컬럼이 있으므로 확인 불필요
         const noticeId = parseInt(id, 10);
         if (isNaN(noticeId)) {
           console.error(`[공지사항 상세 조회] 유효하지 않은 ID: ${id}`);

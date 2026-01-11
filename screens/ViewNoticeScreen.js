@@ -431,12 +431,13 @@ export default function ViewNoticeScreen({ route, navigation }) {
     loadNotice(false);
   }, [noticeId, university, loadNotice]);
 
-  // 화면이 포커스될 때마다 currentUser와 공지사항 데이터 새로고침
+  // 화면이 포커스될 때마다 currentUser만 새로고침
+  // 공지사항은 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
   useFocusEffect(
     React.useCallback(() => {
       loadCurrentUser();
-      // 수정 후 돌아왔을 때를 대비해 강제 새로고침
-      loadNotice(true);
+      // 캐시가 있으면 캐시 사용, 없을 때만 API 호출 (강제 새로고침 제거)
+      loadNotice(false);
     }, [loadCurrentUser, loadNotice])
   );
 
