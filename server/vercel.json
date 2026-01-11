@@ -6,6 +6,10 @@
       "dest": "/api/cleanup-unused-images.js"
     },
     {
+      "src": "/api/config",
+      "dest": "/server.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },
