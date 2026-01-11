@@ -571,12 +571,24 @@ export default function ViewCirclesScreen({ route, navigation }) {
                 loadComments(),
                 checkFavorite()
               ]);
-          } else {
-            // 소모임을 찾을 수 없음 (다른 학교일 수 있음)
-            if (__DEV__) {
-              console.log(`[ViewCirclesScreen] 소모임을 찾을 수 없음 (다른 학교일 수 있음)`);
+            } else {
+              // 소모임을 찾을 수 없음 (다른 학교일 수 있음)
+              if (__DEV__) {
+                console.log(`[ViewCirclesScreen] 소모임을 찾을 수 없음 (다른 학교일 수 있음)`);
+              }
+              // 조용히 뒤로 가기
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Main');
+              }
             }
-            // 조용히 뒤로 가기
+          } catch (parseError) {
+            if (__DEV__) {
+              console.error('[ViewCirclesScreen] JSON 파싱 오류:', parseError);
+            }
+            setLoading(false);
+            // 파싱 오류 시 조용히 뒤로 가기
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
