@@ -17,6 +17,11 @@ export const AppConfigProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  // 초기 마운트 시 config 로드
+  useEffect(() => {
+    loadConfig(null, false);
+  }, []);
+
   // 설정값 가져오기
   const loadConfig = useCallback(async (university, forceRefresh = false) => {
     try {

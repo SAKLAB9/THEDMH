@@ -36,13 +36,13 @@ export const getUniColors = (university, config = null) => {
 // 앱 아이콘의 주요 색상을 config에서 가져옵니다.
 // config의 miuhub_primary_color와 miuhub_border_color 값을 수정하면 변경됩니다.
 export const getLoginColors = (getConfig) => {
-  const iconBackground = getConfig('miuhub_primary_color');
-  const iconBorder = getConfig('miuhub_border_color');
+  const iconBackground = getConfig('miuhub_primary_color') || '#3b3c36';
+  const iconBorder = getConfig('miuhub_border_color') || '#3b3c36';
   return {
     iconBackground, // 아이콘 배경색
     iconBorder,     // 아이콘 내부 테두리 색상
     get primary() {
-      return this.iconBackground; // primary는 iconBackground를 따라감
+      return this.iconBackground || '#3b3c36'; // primary는 iconBackground를 따라감, 없으면 기본값
     },
   };
 };

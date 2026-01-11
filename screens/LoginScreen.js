@@ -336,7 +336,7 @@ export default function LoginScreen() {
     adminSlotImageNames.push(getConfig(`login_admin_slot_${i}_image`, ''));
   }
 
-  // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기
+  // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기 (fallback 없음)
   useEffect(() => {
     if (!fontsLoaded || configLoading) return;
     
@@ -349,15 +349,19 @@ export default function LoginScreen() {
             const data = await response.json();
             if (data.success && data.url) {
               setIconImageUrl({ uri: data.url });
-              return;
+            } else {
+              setIconImageUrl(null);
             }
+          } else {
+            setIconImageUrl(null);
           }
         } catch (error) {
           console.error('[LoginScreen] 아이콘 로드 실패:', error);
+          setIconImageUrl(null);
         }
+      } else {
+        setIconImageUrl(null);
       }
-      // Supabase Storage에서 로드 실패 시 기본 아이콘 사용
-      setIconImageUrl(require('../assets/icon.png'));
     };
     
     loadLoginIconImage();
