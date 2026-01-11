@@ -517,14 +517,18 @@ export default function LoginScreen() {
 
   // Admin 모달 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
   const adminSlotImages = [];
+  console.log('[LoginScreen] Admin 슬롯 이미지 배열 생성 시작');
+  console.log('[LoginScreen] adminSlotsCount:', adminSlotsCount);
+  console.log('[LoginScreen] adminImageUrls 키:', Object.keys(adminImageUrls));
+  
   for (let i = 1; i <= adminSlotsCount; i++) {
     const imageName = getConfig(`login_admin_slot_${i}_image`, '');
-    if (imageName) {
-      adminSlotImages.push(adminImageUrls[imageName] || null);
-    } else {
-      adminSlotImages.push(null);
-    }
+    const imageUrl = imageName ? adminImageUrls[imageName] : null;
+    console.log(`[LoginScreen] 슬롯 ${i}: 파일명="${imageName}", URL=`, imageUrl);
+    adminSlotImages.push(imageUrl);
   }
+  
+  console.log('[LoginScreen] Admin 슬롯 이미지 배열 완료:', adminSlotImages.length, '개');
 
   // Admin 모달 높이 계산 (슬롯 개수에 따라)
   const calculateAdminModalHeight = () => {
