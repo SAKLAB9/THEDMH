@@ -70,11 +70,12 @@ export default function SelectUniScreen() {
     if (!fontsLoaded) return; // 폰트가 로드되지 않았으면 실행하지 않음
     
     const loadImageUrls = async () => {
-      // 모든 이미지 파일명 수집
+      // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`select_uni_slot_${i}_image`, '');
-        if (imageName) {
+        // EMPTY 값과 빈 문자열 필터링
+        if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
         }
       }
@@ -359,7 +360,9 @@ export default function SelectUniScreen() {
   const slotImages = [];
   for (let i = 1; i <= slotsCount; i++) {
     const imageName = getConfig(`select_uni_slot_${i}_image`, '');
-    const imageUrl = imageName ? imageUrls[imageName] : null;
+    // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
+    const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
+    const imageUrl = validImageName ? imageUrls[validImageName] : null;
     if (__DEV__) {
       if (imageName && !imageUrl) {
         console.warn(`[SelectUniScreen] 이미지 URL 없음 (slot ${i}):`, {
@@ -373,7 +376,7 @@ export default function SelectUniScreen() {
       }
     }
     // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
-    slotImages.push({ imageName, imageUrl });
+    slotImages.push({ imageName: validImageName, imageUrl });
   }
   
   if (__DEV__) {

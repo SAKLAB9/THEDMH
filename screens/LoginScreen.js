@@ -401,11 +401,12 @@ export default function LoginScreen() {
         return;
       }
       
-      // 모든 이미지 파일명 수집
+      // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`login_admin_slot_${i}_image`, '');
-        if (imageName) {
+        // EMPTY 값과 빈 문자열 필터링
+        if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
         }
       }
@@ -607,9 +608,11 @@ export default function LoginScreen() {
   const adminSlotImages = [];
   for (let i = 1; i <= adminSlotsCount; i++) {
     const imageName = getConfig(`login_admin_slot_${i}_image`, '');
-    const imageUrl = imageName ? adminImageUrls[imageName] : null;
+    // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
+    const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
+    const imageUrl = validImageName ? adminImageUrls[validImageName] : null;
     // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
-    adminSlotImages.push({ imageName, imageUrl });
+    adminSlotImages.push({ imageName: validImageName, imageUrl });
   }
 
   // Admin 모달 높이 계산 (슬롯 개수에 따라)
