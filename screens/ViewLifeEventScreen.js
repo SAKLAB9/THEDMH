@@ -164,18 +164,17 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   
   // lifeEventPreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
-    if (lifeEventPreview && !lifeEvent && !viewsIncremented) {
+    if (lifeEventPreview && !lifeEvent) {
       // 기본 정보만 있는 preview 데이터로 즉시 표시
-      // 뷰수는 즉시 +1 표시 (낙관적 업데이트)
+      // 뷰수는 서버에서 증가시키므로 여기서는 증가시키지 않음
+      // 서버 응답을 받으면 증가된 뷰수로 업데이트됨
       setLifeEvent({
         ...lifeEventPreview,
-        views: (lifeEventPreview.views || 0) + 1, // 즉시 +1 표시
         content_blocks: [], // 내용은 아직 없음
         images: [] // 이미지도 아직 없음
       });
-      setViewsIncremented(true); // 뷰수 증가 표시
     }
-  }, [lifeEventPreview, lifeEvent, viewsIncremented]);
+  }, [lifeEventPreview, lifeEvent]);
 
   // 경조사 탭 (useMemo로 감싸서 config 변경 시 재생성)
   const lifeEventTabs = React.useMemo(() => {
@@ -380,16 +379,15 @@ export default function ViewLifeEventScreen({ route, navigation }) {
                 }
                 
                 // 기본 정보는 유지하고 내용만 업데이트
-                // 뷰수는 서버에서 증가된 값과 클라이언트에서 증가한 값 중 큰 값 사용 (동기화)
-                const serverViews = fullLifeEvent.views || 0;
-                const clientViews = lifeEvent.views || 0;
+                // 뷰수는 서버에서 증가된 값을 그대로 사용
                 setLifeEvent({
                   ...lifeEvent,
-                  views: Math.max(serverViews, clientViews), // 서버와 클라이언트 중 큰 값 사용
+                  views: fullLifeEvent.views || lifeEvent.views || 0, // 서버에서 증가된 뷰수 사용
                   content_blocks: contentBlocks,
                   images: fullLifeEvent.images || [],
                   text_content: fullLifeEvent.text_content || ''
                 });
+                setViewsIncremented(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content만 별도 캐시에 저장
                 AsyncStorage.setItem(contentCacheKey, JSON.stringify({
