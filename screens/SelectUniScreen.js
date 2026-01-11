@@ -147,27 +147,52 @@ export default function SelectUniScreen() {
         return;
       }
       
-      // 캐시에서 병렬로 확인
+      // 캐시에서 병렬로 확인 (만료 시간: 24시간)
+      const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
       const cacheKeys = slotData.map(slot => ({
         imageName: slot.imageName,
-        cacheKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}`
+        cacheKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}`,
+        timestampKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}_timestamp`
       }));
       
       const cachePromises = cacheKeys.map(({ cacheKey }) => AsyncStorage.getItem(cacheKey));
-      const cachedResults = await Promise.all(cachePromises);
+      const timestampPromises = cacheKeys.map(({ timestampKey }) => AsyncStorage.getItem(timestampKey));
+      const [cachedResults, timestampResults] = await Promise.all([
+        Promise.all(cachePromises),
+        Promise.all(timestampPromises)
+      ]);
       
       const urls = {};
       const toLoadFromSupabase = [];
+      const expiredCacheKeys = [];
       
       // 캐시된 URL과 새로 로드할 이미지 분리
-      cacheKeys.forEach(({ imageName }, index) => {
+      cacheKeys.forEach(({ imageName, cacheKey, timestampKey }, index) => {
         const cachedUrl = cachedResults[index];
-        if (cachedUrl) {
-          urls[imageName] = { uri: cachedUrl };
+        const cachedTimestamp = timestampResults[index];
+        
+        if (cachedUrl && cachedTimestamp) {
+          const cacheAge = Date.now() - parseInt(cachedTimestamp, 10);
+          if (cacheAge < CACHE_EXPIRY_MS) {
+            // 캐시가 유효함
+            urls[imageName] = { uri: cachedUrl };
+          } else {
+            // 캐시가 만료됨
+            expiredCacheKeys.push({ cacheKey, timestampKey });
+            toLoadFromSupabase.push(imageName);
+          }
         } else {
           toLoadFromSupabase.push(imageName);
         }
       });
+      
+      // 만료된 캐시 삭제
+      if (expiredCacheKeys.length > 0) {
+        await Promise.all([
+          ...expiredCacheKeys.map(({ cacheKey }) => AsyncStorage.removeItem(cacheKey)),
+          ...expiredCacheKeys.map(({ timestampKey }) => AsyncStorage.removeItem(timestampKey))
+        ]);
+      }
       
       // Supabase Storage에서 직접 이미지 URL 가져오기 (동기적으로 빠르게 생성)
       // 캐시 버스팅을 위해 타임스탬프 추가
@@ -186,12 +211,16 @@ export default function SelectUniScreen() {
         }
       });
       
-      // 새로 로드한 URL들을 캐시에 저장 (병렬로)
+      // 새로 로드한 URL들을 캐시에 저장 (병렬로, 타임스탬프와 함께)
       const savePromises = toLoadFromSupabase.map(imageName => {
         const slot = slotData.find(s => s.imageName === imageName);
         if (slot && urls[imageName]) {
           const cacheKey = `select_uni_slot_${slot.slotNumber}_url_${imageName}`;
-          return AsyncStorage.setItem(cacheKey, urls[imageName].uri);
+          const timestampKey = `${cacheKey}_timestamp`;
+          return Promise.all([
+            AsyncStorage.setItem(cacheKey, urls[imageName].uri),
+            AsyncStorage.setItem(timestampKey, Date.now().toString())
+          ]);
         }
         return Promise.resolve();
       });

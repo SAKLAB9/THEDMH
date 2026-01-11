@@ -132,18 +132,29 @@ export default function HomeScreen({ navigation }) {
       // 캐시 키 생성 (모든 파일명을 정렬하여 일관된 키 생성)
       const sortedNames = [...imageNames].sort().join(',');
       const cacheKey = `admin_image_urls_${sortedNames}`;
+      const cacheTimestampKey = `${cacheKey}_timestamp`;
       
-      // 캐시에서 먼저 확인
+      // 캐시에서 먼저 확인 (만료 시간: 24시간)
       const cachedUrls = await AsyncStorage.getItem(cacheKey);
-      if (cachedUrls) {
-        const parsedUrls = JSON.parse(cachedUrls);
-        // URL 객체로 변환
-        const urls = {};
-        Object.keys(parsedUrls).forEach(imageName => {
-          urls[imageName] = { uri: parsedUrls[imageName] };
-        });
-        setAdminImageUrls(urls);
-        return; // 캐시에서 가져왔으므로 API 호출 생략
+      const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+      const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
+      
+      if (cachedUrls && cachedTimestamp) {
+        const cacheAge = Date.now() - parseInt(cachedTimestamp, 10);
+        if (cacheAge < CACHE_EXPIRY_MS) {
+          // 캐시가 유효함
+          const parsedUrls = JSON.parse(cachedUrls);
+          // URL 객체로 변환
+          const urls = {};
+          Object.keys(parsedUrls).forEach(imageName => {
+            urls[imageName] = { uri: parsedUrls[imageName] };
+          });
+          setAdminImageUrls(urls);
+          return; // 캐시에서 가져왔으므로 API 호출 생략
+        }
+        // 캐시가 만료되었으면 삭제하고 새로 로드
+        await AsyncStorage.removeItem(cacheKey);
+        await AsyncStorage.removeItem(cacheTimestampKey);
       }
       
       // 캐시에 없으면 Supabase Storage에서 직접 가져오기
@@ -169,8 +180,9 @@ export default function HomeScreen({ navigation }) {
         }
       });
       
-      // 캐시에 저장
+      // 캐시에 저장 (타임스탬프와 함께)
       await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+      await AsyncStorage.setItem(cacheTimestampKey, Date.now().toString());
       
       // URL 객체로 변환
       const urlObjects = {};
