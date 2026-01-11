@@ -97,6 +97,20 @@ export default function SelectUniScreen() {
   // 슬롯 설정 가져오기 (select_uni_* 키 사용)
   // config가 로드되기 전에는 기본값 사용하지 않음 (0으로 설정)
   const slotsCount = configLoading ? 0 : getConfigNumber('select_uni_slots_count', 4);
+  
+  // 디버깅: slotsCount가 제대로 가져와지는지 확인
+  if (__DEV__ && !configLoading) {
+    const testSlot1 = getConfig('select_uni_slot_1', '');
+    const testSlotCount = getConfigNumber('select_uni_slots_count', 4);
+    console.log('[SelectUniScreen] Config 테스트:', {
+      slotsCount,
+      testSlotCount,
+      testSlot1: testSlot1 || '(빈 값)',
+      configKeys: Object.keys(appConfig).length,
+      hasSelectUniSlot1: 'select_uni_slot_1' in appConfig,
+      hasSelectUniSlotsCount: 'select_uni_slots_count' in appConfig,
+    });
+  }
   const slotWidth = 100;
   const slotHeight = 100;
   const slotGap = 24;
