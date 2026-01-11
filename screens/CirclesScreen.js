@@ -427,11 +427,8 @@ export default function CirclesScreen({ navigation, route }) {
         const CACHE_DURATION = 2 * 60 * 1000; // 2분
         const now = Date.now();
         
-        console.log('[DEBUG loadCirclesData] 캐시 확인:', { selectedChannel, universityCode, cacheKey, forceRefresh });
-        
         // forceRefresh가 true이면 캐시 무시하고 바로 API 호출
         if (forceRefresh) {
-          console.log('[DEBUG loadCirclesData] forceRefresh=true, 캐시 무시하고 API 호출');
         } else {
           // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
           // 현재 채널의 캐시만 확인 (다른 채널의 캐시는 확인하지 않음)
@@ -675,7 +672,6 @@ export default function CirclesScreen({ navigation, route }) {
           // 캐시가 있고 2분 이내면 기존 데이터 유지하고 뷰수만 백그라운드에서 업데이트
           if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION && isMounted) {
             const cachedCircles = JSON.parse(cachedData);
-            console.log('[DEBUG refreshData] 캐시 사용 (뷰수만 업데이트):', { universityCode, count: cachedCircles.length });
             // 기존 데이터 유지 (빈 배열로 초기화하지 않음)
             // 뷰수만 백그라운드에서 업데이트
             fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
