@@ -1863,28 +1863,6 @@ app.put('/api/notices/:id', async (req, res) => {
           });
         }
 
-        // 새로운 이미지 저장 및 URL 수집
-        const savedImageUrls = [...oldImages];
-        if (images && images.length > 0) {
-          for (let i = 0; i < images.length; i++) {
-            const imageData = images[i];
-            if (imageData && imageData.startsWith('data:image')) {
-              const timestamp = Date.now();
-              const filename = `notice_${timestamp}_${i}.jpg`;
-              try {
-                const imageUrl = await saveImage(imageData, filename, universityCode);
-                savedImageUrls.push(imageUrl);
-              } catch (error) {
-                console.error(`[공지사항 수정] 이미지 저장 실패:`, error);
-              }
-            } else if (imageData && imageData.startsWith('http')) {
-              if (!savedImageUrls.includes(imageData)) {
-                savedImageUrls.push(imageData);
-              }
-            }
-          }
-        }
-
         // contentBlocks의 이미지도 업로드 및 업데이트
         const updatedContentBlocks = await Promise.all((contentBlocks || []).map(async (block, index) => {
           if (block.type === 'image' && block.uri) {
@@ -1903,25 +1881,45 @@ app.put('/api/notices/:id', async (req, res) => {
           return block;
         }));
 
-        // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
+        // 새로운 이미지 URL 수집 (실제 사용되는 이미지만 수집)
         const newImageUrls = new Set();
-        savedImageUrls.forEach(url => {
-          if (url) {
-            newImageUrls.add(url);
+        
+        // images 배열에서 새로운 이미지 저장 및 수집
+        if (images && images.length > 0) {
+          for (let i = 0; i < images.length; i++) {
+            const imageData = images[i];
+            if (imageData && imageData.startsWith('data:image')) {
+              const timestamp = Date.now();
+              const filename = `notice_${timestamp}_${i}.jpg`;
+              try {
+                const imageUrl = await saveImage(imageData, filename, universityCode);
+                newImageUrls.add(imageUrl);
+              } catch (error) {
+                console.error(`[공지사항 수정] 이미지 저장 실패:`, error);
+              }
+            } else if (imageData && imageData.startsWith('http')) {
+              newImageUrls.add(imageData);
+            }
           }
-        });
+        }
+        
+        // contentBlocks의 이미지 URL 수집
         updatedContentBlocks.forEach(block => {
           if (block.type === 'image' && block.uri) {
             newImageUrls.add(block.uri);
           }
         });
 
-        // 삭제된 이미지 찾기
+        // 삭제된 이미지 찾기 및 삭제
         oldImageUrls.forEach(url => {
           if (!newImageUrls.has(url)) {
+            console.log(`[공지사항 수정] 삭제할 이미지: ${url}`);
             deleteImageFile(url);
           }
         });
+        
+        // 최종 이미지 배열 (실제 사용되는 이미지만 포함)
+        const savedImageUrls = Array.from(newImageUrls);
         
         // 공지사항 업데이트
         const result = await pool.query(
