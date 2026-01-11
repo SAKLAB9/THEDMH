@@ -434,28 +434,54 @@ export default function WriteNoticeScreen({ navigation, route }) {
         return;
       }
 
+      // university 확인 및 로깅
+      if (!university) {
+        Alert.alert('오류', '학교 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const universityValue = university.toLowerCase();
+      if (__DEV__) {
+        console.log('[WriteNoticeScreen] 저장 요청:', {
+          university: universityValue,
+          isEditMode,
+          editNoticeId
+        });
+      }
+      
       // API 서버로 전송 (수정 모드면 PUT, 아니면 POST)
       const apiUrl = isEditMode 
         ? `${API_BASE_URL}/api/notices/${editNoticeId}`
         : `${API_BASE_URL}/api/notices`;
       const method = isEditMode ? 'PUT' : 'POST';
       
+      const requestBody = {
+        title: title.trim(),
+        contentBlocks: updatedContentBlocks,
+        textContent: textContent,
+        images: images,
+        category: selectedCategory,
+        university: universityValue,
+        nickname: nickname && nickname.trim() ? nickname.trim() : '관리자',
+        author: author, // 실제 작성자 이메일/ID 저장
+        url: url && url.trim() ? url.trim() : null,
+      };
+      
+      if (__DEV__) {
+        console.log('[WriteNoticeScreen] 요청 본문:', {
+          ...requestBody,
+          contentBlocks: requestBody.contentBlocks.length,
+          images: requestBody.images.length
+        });
+      }
+      
       const response = await fetch(apiUrl, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: title.trim(),
-          contentBlocks: updatedContentBlocks,
-          textContent: textContent,
-          images: images,
-          category: selectedCategory,
-          university: university.toLowerCase(),
-          nickname: nickname && nickname.trim() ? nickname.trim() : '관리자',
-          author: author, // 실제 작성자 이메일/ID 저장
-          url: url && url.trim() ? url.trim() : null,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       // 응답이 JSON인지 확인

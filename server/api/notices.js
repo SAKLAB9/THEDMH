@@ -39,13 +39,25 @@ module.exports = async (req, res) => {
     
     // POST 요청 처리 (공지사항 등록)
     if (req.method === 'POST') {
+      console.log('[API Notices POST] 요청 받음');
+      console.log('[API Notices POST] req.body:', {
+        title: req.body?.title,
+        university: req.body?.university,
+        category: req.body?.category,
+        hasContentBlocks: !!req.body?.contentBlocks,
+        contentBlocksLength: req.body?.contentBlocks?.length
+      });
+      
       const { title, contentBlocks, textContent, images, category, nickname, author, url, university } = req.body;
       
       if (!title || !contentBlocks || !category) {
+        console.error('[API Notices POST] 필수 필드 누락:', { title: !!title, contentBlocks: !!contentBlocks, category: !!category });
         return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
       }
       
       if (!university) {
+        console.error('[API Notices POST] university 파라미터 누락');
+        console.error('[API Notices POST] req.body 전체:', JSON.stringify(req.body, null, 2));
         return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
       }
       
