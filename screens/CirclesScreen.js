@@ -59,12 +59,14 @@ export default function CirclesScreen({ navigation, route }) {
   // selectedChannel이 변경되면 즉시 해당 채널의 캐시 확인 및 표시
   useEffect(() => {
     const prevChannel = selectedChannelRef.current;
-    selectedChannelRef.current = selectedChannel;
     
     // selectedChannel이 실제로 변경되었을 때만 실행
     if (prevChannel === selectedChannel) {
       return;
     }
+    
+    // selectedChannelRef를 먼저 업데이트 (useFocusEffect가 실행되기 전에)
+    selectedChannelRef.current = selectedChannel;
     
     // 채널이 변경되면 즉시 이전 데이터 초기화 (깜빡임 방지)
     setSavedCircles([]);
