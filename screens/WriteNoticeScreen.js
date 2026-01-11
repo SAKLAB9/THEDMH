@@ -357,6 +357,12 @@ export default function WriteNoticeScreen({ navigation, route }) {
     if (isSubmitting) {
       return;
     }
+    
+    // university 확인
+    if (!university) {
+      Alert.alert('오류', '학교 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+      return;
+    }
 
     // 제목 검증
     if (!title.trim()) {
