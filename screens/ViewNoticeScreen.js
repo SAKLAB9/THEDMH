@@ -166,17 +166,13 @@ export default function ViewNoticeScreen({ route, navigation }) {
   useEffect(() => {
     if (noticePreview && !notice) {
       // 기본 정보만 있는 preview 데이터로 즉시 표시
-      // 뷰수는 즉시 +1 (낙관적 업데이트)
+      // 뷰수는 서버에서 증가시키므로 여기서는 증가시키지 않음
+      // 서버 응답을 받으면 증가된 뷰수로 업데이트됨
       setNotice({
         ...noticePreview,
-        views: (noticePreview.views || 0) + 1, // 뷰수 즉시 증가
         content_blocks: [], // 내용은 아직 없음
         images: [] // 이미지도 아직 없음
       });
-      
-      // 홈 화면의 뷰수도 업데이트 (백그라운드)
-      // navigation의 parent에서 notices 배열 업데이트는 복잡하므로
-      // 여기서는 로컬 상태만 업데이트하고, 서버 요청은 백그라운드에서 처리
     }
   }, [noticePreview, notice]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);

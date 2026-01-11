@@ -165,10 +165,10 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   useEffect(() => {
     if (lifeEventPreview && !lifeEvent) {
       // 기본 정보만 있는 preview 데이터로 즉시 표시
-      // 뷰수는 즉시 +1 (낙관적 업데이트)
+      // 뷰수는 서버에서 증가시키므로 여기서는 증가시키지 않음
+      // 서버 응답을 받으면 증가된 뷰수로 업데이트됨
       setLifeEvent({
         ...lifeEventPreview,
-        views: (lifeEventPreview.views || 0) + 1, // 뷰수 즉시 증가
         content_blocks: [], // 내용은 아직 없음
         images: [] // 이미지도 아직 없음
       });
