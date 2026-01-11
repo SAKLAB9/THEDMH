@@ -10,7 +10,6 @@ import { supabase } from '../config/supabase';
 import { useUniversity } from '../contexts/UniversityContext';
 import { getLoginColors } from '../utils/uniColors';
 import { getCategoryPassword } from './categoryPasswords';
-import { supabase } from '../config/supabase';
 import { useAppConfig } from '../contexts/AppConfigContext';
 
 // ID 기억하기 체크박스 컴포넌트
