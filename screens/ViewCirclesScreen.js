@@ -1057,9 +1057,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
             {contentBlocks && contentBlocks.length > 0 ? (
               // contentBlocks가 있으면 순서대로 표시
               contentBlocks.map((block, index) => {
-                console.log(`[ViewCirclesScreen] contentBlocks[${index}]:`, JSON.stringify(block, null, 2));
                 if (block.type === 'image') {
-                  console.log(`[ViewCirclesScreen] 이미지 블록 발견:`, block.uri);
                   return (
                     <ImageBlock 
                       key={block.id || `image_${index}`} 
@@ -1087,7 +1085,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
               circle.images && Array.isArray(circle.images) && circle.images.length > 0 && (
                 <>
                   {circle.images.map((imageUrl, index) => {
-                    console.log(`[ViewCirclesScreen] images[${index}]:`, imageUrl);
                     return (
                       <ImageBlock 
                         key={`image_array_${index}`} 
