@@ -160,7 +160,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
   }), [uniColors]);
   const { noticeId } = route.params;
   const [notice, setNotice] = useState(null);
-  const [loading, setLoading] = useState(true); // 초기 로딩 상태를 true로 변경
+  const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
@@ -206,11 +206,8 @@ export default function ViewNoticeScreen({ route, navigation }) {
   useEffect(() => {
     const loadNotice = async () => {
       if (!noticeId || !university || !university.trim()) {
-        setLoading(false);
         return;
       }
-
-      setLoading(true);
       try {
         const universityCode = university.toLowerCase();
         const cacheKey = `notice_${noticeId}_${universityCode}`;
@@ -248,8 +245,8 @@ export default function ViewNoticeScreen({ route, navigation }) {
           if (!Array.isArray(notice.content_blocks)) {
             notice.content_blocks = [];
           }
+          // 텍스트는 즉시 표시하기 위해 먼저 설정
           setNotice(notice);
-          setLoading(false);
           
           // 백그라운드에서 새 데이터 가져오기 (캐시가 오래되었을 때만)
           const cacheAge = Date.now() - (cacheTimestamp || 0);
@@ -313,16 +310,14 @@ export default function ViewNoticeScreen({ route, navigation }) {
               notice.content_blocks = [];
             }
             
-            // 캐시에 저장
-            try {
-              await AsyncStorage.setItem(cacheKey, JSON.stringify({
-                notice: notice,
-                timestamp: Date.now()
-              }));
-            } catch (cacheError) {
-              // 캐시 저장 실패는 무시
-            }
+            // 텍스트는 즉시 표시하기 위해 먼저 설정
             setNotice(notice);
+            
+            // 캐시에 저장 (비동기, 블로킹하지 않음)
+            AsyncStorage.setItem(cacheKey, JSON.stringify({
+              notice: notice,
+              timestamp: Date.now()
+            })).catch(() => {});
           } else {
             if (__DEV__) {
               console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음`);
@@ -365,7 +360,14 @@ export default function ViewNoticeScreen({ route, navigation }) {
           if (__DEV__) {
             console.error('[ViewNoticeScreen] 요청 타임아웃');
           }
-          Alert.alert('오류', '요청 시간이 초과되었습니다. 다시 시도해주세요.');
+          if (!notice) {
+            Alert.alert('오류', '요청 시간이 초과되었습니다. 다시 시도해주세요.');
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main');
+            }
+          }
         } else if (__DEV__) {
           console.error('[ViewNoticeScreen] 공지사항 로드 오류:', error);
         }
@@ -379,8 +381,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
             navigation.navigate('Main');
           }
         }
-      } finally {
-        setLoading(false);
       }
     };
 
