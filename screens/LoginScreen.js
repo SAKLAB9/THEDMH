@@ -613,7 +613,7 @@ export default function LoginScreen() {
         </View>
 
         {/* 웹에서만 아이콘 확대 모달 */}
-        {Platform.OS === 'web' && (
+        {Platform.OS === 'web' && iconImageUrl && (
           <Modal
             visible={iconModalVisible}
             transparent={false}
@@ -635,7 +635,7 @@ export default function LoginScreen() {
                 onPress={(e) => e.stopPropagation()}
               >
                 <Image
-                  source={require('../assets/icon.png')}
+                  source={iconImageUrl}
                   style={{
                     width: 400,
                     height: 400,
