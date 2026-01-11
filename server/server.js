@@ -41,6 +41,24 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// 루트 경로 핸들러 (Vercel 404 방지)
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'THE동문회 API Server',
+    status: 'running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Favicon 핸들러 (404 방지)
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+app.get('/favicon.png', (req, res) => {
+  res.status(204).end();
+});
+
 // 데이터베이스 모드 사용 (DATABASE_URL 필수)
 const USE_DATABASE = !!process.env.DATABASE_URL;
 
