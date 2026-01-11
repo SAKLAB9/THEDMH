@@ -782,7 +782,7 @@ export default function SelectUniScreen() {
                 }}
               >
                 <Text className="text-xl font-bold mb-6 text-center" style={{ color: LOGIN_COLORS.primary }}>
-                  학교 선택
+                  Select University
                 </Text>
                 
                 <View style={{ 
