@@ -2836,7 +2836,7 @@ app.delete('/api/life-events/:id', async (req, res) => {
 // Circles 목록 조회 API
 app.get('/api/circles', async (req, res) => {
   try {
-    const { university, category } = req.query;
+    const { university, category, since } = req.query;
     
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
@@ -2925,11 +2925,26 @@ app.get('/api/circles', async (req, res) => {
         `;
         const params = [];
         let paramIndex = 1;
+        const whereConditions = [];
         
         if (category && category !== '전체') {
-          query += ` WHERE c.category = $${paramIndex}`;
+          whereConditions.push(`c.category = $${paramIndex}`);
           params.push(category);
           paramIndex++;
+        }
+        
+        // since 파라미터가 있으면 특정 시간 이후의 데이터만 가져오기
+        if (since) {
+          const sinceTimestamp = parseInt(since, 10);
+          if (!isNaN(sinceTimestamp)) {
+            whereConditions.push(`EXTRACT(EPOCH FROM c.created_at) * 1000 > $${paramIndex}`);
+            params.push(sinceTimestamp);
+            paramIndex++;
+          }
+        }
+        
+        if (whereConditions.length > 0) {
+          query += ` WHERE ${whereConditions.join(' AND ')}`;
         }
         
         query += ` GROUP BY c.id, c.title, c.category, c.author, c.created_at, c.nickname, c.views, c.url, c.event_date, c.region, c.location, c.keywords, c.participants, c.fee, c.contact, c.account_number, c.report_count, c.is_closed, c.closed_at ORDER BY c.created_at DESC`;

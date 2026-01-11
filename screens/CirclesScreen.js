@@ -666,12 +666,18 @@ export default function CirclesScreen({ navigation, route }) {
           const cachedData = await AsyncStorage.getItem(cacheKey);
           const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
           
-          // 캐시가 있고 2분 이내면 기존 데이터 유지하고 뷰수만 백그라운드에서 업데이트
+          // 캐시가 있고 2분 이내면 기존 데이터 유지하고 새로운 것만 추가, 뷰수 업데이트
           if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION && isMounted) {
             const cachedCircles = JSON.parse(cachedData);
+            // 기존 데이터의 가장 최신 created_at 찾기 (새로운 항목만 가져오기 위해)
+            const latestCreatedAt = cachedCircles.length > 0 
+              ? Math.max(...cachedCircles.map(c => new Date(c.created_at || 0).getTime()))
+              : 0;
+            
             // 기존 데이터 유지 (빈 배열로 초기화하지 않음)
-            // 뷰수만 백그라운드에서 업데이트
-            fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
+            // 새로운 항목만 가져오고 뷰수/마감 상태 업데이트
+            const sinceParam = latestCreatedAt > 0 ? `&since=${latestCreatedAt}` : '';
+            fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}${sinceParam}`, {
               headers: { 'Cache-Control': 'no-cache' }
             })
               .then(async response => {
@@ -680,7 +686,13 @@ export default function CirclesScreen({ navigation, route }) {
                   try {
                     const circlesData = JSON.parse(responseText);
                     if (circlesData && circlesData.success && circlesData.circles) {
-                      // 뷰수와 마감 상태 업데이트 (기존 데이터 유지)
+                      // 기존 circles의 ID 집합 생성 (중복 체크용)
+                      const existingIds = new Set(cachedCircles.map(c => c.id));
+                      
+                      // 새로운 항목만 필터링 (기존에 없는 것만)
+                      const newCircles = circlesData.circles.filter(c => !existingIds.has(c.id));
+                      
+                      // 기존 항목의 뷰수와 마감 상태 업데이트
                       const updatedCircles = cachedCircles.map(cachedCircle => {
                         const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
                         if (latestCircle) {
@@ -688,14 +700,19 @@ export default function CirclesScreen({ navigation, route }) {
                             ...cachedCircle,
                             views: latestCircle.views,
                             isClosed: latestCircle.isClosed || false,
-                            closedAt: latestCircle.closedAt
+                            closedAt: latestCircle.closedAt,
+                            commentCount: latestCircle.commentCount || cachedCircle.commentCount || 0
                           };
                         }
                         return cachedCircle;
                       });
+                      
+                      // 새로운 항목을 앞에 추가 (최신순 유지)
+                      const finalCircles = [...newCircles, ...updatedCircles];
+                      
                       if (isMounted) {
-                        setSavedCircles(updatedCircles);
-                        AsyncStorage.setItem(cacheKey, JSON.stringify(updatedCircles)).catch(() => {});
+                        setSavedCircles(finalCircles);
+                        AsyncStorage.setItem(cacheKey, JSON.stringify(finalCircles)).catch(() => {});
                       }
                     }
                   } catch (e) {
