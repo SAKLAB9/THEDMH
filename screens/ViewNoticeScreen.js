@@ -41,9 +41,9 @@ function ImageBlock({ uri }) {
       fixedUri = fixedUri.replace(/([^:])\/+/g, '$1/');
       
       // 이미지 최적화 파라미터 추가
-      // 모바일 화면에 맞춰 600px로 설정 (빠른 로딩, 화면 크기보다 충분히 큼)
-      // 일반 모바일 폭(375-414px)보다 크고, Retina 디스플레이(2x)도 커버
-      const optimizedWidth = 600;
+      // 모바일 화면에 맞춰 400px로 설정 (매우 빠른 로딩)
+      // 일반 모바일 폭(375-414px)과 비슷하지만 충분히 선명함
+      const optimizedWidth = 400;
       const optimizedQuality = 75;
       
       // 기존 쿼리 파라미터가 있으면 &로 추가, 없으면 ?로 시작
