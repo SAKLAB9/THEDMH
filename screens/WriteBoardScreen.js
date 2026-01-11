@@ -325,7 +325,7 @@ export default function WriteBoardScreen({ navigation, route }) {
       
       // 서버에 업로드 (게시판 이미지 API 사용)
       const normalizedUniversity = targetUniversity.toLowerCase();
-      const response = await fetch(`${API_BASE_URL}/api/upload-board-image`, {
+      const response = await fetch(`${API_BASE_URL}/api/upload-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
