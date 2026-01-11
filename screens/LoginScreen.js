@@ -334,10 +334,11 @@ export default function LoginScreen() {
 
   // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
-    if (!fontsLoaded || configLoading) return;
+    if (!fontsLoaded) return;
     
     const loadLoginIconImage = async () => {
-      const iconImageName = getConfig('login_icon_image', 'icon.png');
+      // config가 로드되지 않았어도 기본값 사용
+      const iconImageName = getConfig('login_icon_image') || 'icon.png';
       
       if (!iconImageName) {
         setIconImageUrl(null);
