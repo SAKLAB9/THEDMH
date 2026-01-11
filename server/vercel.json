@@ -19,11 +19,11 @@
     },
     {
       "src": "/api/(.*)",
-      "dest": "/server.js"
+      "dest": "/server/server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/server.js"
+      "dest": "/server/server.js"
     }
   ],
   "crons": [
