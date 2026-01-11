@@ -147,23 +147,93 @@ export default function SelectUniScreen() {
             // setImageUrls({}) 제거 - 기존 이미지 유지
           }
         } else {
-          // HTTP 에러 시 조용히 처리 (기존 imageUrls 유지)
-          // 개발 모드에서만 로그 출력
+          // HTTP 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
           if (__DEV__) {
-            console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
+            console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}), Supabase에서 직접 생성:`, {
               status: response.status,
               statusText: response.statusText
             });
           }
-          // setImageUrls({}) 제거 - 기존 이미지 유지
+          
+          // Supabase Storage에서 직접 URL 생성
+          try {
+            const { supabase } = require('../config/supabase');
+            if (supabase) {
+              const urls = {};
+              imageNames.forEach(imageName => {
+                const trimmedName = String(imageName).trim();
+                if (trimmedName) {
+                  const filePath = `assets/${trimmedName}`;
+                  const { data: urlData } = supabase.storage
+                    .from('images')
+                    .getPublicUrl(filePath);
+                  urls[trimmedName] = urlData.publicUrl;
+                }
+              });
+              
+              // 캐시에 저장
+              await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+              
+              // URL 객체로 변환
+              const urlObjects = {};
+              Object.keys(urls).forEach(imageName => {
+                urlObjects[imageName] = { uri: urls[imageName] };
+              });
+              
+              setImageUrls(urlObjects);
+              
+              if (__DEV__ && Platform.OS === 'ios') {
+                console.log(`[SelectUniScreen] iOS Supabase 직접 URL 생성 성공:`, Object.keys(urlObjects).length, '개');
+              }
+            }
+          } catch (fallbackError) {
+            if (__DEV__) {
+              console.warn(`[SelectUniScreen] Supabase 직접 URL 생성 실패:`, fallbackError.message);
+            }
+          }
         }
       } catch (error) {
-        // 네트워크 에러 시 조용히 처리 (기존 imageUrls 유지)
-        // 개발 모드에서만 로그 출력
+        // 네트워크 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
         if (__DEV__) {
-          console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error.message);
+          console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}), Supabase에서 직접 생성:`, error.message);
         }
-        // setImageUrls({}) 제거 - 기존 이미지 유지
+        
+        // Supabase Storage에서 직접 URL 생성
+        try {
+          const { supabase } = require('../config/supabase');
+          if (supabase) {
+            const urls = {};
+            imageNames.forEach(imageName => {
+              const trimmedName = String(imageName).trim();
+              if (trimmedName) {
+                const filePath = `assets/${trimmedName}`;
+                const { data: urlData } = supabase.storage
+                  .from('images')
+                  .getPublicUrl(filePath);
+                urls[trimmedName] = urlData.publicUrl;
+              }
+            });
+            
+            // 캐시에 저장
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+            
+            // URL 객체로 변환
+            const urlObjects = {};
+            Object.keys(urls).forEach(imageName => {
+              urlObjects[imageName] = { uri: urls[imageName] };
+            });
+            
+            setImageUrls(urlObjects);
+            
+            if (__DEV__ && Platform.OS === 'ios') {
+              console.log(`[SelectUniScreen] iOS Supabase 직접 URL 생성 성공 (에러 후):`, Object.keys(urlObjects).length, '개');
+            }
+          }
+        } catch (fallbackError) {
+          if (__DEV__) {
+            console.warn(`[SelectUniScreen] Supabase 직접 URL 생성 실패:`, fallbackError.message);
+          }
+        }
       }
     };
     
@@ -212,23 +282,65 @@ export default function SelectUniScreen() {
             // setIconImageUrl(null) 제거 - 기존 이미지 유지
           }
         } else {
-          // HTTP 에러 시 조용히 처리 (기존 iconImageUrl 유지)
-          // 개발 모드에서만 로그 출력
+          // HTTP 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
           if (__DEV__) {
-            console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
+            console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}), Supabase에서 직접 생성:`, {
               status: response.status,
               statusText: response.statusText
             });
           }
-          // setIconImageUrl(null) 제거 - 기존 이미지 유지
+          
+          // Supabase Storage에서 직접 URL 생성
+          try {
+            const { supabase } = require('../config/supabase');
+            if (supabase) {
+              const filePath = `assets/${iconImageName}`;
+              const { data: urlData } = supabase.storage
+                .from('images')
+                .getPublicUrl(filePath);
+              
+              // 캐시에 저장
+              await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+              setIconImageUrl({ uri: urlData.publicUrl });
+              
+              if (__DEV__ && Platform.OS === 'ios') {
+                console.log(`[SelectUniScreen] iOS 메인 아이콘 Supabase 직접 URL 생성 성공:`, urlData.publicUrl);
+              }
+            }
+          } catch (fallbackError) {
+            if (__DEV__) {
+              console.warn(`[SelectUniScreen] 메인 아이콘 Supabase 직접 URL 생성 실패:`, fallbackError.message);
+            }
+          }
         }
       } catch (error) {
-        // 네트워크 에러 시 조용히 처리 (기존 iconImageUrl 유지)
-        // 개발 모드에서만 로그 출력
+        // 네트워크 에러 시 Supabase Storage에서 직접 URL 생성 (fallback)
         if (__DEV__) {
-          console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error.message);
+          console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}), Supabase에서 직접 생성:`, error.message);
         }
-        // setIconImageUrl(null) 제거 - 기존 이미지 유지
+        
+        // Supabase Storage에서 직접 URL 생성
+        try {
+          const { supabase } = require('../config/supabase');
+          if (supabase) {
+            const filePath = `assets/${iconImageName}`;
+            const { data: urlData } = supabase.storage
+              .from('images')
+              .getPublicUrl(filePath);
+            
+            // 캐시에 저장
+            await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
+            setIconImageUrl({ uri: urlData.publicUrl });
+            
+            if (__DEV__ && Platform.OS === 'ios') {
+              console.log(`[SelectUniScreen] iOS 메인 아이콘 Supabase 직접 URL 생성 성공 (에러 후):`, urlData.publicUrl);
+            }
+          }
+        } catch (fallbackError) {
+          if (__DEV__) {
+            console.warn(`[SelectUniScreen] 메인 아이콘 Supabase 직접 URL 생성 실패:`, fallbackError.message);
+          }
+        }
       }
     };
     
