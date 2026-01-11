@@ -378,7 +378,10 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
         
         const url = `${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`;
-        const response = await fetch(url, { signal: controller.signal });
+        const response = await fetch(url, { 
+          signal: controller.signal,
+          headers: { 'Cache-Control': 'no-cache' }
+        });
         
         clearTimeout(timeoutId);
         
@@ -559,7 +562,8 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     viewsIncrementedRef.current = false; // lifeEventId가 변경되면 리셋
     loadLifeEvent(false);
     incrementViews(); // 뷰수 증가는 별도로 호출 (캐시 무관)
-  }, [lifeEventId, university, loadLifeEvent, incrementViews]);
+    loadViews(); // 뷰수 최신 데이터 가져오기 (캐시 무관)
+  }, [lifeEventId, university, loadLifeEvent, incrementViews, loadViews]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 경조사 데이터는 로드하지 않음 (중복 호출 방지)

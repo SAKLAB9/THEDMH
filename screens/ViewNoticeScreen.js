@@ -208,7 +208,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
     loadCurrentUser();
   }, [loadCurrentUser]);
 
-  // 뷰수 증가 함수 (별도 호출)
+  // 뷰수 증가 함수 (별도 호출, 캐시 무관)
   const incrementViews = React.useCallback(async () => {
     if (!noticeId || !university || !university.trim() || viewsIncrementedRef.current) {
       return;
@@ -225,7 +225,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
         const data = await response.json();
         if (data.success) {
           viewsIncrementedRef.current = true;
-          // 뷰수 업데이트
+          // 뷰수 업데이트 (캐시 무관)
           if (notice) {
             setNotice({ ...notice, views: data.views });
           }
@@ -235,6 +235,42 @@ export default function ViewNoticeScreen({ route, navigation }) {
       // 뷰수 증가 실패는 무시 (로그만 출력)
       if (__DEV__) {
         console.error('[ViewNoticeScreen] 뷰수 증가 실패:', error);
+      }
+    }
+  }, [noticeId, university, notice]);
+
+  // 뷰수만 최신 데이터로 가져오기 (캐시 무관)
+  const loadViews = React.useCallback(async () => {
+    if (!noticeId || !university || !university.trim()) {
+      return;
+    }
+    
+    try {
+      const universityCode = university.toLowerCase();
+      // 뷰수만 가져오는 API 호출 (캐시 무관)
+      const response = await fetch(
+        `${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}&fields=views`,
+        { 
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.notice && data.notice.views !== undefined) {
+          // 뷰수만 업데이트
+          if (notice) {
+            setNotice({ ...notice, views: data.notice.views });
+          }
+        }
+      }
+    } catch (error) {
+      // 뷰수 로드 실패는 무시
+      if (__DEV__) {
+        console.error('[ViewNoticeScreen] 뷰수 로드 실패:', error);
       }
     }
   }, [noticeId, university, notice]);
@@ -547,7 +583,8 @@ export default function ViewNoticeScreen({ route, navigation }) {
     viewsIncrementedRef.current = false; // noticeId가 변경되면 리셋
     loadNotice(false);
     incrementViews(); // 뷰수 증가는 별도로 호출 (캐시 무관)
-  }, [noticeId, university, loadNotice, incrementViews]);
+    loadViews(); // 뷰수 최신 데이터 가져오기 (캐시 무관)
+  }, [noticeId, university, loadNotice, incrementViews, loadViews]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 공지사항 데이터는 로드하지 않음 (중복 호출 방지)

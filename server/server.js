@@ -2189,10 +2189,15 @@ app.get('/api/life-events/:id', async (req, res) => {
         }
         
         // 데이터 조회만 (뷰수 증가는 별도 API로 분리)
-        const result = await pool.query(
-          `SELECT * FROM ${tableName} WHERE id = $1`,
-          [id]
-        );
+        // fields 쿼리 파라미터로 특정 필드만 조회 가능 (뷰수만 가져올 때)
+        const { fields } = req.query;
+        let query = `SELECT * FROM ${tableName} WHERE id = $1`;
+        
+        if (fields === 'views') {
+          query = `SELECT id, views FROM ${tableName} WHERE id = $1`;
+        }
+        
+        const result = await pool.query(query, [id]);
         
         if (result.rows.length === 0) {
           return res.status(404).json({ error: '경조사를 찾을 수 없습니다.' });

@@ -456,16 +456,16 @@ export default function HomeScreen({ navigation }) {
               cacheTimestamp = parseInt(timestampStr, 10);
             }
             
-            // 캐시가 있고 5분 이내면 캐시된 데이터 사용
+            // 캐시가 있고 5분 이내면 캐시된 데이터 사용 (단, 뷰수는 항상 최신 데이터 사용)
             const cacheAge = cacheTimestamp ? Date.now() - cacheTimestamp : Infinity;
             const CACHE_DURATION = 5 * 60 * 1000; // 5분
             
             if (cacheAge < CACHE_DURATION && cachedNotices && cachedLifeEvents) {
-              // 캐시된 데이터를 먼저 표시
+              // 캐시된 데이터를 먼저 표시 (뷰수는 나중에 업데이트)
               setSavedNotices(cachedNotices);
               setSavedLifeEvents(cachedLifeEvents);
               
-              // 백그라운드에서 새 데이터 가져오기 (캐시가 있으면 비동기로 업데이트)
+              // 백그라운드에서 새 데이터 가져오기 (캐시가 있으면 비동기로 업데이트, 뷰수는 항상 최신)
               // 로고 이미지 Supabase에서 직접 가져오기
               if (!logoUrl && supabase) {
                 const filePath = `assets/${imageFileName}`;
@@ -479,8 +479,12 @@ export default function HomeScreen({ navigation }) {
               }
               
               Promise.all([
-                fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
-                fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+                fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`, {
+                  headers: { 'Cache-Control': 'no-cache' }
+                }),
+                fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`, {
+                  headers: { 'Cache-Control': 'no-cache' }
+                })
               ]).then(async ([noticesResponse, lifeEventsResponse]) => {
                 
                 // 공지사항 업데이트 (응답 텍스트를 받는 즉시 파싱)
