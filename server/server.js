@@ -356,8 +356,10 @@ app.post('/api/upload-image', async (req, res) => {
 app.get('/api/supabase-image-url', async (req, res) => {
   try {
     const { filename } = req.query;
+    console.log('[API supabase-image-url] 요청 받음, filename:', filename);
     
     if (!filename) {
+      console.error('[API supabase-image-url] filename이 없음');
       return res.status(400).json({ error: 'filename이 필요합니다.' });
     }
     
@@ -366,7 +368,11 @@ app.get('/api/supabase-image-url', async (req, res) => {
       const { createClient } = require('@supabase/supabase-js');
       const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
       
+      console.log('[API supabase-image-url] SUPABASE_URL:', process.env.SUPABASE_URL);
+      console.log('[API supabase-image-url] supabaseKey 존재:', !!supabaseKey);
+      
       if (!supabaseKey) {
+        console.error('[API supabase-image-url] Supabase 키가 없음');
         return res.status(500).json({ error: 'Supabase 클라이언트가 초기화되지 않았습니다.' });
       }
       
@@ -374,9 +380,22 @@ app.get('/api/supabase-image-url', async (req, res) => {
       
       // Supabase Storage public URL 생성
       const filePath = `assets/${filename}`;
-      const { data: urlData } = supabaseClient.storage
+      console.log('[API supabase-image-url] 파일 경로:', filePath);
+      
+      const { data: urlData, error: urlError } = supabaseClient.storage
         .from('images')
         .getPublicUrl(filePath);
+      
+      if (urlError) {
+        console.error('[API supabase-image-url] URL 생성 오류:', urlError);
+        return res.status(500).json({ 
+          success: false,
+          error: 'URL 생성 실패', 
+          message: urlError.message 
+        });
+      }
+      
+      console.log('[API supabase-image-url] 생성된 URL:', urlData.publicUrl);
       
       return res.json({ 
         success: true, 
@@ -385,6 +404,7 @@ app.get('/api/supabase-image-url', async (req, res) => {
     }
     
     // Supabase가 설정되지 않은 경우 fallback
+    console.warn('[API supabase-image-url] Supabase 설정 없음 - fallback 사용');
     const baseUrl = process.env.BASE_URL || `http://192.168.10.102:${PORT}`;
     const imageUrl = `${baseUrl}/images/${filename}`;
     
@@ -393,7 +413,9 @@ app.get('/api/supabase-image-url', async (req, res) => {
       url: imageUrl
     });
   } catch (error) {
+    console.error('[API supabase-image-url] 일반 오류:', error);
     res.status(500).json({ 
+      success: false,
       error: '서버 오류가 발생했습니다.', 
       message: error.message 
     });

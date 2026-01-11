@@ -333,17 +333,31 @@ export default function LoginScreen() {
     
     const loadLoginIconImage = async () => {
       const iconImageName = getConfig('login_icon_image', 'icon.png');
+      console.log('[LoginScreen] 아이콘 이미지 이름:', iconImageName);
+      console.log('[LoginScreen] config에서 login_icon_image:', getConfig('login_icon_image'));
+      
       if (iconImageName) {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`);
+          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
+          console.log('[LoginScreen] API 호출 URL:', apiUrl);
+          
+          const response = await fetch(apiUrl);
+          console.log('[LoginScreen] API 응답 상태:', response.status);
+          
           if (response.ok) {
             const data = await response.json();
+            console.log('[LoginScreen] API 응답 데이터:', data);
+            
             if (data.success && data.url) {
+              console.log('[LoginScreen] 아이콘 URL 로드 성공:', data.url);
               setIconImageUrl({ uri: data.url });
             } else {
+              console.warn('[LoginScreen] API 응답에 URL이 없음:', data);
               setIconImageUrl(null);
             }
           } else {
+            const errorText = await response.text();
+            console.error('[LoginScreen] API 오류:', response.status, errorText);
             setIconImageUrl(null);
           }
         } catch (error) {
@@ -351,6 +365,7 @@ export default function LoginScreen() {
           setIconImageUrl(null);
         }
       } else {
+        console.warn('[LoginScreen] iconImageName이 없음');
         setIconImageUrl(null);
       }
     };
