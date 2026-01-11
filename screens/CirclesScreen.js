@@ -42,12 +42,50 @@ export default function CirclesScreen({ navigation, route }) {
     return selectedChannel || university || null;
   }, [selectedChannel, university]);
   
-  // selectedChannel이 변경되면 즉시 데이터 초기화 (이전 데이터 깜빡임 방지)
-  // targetUniversity가 아닌 selectedChannel을 기준으로 초기화하여 탭 전환 시 깜빡임 방지
+  // selectedChannel이 변경되면 즉시 해당 채널의 캐시 확인 및 표시
   useEffect(() => {
-    console.log('[DEBUG useEffect] selectedChannel 변경, 데이터 초기화:', { selectedChannel });
-    setSavedCircles([]);
-  }, [selectedChannel]);
+    console.log('[DEBUG useEffect] selectedChannel 변경:', { selectedChannel });
+    
+    const loadCacheForChannel = async () => {
+      if (!selectedChannel) {
+        setSavedCircles([]);
+        return;
+      }
+      
+      const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
+      if (!targetUni) {
+        setSavedCircles([]);
+        return;
+      }
+      
+      try {
+        const universityCode = targetUni.toLowerCase();
+        const cacheKey = `circles_${universityCode}`;
+        const cacheTimestampKey = `circles_timestamp_${universityCode}`;
+        const CACHE_DURATION = 2 * 60 * 1000; // 2분
+        const now = Date.now();
+        
+        const cachedData = await AsyncStorage.getItem(cacheKey);
+        const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+        
+        // 해당 채널의 캐시가 있고 유효하면 즉시 표시
+        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
+          const cachedCircles = JSON.parse(cachedData);
+          console.log('[DEBUG useEffect] 캐시 즉시 표시:', { universityCode, count: cachedCircles.length });
+          setSavedCircles(cachedCircles);
+        } else {
+          // 캐시가 없거나 만료되었으면 빈 배열 (loadCirclesData가 로드함)
+          console.log('[DEBUG useEffect] 캐시 없음, 빈 배열 설정:', { universityCode });
+          setSavedCircles([]);
+        }
+      } catch (error) {
+        console.log('[DEBUG useEffect] 캐시 로드 오류, 빈 배열 설정');
+        setSavedCircles([]);
+      }
+    };
+    
+    loadCacheForChannel();
+  }, [selectedChannel, university]);
   
   const uniColors = useMemo(() => getUniColors(targetUniversity, config), [targetUniversity, getColorConfig, appConfig]);
   
