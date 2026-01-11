@@ -21,10 +21,35 @@ function ImageBlock({ uri }) {
   // 이미지 URI를 절대 경로로 변환
   const getImageUri = (uri) => {
     if (!uri) return uri;
-    // 이미 절대 경로인 경우 (http://, https://, data:)
-    if (uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('data:')) {
+    
+    // data: URL은 그대로 반환
+    if (uri.startsWith('data:')) {
       return uri;
     }
+    
+    // Supabase Storage URL인 경우 경로 수정
+    if (uri.includes('supabase.co/storage/v1/object/public/images/')) {
+      // /images/nyu/images/ -> /images/nyu/ 로 수정 (중복된 /images/ 제거)
+      // 또는 /images/nyu/board_images/ -> /images/nyu/ 로 수정
+      // 또는 /images/nyu/circle_images/ -> /images/nyu/ 로 수정
+      let fixedUri = uri.replace(/\/images\/([^\/]+)\/images\//g, '/images/$1/');
+      fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/board_images\//g, '/images/$1/');
+      fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/circle_images\//g, '/images/$1/');
+      
+      // 슬래시 중복 제거 (// -> /)
+      fixedUri = fixedUri.replace(/\/+/g, '/');
+      
+      // Supabase URL 변경 처리 (qgtwkhkmdsaypnsnrpbf -> waumfxamhuvhsblehsuf)
+      fixedUri = fixedUri.replace(/qgtwkhkmdsaypnsnrpbf\.supabase\.co/g, 'waumfxamhuvhsblehsuf.supabase.co');
+      
+      return fixedUri;
+    }
+    
+    // 이미 절대 경로인 경우 (http://, https://)
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      return uri;
+    }
+    
     // 상대 경로인 경우 절대 경로로 변환
     if (uri.startsWith('/')) {
       return `${API_BASE_URL}${uri}`;
