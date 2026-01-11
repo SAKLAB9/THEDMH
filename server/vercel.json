@@ -10,10 +10,6 @@
       "dest": "/api/supabase-image-url.js"
     },
     {
-      "src": "/api/supabase-image-urls",
-      "dest": "/api/supabase-image-urls.js"
-    },
-    {
       "src": "/api/cleanup-unused-images",
       "dest": "/api/cleanup-unused-images.js"
     },
@@ -32,10 +28,6 @@
     {
       "src": "/api/upload-board-image",
       "dest": "/api/upload-board-image.js"
-    },
-    {
-      "src": "/reset-password",
-      "dest": "/api/reset-password.js"
     },
     {
       "src": "/api/(.*)",
