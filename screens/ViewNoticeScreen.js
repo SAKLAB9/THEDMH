@@ -161,6 +161,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
   const { noticeId, noticePreview } = route.params || {};
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false); // 초기 로딩 상태를 false로 변경 (점진적 렌더링)
+  const [viewsUpdated, setViewsUpdated] = useState(false); // 서버에서 뷰수가 업데이트되었는지 추적
   
   // noticePreview가 있으면 즉시 표시 (성능 최적화)
   useEffect(() => {
@@ -373,6 +374,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
                   images: fullNotice.images || [],
                   text_content: fullNotice.text_content || ''
                 });
+                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content만 별도 캐시에 저장
                 AsyncStorage.setItem(contentCacheKey, JSON.stringify({
@@ -388,6 +390,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
                 let notice = { ...fullNotice };
                 
                 // 뷰수는 서버에서 이미 증가된 값이므로 그대로 사용
+                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
                 if (notice.content_blocks && typeof notice.content_blocks === 'string') {
@@ -520,10 +523,11 @@ export default function ViewNoticeScreen({ route, navigation }) {
   }, [noticeId, university, loadNotice]);
 
   // 홈 화면의 뷰수 업데이트를 위한 navigation listener
+  // 서버에서 뷰수가 업데이트된 후에만 홈 화면에 전달
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', () => {
-      // 화면을 떠날 때 홈 화면에 뷰수 업데이트 알림
-      if (notice && notice.views !== undefined) {
+      // 서버에서 뷰수가 업데이트되었을 때만 홈 화면에 뷰수 업데이트 알림
+      if (notice && notice.views !== undefined && viewsUpdated) {
         navigation.navigate('Main', {
           screen: 'Home',
           params: {
@@ -538,7 +542,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
     });
 
     return unsubscribe;
-  }, [navigation, notice, noticeId]);
+  }, [navigation, notice, noticeId, viewsUpdated]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 공지사항은 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)

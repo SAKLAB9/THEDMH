@@ -386,6 +386,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
                   images: fullLifeEvent.images || [],
                   text_content: fullLifeEvent.text_content || ''
                 });
+                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content만 별도 캐시에 저장
                 AsyncStorage.setItem(contentCacheKey, JSON.stringify({
@@ -399,6 +400,9 @@ export default function ViewLifeEventScreen({ route, navigation }) {
               } else {
                 // lifeEventPreview가 없으면 전체 데이터 표시
                 let lifeEvent = { ...fullLifeEvent };
+                
+                // 뷰수는 서버에서 이미 증가된 값이므로 그대로 사용
+                setViewsUpdated(true); // 서버에서 뷰수가 업데이트되었음을 표시
                 
                 // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
                 if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
