@@ -102,7 +102,7 @@ export default function SelectUniScreen() {
   // 디버깅: slotsCount가 제대로 가져와지는지 확인
   if (__DEV__ && !configLoading) {
     const testSlot1 = getConfig('select_uni_slot_1', '');
-    const testSlotCount = getConfigNumber('select_uni_slots_count', 4);
+    const testSlotCount = appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0;
     console.log('[SelectUniScreen] Config 테스트:', {
       slotsCount,
       testSlotCount,
@@ -110,6 +110,7 @@ export default function SelectUniScreen() {
       configKeys: Object.keys(appConfig).length,
       hasSelectUniSlot1: 'select_uni_slot_1' in appConfig,
       hasSelectUniSlotsCount: 'select_uni_slots_count' in appConfig,
+      rawSelectUniSlotsCount: appConfig['select_uni_slots_count'] || '(없음)',
     });
   }
   const slotWidth = 100;
