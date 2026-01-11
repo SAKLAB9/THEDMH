@@ -69,10 +69,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND (
-                    content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR content_blocks::text LIKE ''%%//%%''
-                );
+                AND content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
@@ -105,7 +102,6 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                       OR img LIKE ''%%//%%''
                 );
             ', table_name);
             
@@ -168,10 +164,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND (
-                    content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR content_blocks::text LIKE ''%%//%%''
-                );
+                AND content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
@@ -204,7 +197,6 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                       OR img LIKE ''%%//%%''
                 );
             ', table_name);
             
@@ -267,10 +259,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND (
-                    content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR content_blocks::text LIKE ''%%//%%''
-                );
+                AND content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
@@ -303,7 +292,6 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                       OR img LIKE ''%%//%%''
                 );
             ', table_name);
             
@@ -366,10 +354,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND (
-                    content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR content_blocks::text LIKE ''%%//%%''
-                );
+                AND content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
@@ -402,7 +387,6 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                       OR img LIKE ''%%//%%''
                 );
             ', table_name);
             
@@ -449,10 +433,7 @@ BEGIN
                     ''g''
                 )
                 WHERE image_url IS NOT NULL 
-                AND (
-                    image_url LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR image_url LIKE ''%%//%%''
-                );
+                AND image_url LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (image_url)', table_name;
@@ -487,7 +468,6 @@ BEGIN
                 AND EXISTS (
                     SELECT 1 FROM unnest(images) AS img 
                     WHERE img LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                       OR img LIKE ''%%//%%''
                 );
             ', table_name);
             
@@ -550,10 +530,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND (
-                    content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR content_blocks::text LIKE ''%%//%%''
-                );
+                AND content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
@@ -615,10 +592,7 @@ BEGIN
                 )
                 WHERE content_blocks IS NOT NULL 
                 AND content_blocks::text != ''[]''
-                AND (
-                    content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%''
-                    OR content_blocks::text LIKE ''%%//%%''
-                );
+                AND content_blocks::text LIKE ''%%qgtwkhkmdsaypnsnrpbf%%'';
             ', table_name);
             
             RAISE NOTICE 'Updated % (content_blocks)', table_name;
@@ -675,10 +649,7 @@ BEGIN
         )
         WHERE content_blocks IS NOT NULL 
         AND content_blocks::text != '[]'
-        AND (
-            content_blocks::text LIKE '%qgtwkhkmdsaypnsnrpbf%'
-            OR content_blocks::text LIKE '%//%'
-        );
+        AND content_blocks::text LIKE '%qgtwkhkmdsaypnsnrpbf%';
         
         RAISE NOTICE 'Updated miuhub_featured (content_blocks)';
     EXCEPTION WHEN OTHERS THEN
@@ -700,10 +671,7 @@ BEGIN
             'g'
         )
         WHERE image_url IS NOT NULL 
-        AND (
-            image_url LIKE '%qgtwkhkmdsaypnsnrpbf%'
-            OR image_url LIKE '%//%'
-        );
+        AND image_url LIKE '%qgtwkhkmdsaypnsnrpbf%';
         
         RAISE NOTICE 'Updated miuhub_featured (image_url)';
     EXCEPTION WHEN undefined_column THEN
@@ -756,10 +724,7 @@ BEGIN
         )
         WHERE content_blocks IS NOT NULL 
         AND content_blocks::text != '[]'
-        AND (
-            content_blocks::text LIKE '%qgtwkhkmdsaypnsnrpbf%'
-            OR content_blocks::text LIKE '%//%'
-        );
+        AND content_blocks::text LIKE '%qgtwkhkmdsaypnsnrpbf%';
         
         RAISE NOTICE 'Updated popups (content_blocks)';
     EXCEPTION WHEN OTHERS THEN
@@ -790,10 +755,7 @@ BEGIN
             'g'
         )
         WHERE value IS NOT NULL 
-        AND (
-            value LIKE '%qgtwkhkmdsaypnsnrpbf%'
-            OR value LIKE '%//%'
-        );
+        AND value LIKE '%qgtwkhkmdsaypnsnrpbf%';
         
         RAISE NOTICE 'Updated app_config';
     EXCEPTION WHEN OTHERS THEN
@@ -824,10 +786,7 @@ BEGIN
             'g'
         )
         WHERE profile_image_url IS NOT NULL 
-        AND (
-            profile_image_url LIKE '%qgtwkhkmdsaypnsnrpbf%'
-            OR profile_image_url LIKE '%//%'
-        );
+        AND profile_image_url LIKE '%qgtwkhkmdsaypnsnrpbf%';
         
         RAISE NOTICE 'Updated users (profile_image_url)';
     EXCEPTION WHEN undefined_column THEN
