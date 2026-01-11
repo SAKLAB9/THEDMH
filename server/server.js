@@ -1349,20 +1349,15 @@ app.get('/api/popups/:popupId/survey-responses', async (req, res) => {
   }
 });
 
-// 게시판 이미지 업로드 API
+// 게시판 이미지 업로드 API (upload-image로 통합, type='board' 파라미터 사용)
 app.post('/api/upload-board-image', async (req, res) => {
-  try {
-    const { imageData, filename, university } = req.body; // base64 이미지 데이터
-    
-    if (!imageData) {
-      return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
-    }
-    
-    if (!university) {
-      return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
-    }
-    
-    const universityCode = await normalizeUniversityFromRequest(university, pool);
+  // upload-image로 리다이렉트 (하위 호환성)
+  req.body.type = 'board';
+  // 같은 핸들러 재사용
+  return app._router.handle({ ...req, url: '/api/upload-image', method: 'POST' }, res, () => {
+    // upload-image 핸들러가 처리하도록
+  });
+});
     if (!universityCode) {
       return res.status(400).json({ error: '유효하지 않은 university입니다.' });
     }

@@ -2,30 +2,6 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/config",
-      "dest": "/api/config.js"
-    },
-    {
-      "src": "/api/supabase-image-url",
-      "dest": "/api/supabase-image-url.js"
-    },
-    {
-      "src": "/api/cleanup-unused-images",
-      "dest": "/api/cleanup-unused-images.js"
-    },
-    {
-      "src": "/api/upload-image",
-      "dest": "/api/upload-image.js"
-    },
-    {
-      "src": "/api/upload-board-image",
-      "dest": "/api/upload-image.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
       "src": "/(.*)",
       "dest": "/server.js"
     }
@@ -40,4 +16,3 @@
     "NODE_ENV": "production"
   }
 }
-
