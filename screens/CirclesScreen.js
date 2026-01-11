@@ -70,45 +70,9 @@ export default function CirclesScreen({ navigation, route }) {
       return;
     }
     
-    const loadCacheForChannel = async () => {
-      if (!selectedChannel) {
-        setSavedCircles([]);
-        return;
-      }
-      
-      const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
-      if (!targetUni) {
-        setSavedCircles([]);
-        return;
-      }
-      
-      try {
-        const universityCode = targetUni.toLowerCase();
-        const cacheKey = `circles_${universityCode}`;
-        const cacheTimestampKey = `circles_timestamp_${universityCode}`;
-        const CACHE_DURATION = 2 * 60 * 1000; // 2분
-        const now = Date.now();
-        
-        const cachedData = await AsyncStorage.getItem(cacheKey);
-        const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
-        
-        // 해당 채널의 캐시가 있고 유효하면 즉시 표시
-        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
-          const cachedCircles = JSON.parse(cachedData);
-          console.log('[DEBUG useEffect] 캐시 즉시 표시:', { universityCode, count: cachedCircles.length });
-          setSavedCircles(cachedCircles);
-        } else {
-          // 캐시가 없거나 만료되었으면 빈 배열 (loadCirclesData가 로드함)
-          console.log('[DEBUG useEffect] 캐시 없음, 빈 배열 설정:', { universityCode });
-          setSavedCircles([]);
-        }
-      } catch (error) {
-        console.log('[DEBUG useEffect] 캐시 로드 오류, 빈 배열 설정');
-        setSavedCircles([]);
-      }
-    };
-    
-    loadCacheForChannel();
+    // 채널이 변경되면 캐시 무시하고 새로 로드 (MIUHub <-> 학교 탭 전환 시)
+    console.log('[DEBUG useEffect] 채널 변경 감지, 캐시 무시하고 새로 로드:', { prevChannel, selectedChannel });
+    loadCirclesData(true);
   }, [selectedChannel, university]);
   
   const uniColors = useMemo(() => getUniColors(targetUniversity, config), [targetUniversity, getColorConfig, appConfig]);
@@ -450,11 +414,11 @@ export default function CirclesScreen({ navigation, route }) {
   };
 
   // Circles 데이터 로드 함수 (뷰수/댓글수는 캐시 안 쓰고 항상 최신)
-  const loadCirclesData = React.useCallback(async () => {
+  const loadCirclesData = React.useCallback(async (forceRefresh = false) => {
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
       const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
-      console.log('[DEBUG loadCirclesData] 시작:', { selectedChannel, targetUni, university });
+      console.log('[DEBUG loadCirclesData] 시작:', { selectedChannel, targetUni, university, forceRefresh });
       
       if (!targetUni || !targetUni.trim()) {
         console.log('[DEBUG loadCirclesData] targetUni 없음, 빈 배열 설정');
@@ -468,15 +432,19 @@ export default function CirclesScreen({ navigation, route }) {
         const cacheTimestampKey = `circles_timestamp_${universityCode}`;
         const CACHE_DURATION = 2 * 60 * 1000; // 2분
         
-        console.log('[DEBUG loadCirclesData] 캐시 확인:', { universityCode, cacheKey });
+        console.log('[DEBUG loadCirclesData] 캐시 확인:', { universityCode, cacheKey, forceRefresh });
         
-        // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
-        const cachedData = await AsyncStorage.getItem(cacheKey);
-        const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
-        const now = Date.now();
-        
-        // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
-        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
+        // forceRefresh가 true이면 캐시 무시하고 바로 API 호출
+        if (forceRefresh) {
+          console.log('[DEBUG loadCirclesData] forceRefresh=true, 캐시 무시하고 API 호출');
+        } else {
+          // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+          const now = Date.now();
+          
+          // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
+          if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
           const cachedCircles = JSON.parse(cachedData);
           console.log('[DEBUG loadCirclesData] 캐시 사용:', { universityCode, count: cachedCircles.length });
           
