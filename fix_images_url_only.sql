@@ -18,6 +18,18 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
+-- 결과 저장용 임시 테이블 생성
+-- ============================================
+
+CREATE TEMP TABLE IF NOT EXISTS update_results (
+    table_name TEXT,
+    updated_rows INTEGER,
+    status TEXT
+);
+
+TRUNCATE TABLE update_results;
+
+-- ============================================
 -- 학교별 테이블 - images 배열 업데이트
 -- ============================================
 
@@ -27,18 +39,17 @@ DECLARE
     uni TEXT;
     table_name TEXT;
     universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
 BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_notices';
         
         IF NOT table_exists(table_name) THEN
-            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'Table does not exist');
             CONTINUE;
         END IF;
         
-        DECLARE
-            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -67,11 +78,11 @@ BEGIN
             ', table_name);
             
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
+            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'No images column');
         WHEN OTHERS THEN
-            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
+            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
@@ -82,18 +93,17 @@ DECLARE
     uni TEXT;
     table_name TEXT;
     universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
 BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_life_events';
         
         IF NOT table_exists(table_name) THEN
-            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'Table does not exist');
             CONTINUE;
         END IF;
         
-        DECLARE
-            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -122,11 +132,11 @@ BEGIN
             ', table_name);
             
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
+            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'No images column');
         WHEN OTHERS THEN
-            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
+            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
@@ -137,18 +147,17 @@ DECLARE
     uni TEXT;
     table_name TEXT;
     universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
 BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_board_posts';
         
         IF NOT table_exists(table_name) THEN
-            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'Table does not exist');
             CONTINUE;
         END IF;
         
-        DECLARE
-            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -177,11 +186,11 @@ BEGIN
             ', table_name);
             
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
+            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'No images column');
         WHEN OTHERS THEN
-            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
+            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
@@ -192,18 +201,17 @@ DECLARE
     uni TEXT;
     table_name TEXT;
     universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
 BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_circles';
         
         IF NOT table_exists(table_name) THEN
-            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'Table does not exist');
             CONTINUE;
         END IF;
         
-        DECLARE
-            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -232,11 +240,11 @@ BEGIN
             ', table_name);
             
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
+            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'No images column');
         WHEN OTHERS THEN
-            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
+            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
@@ -247,18 +255,17 @@ DECLARE
     uni TEXT;
     table_name TEXT;
     universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
 BEGIN
     FOREACH uni IN ARRAY universities
     LOOP
         table_name := uni || '_raffles';
         
         IF NOT table_exists(table_name) THEN
-            RAISE NOTICE 'Table % does not exist, skipping', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'Table does not exist');
             CONTINUE;
         END IF;
         
-        DECLARE
-            updated_count INTEGER;
         BEGIN
             EXECUTE format('
                 UPDATE %I 
@@ -287,14 +294,41 @@ BEGIN
             ', table_name);
             
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            RAISE NOTICE '[%] ✅ Updated % rows (images array)', table_name, updated_count;
+            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            RAISE NOTICE '[%] ⚠️  Table does not have images column', table_name;
+            INSERT INTO update_results VALUES (table_name, 0, 'No images column');
         WHEN OTHERS THEN
-            RAISE NOTICE '[%] ❌ Error: %', table_name, SQLERRM;
+            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
+
+-- ============================================
+-- 결과 출력
+-- ============================================
+
+SELECT 
+    table_name as "테이블명",
+    updated_rows as "업데이트된 행 수",
+    status as "상태"
+FROM update_results
+ORDER BY 
+    CASE 
+        WHEN status = 'Success' THEN 1
+        WHEN status = 'No images column' THEN 2
+        WHEN status = 'Table does not exist' THEN 3
+        ELSE 4
+    END,
+    table_name;
+
+-- 전체 요약
+SELECT 
+    COUNT(*) FILTER (WHERE status = 'Success') as "성공한 테이블 수",
+    COUNT(*) FILTER (WHERE status = 'No images column') as "images 컬럼 없는 테이블 수",
+    COUNT(*) FILTER (WHERE status = 'Table does not exist') as "존재하지 않는 테이블 수",
+    COUNT(*) FILTER (WHERE status LIKE 'Error:%') as "에러 발생 테이블 수",
+    SUM(updated_rows) FILTER (WHERE status = 'Success') as "총 업데이트된 행 수"
+FROM update_results;
 
 -- ============================================
 -- 정리
@@ -303,18 +337,4 @@ END $$;
 -- 헬퍼 함수 삭제
 DROP FUNCTION IF EXISTS table_exists(TEXT);
 
--- 완료 메시지 및 요약
-DO $$
-BEGIN
-    RAISE NOTICE '';
-    RAISE NOTICE '========================================';
-    RAISE NOTICE '✅ 모든 테이블의 images 배열 URL 변경 완료!';
-    RAISE NOTICE '';
-    RAISE NOTICE '변경 내용:';
-    RAISE NOTICE '  qgtwkhkmdsaypnsnrpbf.supabase.co → waumfxamhuvhsblehsuf.supabase.co';
-    RAISE NOTICE '  슬래시 중복 제거 (// → /)';
-    RAISE NOTICE '';
-    RAISE NOTICE '위의 로그에서 각 테이블별 업데이트된 행 수를 확인하세요.';
-    RAISE NOTICE '========================================';
-END $$;
-
+-- 임시 테이블은 자동으로 삭제됨 (세션 종료 시)
