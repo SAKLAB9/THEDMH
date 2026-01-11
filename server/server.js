@@ -6674,35 +6674,6 @@ async function deleteExpiredFeatured() {
 
 // 삭제 함수는 pool이 준비된 후에 등록됨 (위의 pool.query().then() 내부)
 
-// 사용되지 않는 이미지 정리 API
-const cleanupUnusedImages = require('./api/cleanup-unused-images-helper');
-
-// 수동 실행용 API 엔드포인트 (인증 필요)
-app.post('/api/cleanup-unused-images', async (req, res) => {
-  try {
-    // 간단한 인증 (환경 변수에 CLEANUP_SECRET 설정 필요)
-    const secret = req.headers['x-cleanup-secret'];
-    if (secret !== process.env.CLEANUP_SECRET) {
-      return res.status(401).json({ error: '인증 실패' });
-    }
-    
-    console.log('[Cleanup] 수동 정리 시작...');
-    const result = await cleanupUnusedImages();
-    
-    res.json({
-      success: true,
-      message: '정리 완료',
-      ...result
-    });
-  } catch (error) {
-    console.error('[Cleanup] 오류:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 // Vercel 배포를 위한 처리
 // Vercel에서는 serverless 함수로 실행되므로 app.listen을 사용하지 않음
 if (process.env.VERCEL !== '1') {

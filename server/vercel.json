@@ -19,12 +19,7 @@
       "destination": "/api/index"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/cleanup-unused-images",
-      "schedule": "3 2 * * *"
-    }
-  ],
+  "crons": [],
   "env": {
     "NODE_ENV": "production"
   }
