@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../config/supabase';
+import API_BASE_URL from '../config/api';
 import { useUniversity } from '../contexts/UniversityContext';
 import { getUniColors } from '../utils/uniColors';
 import { useAppConfig } from '../contexts/AppConfigContext';
