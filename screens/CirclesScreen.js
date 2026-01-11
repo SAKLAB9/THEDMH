@@ -23,13 +23,26 @@ export default function CirclesScreen({ navigation, route }) {
   );
   
   // university가 변경되면 selectedChannel도 업데이트 (route.params.selectedChannel이 없을 때만)
+  // 단, 사용자가 직접 MIUHub를 선택한 경우에는 university로 덮어쓰지 않음
   useEffect(() => {
-    if (!route?.params?.selectedChannel && university) {
+    // route.params.selectedChannel이 있으면 무시 (사용자가 직접 선택한 경우)
+    if (route?.params?.selectedChannel) {
+      return;
+    }
+    
+    // selectedChannel이 'MIUHub'인 경우 university로 덮어쓰지 않음
+    if (selectedChannel === 'MIUHub') {
+      console.log('[DEBUG university useEffect] selectedChannel이 MIUHub이므로 university 변경 무시');
+      return;
+    }
+    
+    if (university) {
+      console.log('[DEBUG university useEffect] selectedChannel을 university로 업데이트:', university);
       setSelectedChannel(university);
-    } else if (!route?.params?.selectedChannel && !university) {
+    } else if (!university) {
       setSelectedChannel(null);
     }
-  }, [university, route?.params?.selectedChannel]);
+  }, [university, route?.params?.selectedChannel, selectedChannel]);
   
   // selectedChannel에 따라 대학 색상 가져오기 (MIUHub도 포함)
   // admin으로 학교 변경 시 university를 우선 사용하여 즉시 반영되도록 함
