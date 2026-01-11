@@ -1599,6 +1599,8 @@ app.get('/api/notices', async (req, res) => {
   try {
     const { university, category } = req.query;
     
+    console.log('[공지사항 목록 조회] 요청:', { university, category });
+    
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
     }
@@ -1606,12 +1608,14 @@ app.get('/api/notices', async (req, res) => {
     if (USE_DATABASE && pool) {
       try {
         const universityCode = await normalizeUniversityFromRequest(university, pool);
+        console.log('[공지사항 목록 조회] universityCode:', universityCode);
         
         if (!universityCode) {
           return res.status(400).json({ error: '유효하지 않은 university입니다.' });
         }
         
         const tableName = getNoticesTableName(universityCode);
+        console.log('[공지사항 목록 조회] tableName:', tableName);
         
         if (!tableName) {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
@@ -1630,22 +1634,29 @@ app.get('/api/notices', async (req, res) => {
         
         query += ` ORDER BY created_at DESC`;
         
+        console.log('[공지사항 목록 조회] 쿼리 실행:', query, params);
         const result = await pool.query(query, params);
+        console.log('[공지사항 목록 조회] 결과:', result.rows.length, '개');
         
         res.json({
           success: true,
           notices: result.rows
         });
       } catch (error) {
+        console.error('[공지사항 목록 조회] 데이터베이스 오류:', error);
+        console.error('[공지사항 목록 조회] 스택:', error.stack);
         res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
+      console.log('[공지사항 목록 조회] 데이터베이스 미사용');
       res.json({
         success: true,
         notices: []
       });
     }
   } catch (error) {
+    console.error('[공지사항 목록 조회] 일반 오류:', error);
+    console.error('[공지사항 목록 조회] 스택:', error.stack);
     res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
   }
 });
@@ -2114,6 +2125,8 @@ app.get('/api/life-events', async (req, res) => {
   try {
     const { university, category } = req.query;
     
+    console.log('[경조사 목록 조회] 요청:', { university, category });
+    
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
     }
@@ -2121,12 +2134,14 @@ app.get('/api/life-events', async (req, res) => {
     if (USE_DATABASE && pool) {
       try {
         const universityCode = await normalizeUniversityFromRequest(university, pool);
+        console.log('[경조사 목록 조회] universityCode:', universityCode);
         
         if (!universityCode) {
           return res.status(400).json({ error: '유효하지 않은 university입니다.' });
         }
         
         const tableName = getLifeEventsTableName(universityCode);
+        console.log('[경조사 목록 조회] tableName:', tableName);
         
         if (!tableName) {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
@@ -2145,22 +2160,29 @@ app.get('/api/life-events', async (req, res) => {
         
         query += ` ORDER BY created_at DESC`;
         
+        console.log('[경조사 목록 조회] 쿼리 실행:', query, params);
         const result = await pool.query(query, params);
+        console.log('[경조사 목록 조회] 결과:', result.rows.length, '개');
         
         res.json({
           success: true,
           lifeEvents: result.rows
         });
       } catch (error) {
+        console.error('[경조사 목록 조회] 데이터베이스 오류:', error);
+        console.error('[경조사 목록 조회] 스택:', error.stack);
         res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
+      console.log('[경조사 목록 조회] 데이터베이스 미사용');
       res.json({
         success: true,
         lifeEvents: []
       });
     }
   } catch (error) {
+    console.error('[경조사 목록 조회] 일반 오류:', error);
+    console.error('[경조사 목록 조회] 스택:', error.stack);
     res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
   }
 });
