@@ -42,9 +42,20 @@ export default function CirclesScreen({ navigation, route }) {
     return selectedChannel || university || null;
   }, [selectedChannel, university]);
   
+  // selectedChannel 변경 추적용 ref
+  const selectedChannelRef = useRef(selectedChannel);
+  
   // selectedChannel이 변경되면 즉시 해당 채널의 캐시 확인 및 표시
   useEffect(() => {
-    console.log('[DEBUG useEffect] selectedChannel 변경:', { selectedChannel });
+    const prevChannel = selectedChannelRef.current;
+    selectedChannelRef.current = selectedChannel;
+    
+    console.log('[DEBUG useEffect] selectedChannel 변경:', { prevChannel, selectedChannel });
+    
+    // selectedChannel이 실제로 변경되었을 때만 실행
+    if (prevChannel === selectedChannel) {
+      return;
+    }
     
     const loadCacheForChannel = async () => {
       if (!selectedChannel) {
@@ -625,19 +636,31 @@ export default function CirclesScreen({ navigation, route }) {
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
         let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
         console.log('[DEBUG refreshData] 시작:', { selectedChannel, routeParams: route?.params?.selectedChannel });
-      if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
-        console.log('[DEBUG refreshData] route.params에서 selectedChannel 업데이트:', route.params.selectedChannel);
-        setSelectedChannel(route.params.selectedChannel);
+        
+        // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음 (loadCirclesData가 처리함)
+        // route.params가 있고 selectedChannel과 다를 때만 업데이트
+        if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
+          console.log('[DEBUG refreshData] route.params에서 selectedChannel 업데이트:', route.params.selectedChannel);
+          setSelectedChannel(route.params.selectedChannel);
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
         } else {
           // route.params가 없거나 동일하면 현재 selectedChannel 사용
-          // selectedChannel이 변경 중이면 refreshData를 스킵 (loadCirclesData가 처리함)
           currentChannel = selectedChannel;
         }
         
         // currentChannel에 따라 targetUni 결정
         const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
         console.log('[DEBUG refreshData] targetUni 결정:', { currentChannel, targetUni, university });
+        
+        // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
+        // (이미 loadCirclesData가 실행 중이거나 실행되었을 수 있음)
+        if (selectedChannelRef.current !== currentChannel) {
+          console.log('[DEBUG refreshData] 스킵 (selectedChannel이 방금 변경됨):', { 
+            current: selectedChannelRef.current, 
+            target: currentChannel 
+          });
+          return;
+        }
         
         if (!targetUni) {
           if (isMounted) {
