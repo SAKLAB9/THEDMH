@@ -786,6 +786,15 @@ export default function CirclesScreen({ navigation, route }) {
         }
       };
       
+      // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
+      // (loadCirclesData가 이미 처리 중이거나 처리했음)
+      // selectedChannelRef는 useEffect에서 업데이트되므로, 여기서 확인하면 방금 변경된 것을 감지할 수 있음
+      const lastSelectedChannel = selectedChannelRef.current;
+      if (lastSelectedChannel !== selectedChannel) {
+        // selectedChannel이 방금 변경되었으므로 refreshData 스킵
+        return;
+      }
+      
       // selectedChannel이 변경 중이 아닐 때만 즉시 새로고침
       // selectedChannel 변경은 loadCirclesData가 처리하므로 refreshData는 스킵
       // 또한 화면이 이미 포커스되어 있고 selectedChannel이 변경되지 않았을 때만 실행
