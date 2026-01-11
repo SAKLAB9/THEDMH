@@ -381,25 +381,16 @@ export default function LoginScreen() {
     loadLoginIconImage();
   }, [fontsLoaded, configLoading, getConfig]);
 
-  // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (모든 이미지를 동일하게 병렬 로드)
+  // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (캐싱 적용)
   // 모든 hooks는 early return 전에 호출해야 함
   useEffect(() => {
-    console.log('[LoginScreen] Admin 이미지 로드 useEffect 실행');
-    console.log('[LoginScreen] fontsLoaded:', fontsLoaded);
-    console.log('[LoginScreen] configLoading:', configLoading);
-    
-    if (!fontsLoaded || configLoading) {
-      console.log('[LoginScreen] Admin 이미지 로드 스킵: fontsLoaded 또는 configLoading');
-      return;
-    }
+    if (!fontsLoaded || configLoading) return;
     
     const loadAdminImageUrls = async () => {
       // config에서 슬롯 개수 다시 가져오기
       const slotsCount = getConfigNumber('login_admin_slots_count', 0);
-      console.log('[LoginScreen] Admin 슬롯 개수:', slotsCount);
       
       if (slotsCount <= 0) {
-        console.log('[LoginScreen] Admin 슬롯 개수가 0이므로 이미지 로드 스킵');
         setAdminImageUrls({});
         return;
       }
@@ -408,24 +399,36 @@ export default function LoginScreen() {
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`login_admin_slot_${i}_image`, '');
-        console.log(`[LoginScreen] Admin 슬롯 ${i} 이미지 파일명:`, imageName);
         if (imageName) {
           imageNames.push(imageName);
         }
       }
       
-      console.log('[LoginScreen] Admin 이미지 파일명 목록:', imageNames);
-      
       if (imageNames.length === 0) {
-        console.log('[LoginScreen] Admin 이미지 파일명이 없음');
         setAdminImageUrls({});
         return;
       }
       
+      // 캐시 키 생성 (모든 파일명을 정렬하여 일관된 키 생성)
+      const sortedNames = [...imageNames].sort().join(',');
+      const cacheKey = `admin_image_urls_${sortedNames}`;
+      
       try {
+        // 캐시에서 먼저 확인
+        const cachedUrls = await AsyncStorage.getItem(cacheKey);
+        if (cachedUrls) {
+          const parsedUrls = JSON.parse(cachedUrls);
+          // URL 객체로 변환
+          const urls = {};
+          Object.keys(parsedUrls).forEach(imageName => {
+            urls[imageName] = { uri: parsedUrls[imageName] };
+          });
+          setAdminImageUrls(urls);
+          return; // 캐시에서 가져왔으므로 API 호출 생략
+        }
+        
+        // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-urls`;
-        console.log('[LoginScreen] Admin 이미지 API 호출:', apiUrl);
-        console.log('[LoginScreen] Admin 이미지 요청 데이터:', { filenames: imageNames });
         
         // 배치 API로 모든 이미지 URL을 한 번에 가져오기 (POST 방식)
         const response = await fetch(apiUrl, {
@@ -436,27 +439,23 @@ export default function LoginScreen() {
           body: JSON.stringify({ filenames: imageNames }),
         });
         
-        console.log('[LoginScreen] Admin 이미지 API 응답 상태:', response.status);
-        
         if (response.ok) {
           const data = await response.json();
-          console.log('[LoginScreen] Admin 이미지 API 응답 데이터:', data);
           
           if (data.success && data.urls) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
+            
             // URL 객체로 변환
             const urls = {};
             Object.keys(data.urls).forEach(imageName => {
               urls[imageName] = { uri: data.urls[imageName] };
             });
-            console.log('[LoginScreen] Admin 이미지 URL 변환 완료:', Object.keys(urls));
             setAdminImageUrls(urls);
           } else {
-            console.warn('[LoginScreen] Admin 이미지 API 응답에 URLs가 없음:', data);
             setAdminImageUrls({});
           }
         } else {
-          const errorText = await response.text();
-          console.error('[LoginScreen] Admin 이미지 API 오류:', response.status, errorText);
           setAdminImageUrls({});
         }
       } catch (error) {
@@ -517,18 +516,11 @@ export default function LoginScreen() {
 
   // Admin 모달 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
   const adminSlotImages = [];
-  console.log('[LoginScreen] Admin 슬롯 이미지 배열 생성 시작');
-  console.log('[LoginScreen] adminSlotsCount:', adminSlotsCount);
-  console.log('[LoginScreen] adminImageUrls 키:', Object.keys(adminImageUrls));
-  
   for (let i = 1; i <= adminSlotsCount; i++) {
     const imageName = getConfig(`login_admin_slot_${i}_image`, '');
     const imageUrl = imageName ? adminImageUrls[imageName] : null;
-    console.log(`[LoginScreen] 슬롯 ${i}: 파일명="${imageName}", URL=`, imageUrl);
     adminSlotImages.push(imageUrl);
   }
-  
-  console.log('[LoginScreen] Admin 슬롯 이미지 배열 완료:', adminSlotImages.length, '개');
 
   // Admin 모달 높이 계산 (슬롯 개수에 따라)
   const calculateAdminModalHeight = () => {
