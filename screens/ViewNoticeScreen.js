@@ -40,15 +40,16 @@ function ImageBlock({ uri }) {
       // 슬래시 중복 제거 (// -> /) - 하지만 https://는 유지
       fixedUri = fixedUri.replace(/([^:])\/+/g, '$1/');
       
-      // 이미 쿼리 파라미터가 있는지 확인
-      const hasQueryParams = fixedUri.includes('?');
+      // 이미지 최적화 파라미터 추가
+      // 모바일 화면에 맞춰 800px로 설정 (더 빠른 로딩, 화면 크기보다 충분히 큼)
+      const optimizedWidth = 800;
+      const optimizedQuality = 75;
       
-      // 이미지 최적화 파라미터 추가 (Retina 디스플레이 고려하여 2배 크기)
-      // width=1200이면 일반 모바일(375px)보다 충분히 크고, Retina(750px)도 커버
-      if (!hasQueryParams) {
-        // 화면 크기의 2배 정도로 설정 (Retina 디스플레이 대응)
-        const optimizedWidth = Math.max(1200, Math.ceil(maxImageWidth * 2));
-        fixedUri += `?width=${optimizedWidth}&quality=80`;
+      // 기존 쿼리 파라미터가 있으면 &로 추가, 없으면 ?로 시작
+      if (fixedUri.includes('?')) {
+        fixedUri += `&width=${optimizedWidth}&quality=${optimizedQuality}`;
+      } else {
+        fixedUri += `?width=${optimizedWidth}&quality=${optimizedQuality}`;
       }
       
       return fixedUri;
