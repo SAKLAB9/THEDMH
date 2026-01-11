@@ -1416,9 +1416,21 @@ app.post('/api/notices', async (req, res) => {
         
         // 시퀀스가 테이블의 최대 id와 동기화되도록 재설정
         try {
-          await pool.query(`SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE((SELECT MAX(id) FROM ${tableName}), 0) + 1, false)`);
+          // 현재 최대 ID 확인
+          const maxIdResult = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM ${tableName}`);
+          const maxId = parseInt(maxIdResult.rows[0]?.max_id || 0, 10);
+          
+          // 시퀀스 이름 가져오기
+          const seqResult = await pool.query(`SELECT pg_get_serial_sequence('${tableName}', 'id') as seq_name`);
+          const seqName = seqResult.rows[0]?.seq_name;
+          
+          if (seqName) {
+            // 시퀀스 재설정 (true를 사용하여 다음 nextval()이 maxId + 1을 반환하도록)
+            await pool.query(`SELECT setval($1, $2, true)`, [seqName, maxId]);
+          }
         } catch (seqError) {
           // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
+          console.error(`[공지사항 등록] 시퀀스 재설정 실패:`, seqError.message);
         }
         
         // url 컬럼이 없으면 자동으로 추가
