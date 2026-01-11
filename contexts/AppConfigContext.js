@@ -88,12 +88,28 @@ export const AppConfigProvider = ({ children }) => {
       
       if (result.success && result.config) {
         if (__DEV__) {
-          const selectUniKeys = Object.keys(result.config).filter(k => k.includes('select_uni'));
+          const allKeys = Object.keys(result.config);
+          const selectUniKeys = allKeys.filter(k => k.includes('select_uni'));
+          const loginAdminKeys = allKeys.filter(k => k.includes('login_admin'));
+          
           console.log('[AppConfigContext] Config 로드 성공:', {
-            totalKeys: Object.keys(result.config).length,
+            totalKeys: allKeys.length,
             selectUniKeys: selectUniKeys.length,
+            loginAdminKeys: loginAdminKeys.length,
             selectUniKeysList: selectUniKeys,
+            loginAdminKeysList: loginAdminKeys.slice(0, 5),
           });
+          
+          // select_uni_slot_1_image부터 4까지 직접 확인
+          for (let i = 1; i <= 4; i++) {
+            const key = `select_uni_slot_${i}_image`;
+            const value = result.config[key];
+            console.log(`[AppConfigContext] ${key}:`, {
+              exists: key in result.config,
+              value: value || '(undefined)',
+              type: typeof value,
+            });
+          }
         }
         setConfig(result.config);
         setLastUpdated(Date.now());
