@@ -457,7 +457,7 @@ export default function BoardScreen({ navigation, route }) {
         // currentChannel에 따라 targetUni 결정
         const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
         
-        if (!targetUni) {
+        if (!targetUni || !targetUni.trim()) {
           if (isMounted) {
             setSavedPosts([]);
           }

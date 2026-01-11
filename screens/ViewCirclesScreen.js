@@ -256,7 +256,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
         }
       }
     } catch (error) {
-      console.error('Featured 데이터 로드 오류:', error);
       // 에러 발생 시 기본값으로 초기화
       setAdCategoryPage('1');
       setAdCategoryPosition('1');
@@ -269,15 +268,15 @@ export default function ViewCirclesScreen({ route, navigation }) {
 
   // 소모임 데이터 로드 함수
   const loadCircle = React.useCallback(async () => {
-      if (!circleId || !targetUniversity) {
+      if (!circleId || !targetUniversity || !targetUniversity.trim()) {
         return;
       }
 
       setLoading(true);
       try {
-        const universityCode = targetUniversity ? targetUniversity.toLowerCase() : null;
+        const universityCode = targetUniversity.toLowerCase();
         
-        if (!universityCode) {
+        if (!universityCode || !universityCode.trim()) {
           Alert.alert('오류', '대학 정보가 없습니다.');
           if (navigation.canGoBack()) {
             if (navigation.canGoBack()) {

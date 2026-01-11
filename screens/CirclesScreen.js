@@ -384,7 +384,7 @@ export default function CirclesScreen({ navigation, route }) {
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
       const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
-      if (!targetUni) {
+      if (!targetUni || !targetUni.trim()) {
         setSavedCircles([]);
         return;
       }
