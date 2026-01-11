@@ -6034,5 +6034,35 @@ if (process.env.VERCEL !== '1') {
 }
 
 // Vercel serverless 함수로 export
+// Supabase URL 변경 API (일회성 실행용)
+app.post('/api/fix-supabase-url', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    // SQL 파일 읽기
+    const sqlFile = path.join(__dirname, '..', 'fix_supabase_url.sql');
+    const sql = fs.readFileSync(sqlFile, 'utf8');
+
+    console.log('[Fix Supabase URL] 시작...');
+    
+    // SQL 스크립트 실행
+    await pool.query(sql);
+    
+    console.log('[Fix Supabase URL] 완료!');
+
+    res.json({
+      success: true,
+      message: 'Supabase URL 변경 및 슬래시 중복 수정 완료!'
+    });
+  } catch (error) {
+    console.error('[Fix Supabase URL] 오류:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = app;
 
