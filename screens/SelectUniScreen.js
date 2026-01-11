@@ -112,20 +112,22 @@ export default function SelectUniScreen() {
   const modalWidthPercent = 90;
   const modalMaxWidth = 400;
 
-  // 슬롯 이미지 파일명들 가져오기 (최대 10개 하드코딩, 순차 번호)
+  // 슬롯 이미지 파일명들 가져오기 (최대 10개 완전 하드코딩)
   // appConfig 객체가 변경되면 재계산 (config 값 변경 감지)
   const slotImageNames = useMemo(() => {
-    const names = [];
-    const maxSlots = 10; // 최대 10개 하드코딩
-    
-    // 1, 2, 3, 4, ... 10까지 순차 번호로 하드코딩
-    for (let i = 1; i <= maxSlots; i++) {
-      const configKey = `select_uni_slot_${i}`;
-      // appConfig에서 직접 가져오기
-      const imageName = appConfig[configKey] || '';
-      names.push(imageName);
-    }
-    return names;
+    // 각 슬롯을 완전히 하드코딩하여 appConfig에서 직접 가져오기
+    return [
+      appConfig['select_uni_slot_1'] || '',
+      appConfig['select_uni_slot_2'] || '',
+      appConfig['select_uni_slot_3'] || '',
+      appConfig['select_uni_slot_4'] || '',
+      appConfig['select_uni_slot_5'] || '',
+      appConfig['select_uni_slot_6'] || '',
+      appConfig['select_uni_slot_7'] || '',
+      appConfig['select_uni_slot_8'] || '',
+      appConfig['select_uni_slot_9'] || '',
+      appConfig['select_uni_slot_10'] || '',
+    ];
   }, [appConfig]);
 
   // 슬롯 이미지 파일명들을 문자열로 변환 (의존성 배열용)
@@ -139,17 +141,28 @@ export default function SelectUniScreen() {
     
     const loadSlotImageUrls = async () => {
       const urls = {};
-      const maxSlots = 10; // 최대 10개 하드코딩
       
-      // 1, 2, 3, 4, ... 10까지 순차 번호로 하드코딩하여 appConfig에서 직접 가져오기
-      for (let i = 1; i <= maxSlots; i++) {
-        const configKey = `select_uni_slot_${i}`;
-        // appConfig에서 직접 가져오기
-        const imageName = appConfig[configKey] || '';
+      // 각 슬롯을 완전히 하드코딩하여 appConfig에서 직접 가져오기
+      const slotConfigs = [
+        { slotNumber: 1, imageName: appConfig['select_uni_slot_1'] || '' },
+        { slotNumber: 2, imageName: appConfig['select_uni_slot_2'] || '' },
+        { slotNumber: 3, imageName: appConfig['select_uni_slot_3'] || '' },
+        { slotNumber: 4, imageName: appConfig['select_uni_slot_4'] || '' },
+        { slotNumber: 5, imageName: appConfig['select_uni_slot_5'] || '' },
+        { slotNumber: 6, imageName: appConfig['select_uni_slot_6'] || '' },
+        { slotNumber: 7, imageName: appConfig['select_uni_slot_7'] || '' },
+        { slotNumber: 8, imageName: appConfig['select_uni_slot_8'] || '' },
+        { slotNumber: 9, imageName: appConfig['select_uni_slot_9'] || '' },
+        { slotNumber: 10, imageName: appConfig['select_uni_slot_10'] || '' },
+      ];
+      
+      for (const slot of slotConfigs) {
+        const { slotNumber, imageName } = slot;
+        const configKey = `select_uni_slot_${slotNumber}`;
         
         // 디버깅: config에서 값을 제대로 가져오는지 확인
         if (__DEV__) {
-          console.log(`[SelectUniScreen] 슬롯 ${i} config 확인:`, {
+          console.log(`[SelectUniScreen] 슬롯 ${slotNumber} config 확인:`, {
             configKey,
             imageName: imageName || '(빈 값)',
             hasInConfig: configKey in appConfig,
@@ -162,7 +175,7 @@ export default function SelectUniScreen() {
         }
         
         const trimmedName = String(imageName).trim();
-        const cacheKey = `select_uni_slot_${i}_url_${trimmedName}`;
+        const cacheKey = `select_uni_slot_${slotNumber}_url_${trimmedName}`;
         
         try {
           // 캐시에서 먼저 확인
@@ -193,7 +206,7 @@ export default function SelectUniScreen() {
           }
         } catch (error) {
           if (__DEV__) {
-            console.error(`[SelectUniScreen] 슬롯 ${i} 이미지 로드 실패:`, error.message);
+            console.error(`[SelectUniScreen] 슬롯 ${slotNumber} 이미지 로드 실패:`, error.message);
           }
         }
       }
@@ -271,34 +284,37 @@ export default function SelectUniScreen() {
     loadMainIconImage();
   }, [fontsLoaded, configLoading, getConfig]);
 
-  // 슬롯 이미지 배열 생성 (최대 10개 하드코딩, 순차 번호, 2열 그리드로 배치) - useMemo로 메모이제이션하여 불필요한 재생성 방지
+  // 슬롯 이미지 배열 생성 (최대 10개 완전 하드코딩, 2열 그리드로 배치) - useMemo로 메모이제이션하여 불필요한 재생성 방지
   const slotImages = useMemo(() => {
-    const images = [];
-    const maxSlots = 10; // 최대 10개 하드코딩
     const cols = 2; // 2열 고정
     
-    // 1, 2, 3, 4, ... 10까지 순차 번호로 하드코딩하여 appConfig에서 직접 가져오기
-    for (let i = 1; i <= maxSlots; i++) {
-      const configKey = `select_uni_slot_${i}`;
-      // appConfig에서 직접 가져오기
-      const imageName = appConfig[configKey] || '';
-      // EMPTY 값 처리: EMPTY이면 imageName을 null로 설정
-      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName : null;
+    // 각 슬롯을 완전히 하드코딩하여 appConfig에서 직접 가져오기
+    const slots = [
+      { slotNumber: 1, imageName: appConfig['select_uni_slot_1'] || '', row: 1, col: 1 },
+      { slotNumber: 2, imageName: appConfig['select_uni_slot_2'] || '', row: 1, col: 2 },
+      { slotNumber: 3, imageName: appConfig['select_uni_slot_3'] || '', row: 2, col: 1 },
+      { slotNumber: 4, imageName: appConfig['select_uni_slot_4'] || '', row: 2, col: 2 },
+      { slotNumber: 5, imageName: appConfig['select_uni_slot_5'] || '', row: 3, col: 1 },
+      { slotNumber: 6, imageName: appConfig['select_uni_slot_6'] || '', row: 3, col: 2 },
+      { slotNumber: 7, imageName: appConfig['select_uni_slot_7'] || '', row: 4, col: 1 },
+      { slotNumber: 8, imageName: appConfig['select_uni_slot_8'] || '', row: 4, col: 2 },
+      { slotNumber: 9, imageName: appConfig['select_uni_slot_9'] || '', row: 5, col: 1 },
+      { slotNumber: 10, imageName: appConfig['select_uni_slot_10'] || '', row: 5, col: 2 },
+    ];
+    
+    // 각 슬롯에 대해 이미지 URL 추가
+    const images = slots.map(slot => {
+      const validImageName = (slot.imageName && slot.imageName !== 'EMPTY' && slot.imageName.trim() !== '') ? slot.imageName : null;
       const imageUrl = validImageName ? imageUrls[validImageName] : null;
       
-      // 2열 그리드에서의 위치 계산
-      const row = Math.ceil(i / cols);
-      const col = ((i - 1) % cols) + 1;
-      
-      // 이미지 URL이 없어도 슬롯은 표시 (이미지가 로딩 중일 수 있음)
-      images.push({ 
-        slotNumber: i,
-        row, 
-        col, 
-        imageName: validImageName, 
-        imageUrl 
-      });
-    }
+      return {
+        slotNumber: slot.slotNumber,
+        row: slot.row,
+        col: slot.col,
+        imageName: validImageName,
+        imageUrl
+      };
+    });
     
     // slotsCount만큼만 반환 (나머지는 제거)
     return images.slice(0, slotsCount);
@@ -349,15 +365,25 @@ export default function SelectUniScreen() {
     }
     
     // 학교 선택 후 SignUp으로 이동
-    // selectedUniversity(displayName)에서 이미지 파일명과 소문자 코드 찾기 (최대 10개 하드코딩, 순차 번호)
+    // selectedUniversity(displayName)에서 이미지 파일명과 소문자 코드 찾기 (최대 10개 완전 하드코딩)
     let selectedImageFileName = null;
     let selectedUniversityCode = null;
-    const maxSlots = 10; // 최대 10개 하드코딩
     
-    for (let i = 1; i <= maxSlots; i++) {
-      const configKey = `select_uni_slot_${i}`;
-      // appConfig에서 직접 가져오기
-      const imageName = appConfig[configKey] || '';
+    // 각 슬롯을 완전히 하드코딩하여 appConfig에서 직접 가져오기
+    const slotConfigs = [
+      appConfig['select_uni_slot_1'],
+      appConfig['select_uni_slot_2'],
+      appConfig['select_uni_slot_3'],
+      appConfig['select_uni_slot_4'],
+      appConfig['select_uni_slot_5'],
+      appConfig['select_uni_slot_6'],
+      appConfig['select_uni_slot_7'],
+      appConfig['select_uni_slot_8'],
+      appConfig['select_uni_slot_9'],
+      appConfig['select_uni_slot_10'],
+    ];
+    
+    for (const imageName of slotConfigs) {
       if (imageName) {
         const baseName = imageName.replace('-icon.png', '').replace('.png', '').split('-')[0].toLowerCase();
         const universityCode = baseName; // 소문자 코드
