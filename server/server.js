@@ -2855,6 +2855,45 @@ app.get('/api/circles', async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
+        // 필요한 컬럼들이 없으면 자동으로 추가
+        try {
+          const checkColumns = [
+            { name: 'region', type: 'TEXT' },
+            { name: 'location', type: 'TEXT' },
+            { name: 'keywords', type: 'TEXT' },
+            { name: 'participants', type: 'TEXT' },
+            { name: 'fee', type: 'TEXT' },
+            { name: 'contact', type: 'TEXT' },
+            { name: 'event_date', type: 'TIMESTAMP' },
+            { name: 'account_number', type: 'TEXT' },
+            { name: 'views', type: 'INTEGER DEFAULT 0' },
+            { name: 'nickname', type: 'TEXT' },
+            { name: 'url', type: 'TEXT' },
+            { name: 'report_count', type: 'INTEGER DEFAULT 0' },
+            { name: 'is_closed', type: 'BOOLEAN DEFAULT false' },
+            { name: 'closed_at', type: 'TIMESTAMP' }
+          ];
+          
+          for (const col of checkColumns) {
+            const checkResult = await pool.query(
+              `SELECT column_name 
+               FROM information_schema.columns 
+               WHERE table_schema = 'public' 
+                 AND table_name = $1 
+                 AND column_name = $2`,
+              [tableName, col.name]
+            );
+            
+            if (checkResult.rows.length === 0) {
+              await pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}`);
+              console.log(`[Circles 목록 조회] 컬럼 추가: ${tableName}.${col.name}`);
+            }
+          }
+        } catch (colError) {
+          // 컬럼 추가 실패해도 계속 진행
+          console.warn('[Circles 목록 조회] 컬럼 확인/추가 실패:', colError.message);
+        }
+        
         // 성능 최적화: 필요한 컬럼만 선택 (content_blocks는 큰 JSON이므로 제외)
         // 컬럼이 없어도 에러가 발생하지 않도록 COALESCE 사용
         let query = `SELECT 
