@@ -768,8 +768,17 @@ export default function CirclesScreen({ navigation, route }) {
       
       // selectedChannel이 변경 중이 아닐 때만 즉시 새로고침
       // selectedChannel 변경은 loadCirclesData가 처리하므로 refreshData는 스킵
-      if (!route?.params?.selectedChannel || route.params.selectedChannel === selectedChannel) {
+      // 또한 화면이 이미 포커스되어 있고 selectedChannel이 변경되지 않았을 때만 실행
+      const shouldRefresh = !route?.params?.selectedChannel || route.params.selectedChannel === selectedChannel;
+      console.log('[DEBUG useFocusEffect] refreshData 실행 여부:', { 
+        shouldRefresh, 
+        routeParams: route?.params?.selectedChannel, 
+        selectedChannel 
+      });
+      if (shouldRefresh) {
         refreshData();
+      } else {
+        console.log('[DEBUG useFocusEffect] refreshData 스킵 (selectedChannel 변경 중)');
       }
       
       // 2분(120초)마다 자동 새로고침 (새 글 확인)
