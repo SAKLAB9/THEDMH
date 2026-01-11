@@ -2965,19 +2965,29 @@ app.get('/api/circles', async (req, res) => {
         // 댓글 테이블 이름 가져오기
         const commentsTableName = getCirclesCommentsTableName(universityCode);
         
-        // 각 circle에 대해 댓글 개수 조회
-        const circles = await Promise.all(result.rows.map(async (circle) => {
-          let commentCount = 0;
-          try {
-            const commentResult = await pool.query(
-              `SELECT COUNT(*) as count FROM ${commentsTableName} WHERE post_id = $1`,
-              [circle.id]
-            );
-            commentCount = parseInt(commentResult.rows[0].count) || 0;
-          } catch (error) {
-            commentCount = 0;
-          }
-          
+        // JOIN을 사용하여 댓글 개수를 한 번에 가져오기 (N+1 쿼리 문제 해결)
+        let finalQuery = `
+          SELECT 
+            c.*,
+            COALESCE(COUNT(com.id), 0) as comment_count
+          FROM (${query}) c
+          LEFT JOIN ${commentsTableName} com ON c.id = com.post_id
+          GROUP BY c.id, c.title, c.category, c.author, c.created_at, c.nickname, c.views, c.url, c.event_date, c.region, c.location, c.keywords, c.participants, c.fee, c.contact, c.account_number, c.report_count, c.is_closed, c.closed_at
+          ORDER BY c.created_at DESC
+        `;
+        
+        let finalResult;
+        try {
+          finalResult = await pool.query(finalQuery, params);
+        } catch (joinError) {
+          // JOIN 실패 시 기존 방식으로 fallback
+          console.warn('[Circles 목록 조회] JOIN 쿼리 실패, 개별 조회로 fallback:', joinError.message);
+          finalResult = result;
+          // 개별 조회는 나중에 처리
+        }
+        
+        // JOIN이 성공했으면 변환만 수행
+        const circles = finalResult.rows.map((circle) => {
           const transformed = {
             ...circle,
             eventDate: circle.event_date,
@@ -2991,11 +3001,49 @@ app.get('/api/circles', async (req, res) => {
             reportCount: circle.report_count || 0,
             isClosed: circle.is_closed || false,
             closedAt: circle.closed_at,
-            commentCount: commentCount
+            commentCount: parseInt(circle.comment_count) || 0
           };
           
           return transformed;
-        }));
+        });
+        
+        // JOIN이 실패했으면 개별 조회 (fallback)
+        if (finalResult === result) {
+          const circlesWithComments = await Promise.all(result.rows.map(async (circle) => {
+            let commentCount = 0;
+            try {
+              const commentResult = await pool.query(
+                `SELECT COUNT(*) as count FROM ${commentsTableName} WHERE post_id = $1`,
+                [circle.id]
+              );
+              commentCount = parseInt(commentResult.rows[0].count) || 0;
+            } catch (error) {
+              commentCount = 0;
+            }
+            
+            const transformed = {
+              ...circle,
+              eventDate: circle.event_date,
+              region: circle.region,
+              location: circle.location,
+              keywords: circle.keywords,
+              participants: circle.participants,
+              fee: circle.fee,
+              contact: circle.contact,
+              accountNumber: circle.account_number,
+              reportCount: circle.report_count || 0,
+              isClosed: circle.is_closed || false,
+              closedAt: circle.closed_at,
+              commentCount: commentCount
+            };
+            
+            return transformed;
+          }));
+          
+          // circles 배열 교체
+          circles.length = 0;
+          circles.push(...circlesWithComments);
+        }
         
         if (universityCode === 'miuhub') {
           try {

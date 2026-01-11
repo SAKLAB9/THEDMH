@@ -401,18 +401,25 @@ export default function CirclesScreen({ navigation, route }) {
         const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
         const now = Date.now();
         
-        // 캐시가 있고 2분 이내면 캐시 사용 (뷰수/댓글수는 별도로 최신 데이터 가져오기)
+        // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
         if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
           const cachedCircles = JSON.parse(cachedData);
           
-          // 뷰수/댓글수만 최신 데이터로 업데이트
-          try {
-            const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
-              headers: { 'Cache-Control': 'no-cache' }
-            });
-            if (circlesResponse.ok) {
-              const circlesData = await circlesResponse.json();
-              if (circlesData.success && circlesData.circles) {
+          // 캐시된 데이터를 즉시 표시 (빠른 응답)
+          setSavedCircles(cachedCircles);
+          
+          // 백그라운드에서 뷰수/댓글수만 최신 데이터로 업데이트
+          fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
+            headers: { 'Cache-Control': 'no-cache' }
+          })
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              return null;
+            })
+            .then(circlesData => {
+              if (circlesData && circlesData.success && circlesData.circles) {
                 // 캐시된 데이터와 최신 데이터를 병합 (뷰수/댓글수만 업데이트)
                 const updatedCircles = cachedCircles.map(cachedCircle => {
                   const latestCircle = circlesData.circles.find(c => c.id === cachedCircle.id);
@@ -426,19 +433,18 @@ export default function CirclesScreen({ navigation, route }) {
                   return cachedCircle;
                 });
                 setSavedCircles(updatedCircles);
-                return;
+                // 업데이트된 데이터를 캐시에 저장
+                AsyncStorage.setItem(cacheKey, JSON.stringify(updatedCircles)).catch(() => {});
               }
-            }
-          } catch (error) {
-            // 뷰수/댓글수 업데이트 실패해도 캐시된 데이터 사용
-            if (__DEV__) {
-              console.warn('[CirclesScreen] 뷰수/댓글수 업데이트 실패, 캐시 사용:', error);
-            }
-          }
+            })
+            .catch(error => {
+              // 백그라운드 업데이트 실패는 무시 (이미 캐시된 데이터 표시됨)
+              if (__DEV__) {
+                console.warn('[CirclesScreen] 뷰수/댓글수 백그라운드 업데이트 실패:', error);
+              }
+            });
           
-          // 뷰수/댓글수 업데이트 실패 시 캐시된 데이터 사용
-          setSavedCircles(cachedCircles);
-          return;
+          return; // 캐시 사용 시 여기서 종료
         }
         
         // 캐시가 없거나 만료되었으면 새로 로드
