@@ -1027,51 +1027,13 @@ export default function CirclesScreen({ navigation, route }) {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
+              // MIUHub 선택과 동시에 데이터 로드 시작 (selectedChannel 변경 시 useEffect에서 자동으로 loadCirclesData 호출됨)
               setSelectedChannel('MIUHub');
               setPageByTab(prev => ({
                 ...prev,
                 [activeTab]: 1,
               }));
-              // 모달이 열리기 전에 데이터 미리 로드 시작
-              const loadMiuhubData = async () => {
-                try {
-                  const universityCode = 'miuhub';
-                  const cacheKey = `circles_${universityCode}`;
-                  const cacheTimestampKey = `circles_timestamp_${universityCode}`;
-                  const now = Date.now();
-                  const CACHE_DURATION = 2 * 60 * 1000; // 2분
-                  
-                  // 캐시 확인
-                  const cachedData = await AsyncStorage.getItem(cacheKey);
-                  const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
-                  
-                  // 캐시가 없거나 만료되었으면 미리 로드 시작 (비동기, 블로킹하지 않음)
-                  if (!cachedData || !cachedTimestamp || (now - parseInt(cachedTimestamp, 10)) >= CACHE_DURATION) {
-                    fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`)
-                      .then(async response => {
-                        if (response.ok) {
-                          const responseText = await response.text();
-                          try {
-                            const circlesData = JSON.parse(responseText);
-                            if (circlesData.success && circlesData.circles) {
-                              // 캐시에 미리 저장 (모달이 닫힐 때 빠르게 표시)
-                              AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
-                              AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
-                            }
-                          } catch (e) {
-                            // 파싱 오류는 무시
-                          }
-                        }
-                      })
-                      .catch(() => {
-                        // 오류는 무시 (모달이 닫힐 때 정상 로드됨)
-                      });
-                  }
-                } catch (error) {
-                  // 오류는 무시
-                }
-              };
-              loadMiuhubData(); // 비동기로 미리 로드 시작
+              // 모달은 별도로 열기 (데이터 로드와 동시에)
               setShowPartnersModal(true);
             }}
             style={{
