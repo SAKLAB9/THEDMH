@@ -6,17 +6,35 @@ import Constants from 'expo-constants';
 const SUPABASE_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+// 디버깅: Supabase 설정 확인
+if (__DEV__) {
+  console.log('[Supabase Config] Constants.expoConfig?.extra:', Constants.expoConfig?.extra);
+  console.log('[Supabase Config] SUPABASE_URL:', SUPABASE_URL ? '설정됨' : '없음');
+  console.log('[Supabase Config] SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? '설정됨' : '없음');
+}
+
 // Supabase URL과 키가 유효한 경우에만 클라이언트 생성
 let supabase = null;
 
 if (SUPABASE_URL && SUPABASE_URL !== '' && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== '') {
   try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+    if (__DEV__) {
+      console.log('[Supabase] 클라이언트 초기화 성공');
+    }
   } catch (error) {
+    console.error('[Supabase] 클라이언트 초기화 실패:', error);
     supabase = null;
   }
 } else {
-  // Supabase 설정이 없으면 클라이언트를 초기화하지 않음
+  console.warn('[Supabase] URL 또는 Key가 설정되지 않았습니다.');
+  console.warn('[Supabase] SUPABASE_URL:', SUPABASE_URL);
+  console.warn('[Supabase] SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? '설정됨' : '없음');
 }
 
 export { supabase };
