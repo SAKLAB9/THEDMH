@@ -420,10 +420,8 @@ export default function CirclesScreen({ navigation, route }) {
 
       try {
         const universityCode = targetUni.toLowerCase();
-        // 캐시 키에 채널 정보 포함: 학교 탭과 MIUHub 탭의 캐시를 완전히 분리
-        const channelPrefix = selectedChannel === 'MIUHub' ? 'miuhub' : 'school';
-        const cacheKey = `circles_${channelPrefix}_${universityCode}`;
-        const cacheTimestampKey = `circles_timestamp_${channelPrefix}_${universityCode}`;
+        const cacheKey = `circles_${universityCode}`;
+        const cacheTimestampKey = `circles_timestamp_${universityCode}`;
         const CACHE_DURATION = 2 * 60 * 1000; // 2분
         const now = Date.now();
         
@@ -506,7 +504,7 @@ export default function CirclesScreen({ navigation, route }) {
           }
         } else {
           await circlesResponse.text().catch(() => '');
-          // 오류 시 현재 채널의 캐시된 데이터가 있으면 사용
+          // 오류 시 캐시된 데이터가 있으면 사용
           const errorCachedData = await AsyncStorage.getItem(cacheKey);
           if (errorCachedData) {
             setSavedCircles(JSON.parse(errorCachedData));
@@ -515,10 +513,9 @@ export default function CirclesScreen({ navigation, route }) {
           }
         }
       } catch (error) {
-        // 에러 발생 시 현재 채널의 캐시된 데이터가 있으면 사용
+        // 에러 발생 시 캐시된 데이터가 있으면 사용
         try {
-          const channelPrefix = selectedChannel === 'MIUHub' ? 'miuhub' : 'school';
-          const cacheKey = `circles_${channelPrefix}_${targetUni.toLowerCase()}`;
+          const cacheKey = `circles_${targetUni.toLowerCase()}`;
           const cachedData = await AsyncStorage.getItem(cacheKey);
           if (cachedData) {
             setSavedCircles(JSON.parse(cachedData));
@@ -655,10 +652,8 @@ export default function CirclesScreen({ navigation, route }) {
 
         try {
           const universityCode = targetUni.toLowerCase();
-          // 캐시 키에 채널 정보 포함: 학교 탭과 MIUHub 탭의 캐시를 완전히 분리
-          const channelPrefix = currentChannel === 'MIUHub' ? 'miuhub' : 'school';
-          const cacheKey = `circles_${channelPrefix}_${universityCode}`;
-          const cacheTimestampKey = `circles_timestamp_${channelPrefix}_${universityCode}`;
+          const cacheKey = `circles_${universityCode}`;
+          const cacheTimestampKey = `circles_timestamp_${universityCode}`;
           const now = Date.now();
           const CACHE_DURATION = 2 * 60 * 1000; // 2분
           
@@ -756,10 +751,9 @@ export default function CirclesScreen({ navigation, route }) {
             }
           }
         } catch (error) {
-          // 오류 시 현재 채널의 캐시된 데이터가 있으면 사용
+          // 오류 시 캐시된 데이터가 있으면 사용
           if (isMounted) {
-            const channelPrefix = currentChannel === 'MIUHub' ? 'miuhub' : 'school';
-            const cacheKey = `circles_${channelPrefix}_${targetUni.toLowerCase()}`;
+            const cacheKey = `circles_${targetUni.toLowerCase()}`;
             const cachedData = await AsyncStorage.getItem(cacheKey).catch(() => null);
             if (!cachedData) {
               setSavedCircles([]);
