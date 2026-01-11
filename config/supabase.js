@@ -6,8 +6,8 @@ import Constants from 'expo-constants';
 const SUPABASE_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// 디버깅: Supabase 설정 확인
-if (__DEV__) {
+// 디버깅: Supabase 설정 확인 (개발 모드에서만)
+if (__DEV__ && false) { // 로그 비활성화
   console.log('[Supabase Config] Constants.expoConfig?.extra:', Constants.expoConfig?.extra);
   console.log('[Supabase Config] SUPABASE_URL:', SUPABASE_URL ? '설정됨' : '없음');
   console.log('[Supabase Config] SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? '설정됨' : '없음');
@@ -24,9 +24,10 @@ if (SUPABASE_URL && SUPABASE_URL !== '' && SUPABASE_ANON_KEY && SUPABASE_ANON_KE
         autoRefreshToken: true,
       },
     });
-    if (__DEV__) {
-      console.log('[Supabase] 클라이언트 초기화 성공');
-    }
+    // 로그 비활성화
+    // if (__DEV__) {
+    //   console.log('[Supabase] 클라이언트 초기화 성공');
+    // }
   } catch (error) {
     console.error('[Supabase] 클라이언트 초기화 실패:', error);
     supabase = null;
