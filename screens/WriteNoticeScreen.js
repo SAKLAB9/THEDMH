@@ -69,6 +69,13 @@ function ImageBlock({ uri }) {
 
 export default function WriteNoticeScreen({ navigation, route }) {
   const { university } = useUniversity();
+  
+  // university 디버깅
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[WriteNoticeScreen] university:', university);
+    }
+  }, [university]);
   const { getConfig, getColorConfig, config: appConfig } = useAppConfig();
   const config = { getColorConfig };
   const uniColors = useMemo(() => getUniColors(university, config), [university, getColorConfig, appConfig]);
@@ -493,6 +500,13 @@ export default function WriteNoticeScreen({ navigation, route }) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: '서버 오류가 발생했습니다.' }));
+        if (__DEV__) {
+          console.error('[WriteNoticeScreen] 서버 오류 응답:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          });
+        }
         const errorMessage = errorData.message ? `${errorData.error || '서버 오류가 발생했습니다.'}\n\n상세: ${errorData.message}` : (errorData.error || '서버 오류가 발생했습니다.');
         throw new Error(errorMessage);
       }
