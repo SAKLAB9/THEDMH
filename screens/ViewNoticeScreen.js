@@ -166,11 +166,17 @@ export default function ViewNoticeScreen({ route, navigation }) {
   useEffect(() => {
     if (noticePreview && !notice) {
       // 기본 정보만 있는 preview 데이터로 즉시 표시
+      // 뷰수는 즉시 +1 (낙관적 업데이트)
       setNotice({
         ...noticePreview,
+        views: (noticePreview.views || 0) + 1, // 뷰수 즉시 증가
         content_blocks: [], // 내용은 아직 없음
         images: [] // 이미지도 아직 없음
       });
+      
+      // 홈 화면의 뷰수도 업데이트 (백그라운드)
+      // navigation의 parent에서 notices 배열 업데이트는 복잡하므로
+      // 여기서는 로컬 상태만 업데이트하고, 서버 요청은 백그라운드에서 처리
     }
   }, [noticePreview, notice]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -363,8 +369,10 @@ export default function ViewNoticeScreen({ route, navigation }) {
                 }
                 
                 // 기본 정보는 유지하고 내용만 업데이트
+                // 뷰수는 서버에서 이미 증가된 값 사용
                 setNotice({
                   ...notice,
+                  views: fullNotice.views || notice.views || 0, // 서버에서 증가된 뷰수 사용
                   content_blocks: contentBlocks,
                   images: fullNotice.images || [],
                   text_content: fullNotice.text_content || ''
@@ -383,6 +391,8 @@ export default function ViewNoticeScreen({ route, navigation }) {
                 // noticePreview가 없으면 전체 데이터 표시
                 let notice = { ...fullNotice };
                 
+                // 뷰수는 서버에서 이미 증가된 값이므로 그대로 사용
+                
                 // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
                 if (notice.content_blocks && typeof notice.content_blocks === 'string') {
                   try {
@@ -392,7 +402,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
                       ? parsedBlocks.filter(block => block.type === 'text')
                       : [];
                     notice.content_blocks = textBlocks;
-                    // 텍스트만 먼저 표시
+                    // 텍스트만 먼저 표시 (뷰수는 이미 증가된 값)
                     setNotice(notice);
                     
                     // 이미지 블록 추가 (백그라운드에서)
@@ -512,6 +522,27 @@ export default function ViewNoticeScreen({ route, navigation }) {
     // 없으면 전체 데이터 로드
     loadNotice(false);
   }, [noticeId, university, loadNotice]);
+
+  // 홈 화면의 뷰수 업데이트를 위한 navigation listener
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      // 화면을 떠날 때 홈 화면에 뷰수 업데이트 알림
+      if (notice && notice.views !== undefined) {
+        navigation.navigate('Main', {
+          screen: 'Home',
+          params: {
+            updateViews: {
+              type: 'notice',
+              id: noticeId,
+              views: notice.views
+            }
+          }
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, notice, noticeId]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 공지사항은 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)

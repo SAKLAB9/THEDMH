@@ -165,8 +165,10 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   useEffect(() => {
     if (lifeEventPreview && !lifeEvent) {
       // 기본 정보만 있는 preview 데이터로 즉시 표시
+      // 뷰수는 즉시 +1 (낙관적 업데이트)
       setLifeEvent({
         ...lifeEventPreview,
+        views: (lifeEventPreview.views || 0) + 1, // 뷰수 즉시 증가
         content_blocks: [], // 내용은 아직 없음
         images: [] // 이미지도 아직 없음
       });
@@ -376,8 +378,10 @@ export default function ViewLifeEventScreen({ route, navigation }) {
                 }
                 
                 // 기본 정보는 유지하고 내용만 업데이트
+                // 뷰수는 서버에서 이미 증가된 값 사용
                 setLifeEvent({
                   ...lifeEvent,
+                  views: fullLifeEvent.views || lifeEvent.views || 0, // 서버에서 증가된 뷰수 사용
                   content_blocks: contentBlocks,
                   images: fullLifeEvent.images || [],
                   text_content: fullLifeEvent.text_content || ''
@@ -525,6 +529,27 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     // 없으면 전체 데이터 로드
     loadLifeEvent(false);
   }, [lifeEventId, university, loadLifeEvent]);
+
+  // 홈 화면의 뷰수 업데이트를 위한 navigation listener
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      // 화면을 떠날 때 홈 화면에 뷰수 업데이트 알림
+      if (lifeEvent && lifeEvent.views !== undefined) {
+        navigation.navigate('Main', {
+          screen: 'Home',
+          params: {
+            updateViews: {
+              type: 'lifeEvent',
+              id: lifeEventId,
+              views: lifeEvent.views
+            }
+          }
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, lifeEvent, lifeEventId]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
   // 경조사는 캐시를 먼저 확인하고, 필요할 때만 새로고침 (성능 최적화)
