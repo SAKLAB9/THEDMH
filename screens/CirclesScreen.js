@@ -473,6 +473,12 @@ export default function CirclesScreen({ navigation, route }) {
               if (__DEV__) {
                 console.log('[CirclesScreen] Circles 데이터 없음 또는 실패:', circlesData);
               }
+              setSavedCircles([]);
+            }
+          } catch (parseError) {
+            if (__DEV__) {
+              console.error('[CirclesScreen] Circles JSON 파싱 오류:', parseError);
+            }
             setSavedCircles([]);
           }
         } else {
