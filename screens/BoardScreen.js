@@ -177,10 +177,6 @@ export default function BoardScreen({ navigation, route }) {
         }
       });
       setPartnersImageUrls(urls);
-      } catch (error) {
-        // 에러 발생 시 빈 객체로 설정
-        setPartnersImageUrls({});
-      }
     };
     
     loadPartnersImageUrls();
