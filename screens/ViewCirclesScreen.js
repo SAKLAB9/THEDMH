@@ -490,57 +490,87 @@ export default function ViewCirclesScreen({ route, navigation }) {
         const response = await fetch(url);
         
         if (response.ok) {
-          const data = await response.json();
+          const responseText = await response.text();
           
-          if (data.success && data.circle) {
-            // content_blocks가 JSON 문자열인 경우 파싱
-            let fullCircle = { ...data.circle };
-            if (fullCircle.content_blocks && typeof fullCircle.content_blocks === 'string') {
-              try {
-                fullCircle.content_blocks = JSON.parse(fullCircle.content_blocks);
-              } catch (e) {
-                console.error('[ViewCirclesScreen] content_blocks 파싱 실패:', e);
+          // 텍스트만 먼저 파싱해서 즉시 표시
+          try {
+            const data = JSON.parse(responseText);
+            
+            if (data.success && data.circle) {
+              // content_blocks가 JSON 문자열인 경우 파싱
+              let fullCircle = { ...data.circle };
+              if (fullCircle.content_blocks && typeof fullCircle.content_blocks === 'string') {
+                try {
+                  fullCircle.content_blocks = JSON.parse(fullCircle.content_blocks);
+                } catch (e) {
+                  if (__DEV__) {
+                    console.error('[ViewCirclesScreen] content_blocks 파싱 실패:', e);
+                  }
+                  fullCircle.content_blocks = [];
+                }
+              }
+              if (!Array.isArray(fullCircle.content_blocks)) {
                 fullCircle.content_blocks = [];
               }
-            }
-            if (!Array.isArray(fullCircle.content_blocks)) {
-              fullCircle.content_blocks = [];
-            }
-            
-            // circlePreview가 있으면 기본 정보는 유지하고 content_blocks와 images만 업데이트
-            if (circlePreview && circle) {
-              setCircle({
-                ...circle,
-                content_blocks: fullCircle.content_blocks,
-                images: fullCircle.images || [],
-                text_content: fullCircle.text_content || ''
-              });
               
-              // content만 별도 캐시에 저장
-              AsyncStorage.setItem(contentCacheKey, JSON.stringify({
-                content: {
-                  content_blocks: fullCircle.content_blocks,
-                  images: fullCircle.images || [],
+              // circlePreview가 있으면 기본 정보는 유지하고 content_blocks와 images만 업데이트
+              if (circlePreview && circle) {
+                // 텍스트 블록만 먼저 추출해서 즉시 표시
+                const textBlocks = fullCircle.content_blocks.filter(block => block.type === 'text');
+                
+                // 텍스트 블록만 먼저 표시
+                setCircle({
+                  ...circle,
+                  content_blocks: textBlocks,
+                  images: [], // 이미지는 나중에
                   text_content: fullCircle.text_content || ''
-                },
-                timestamp: Date.now()
-              })).catch(() => {});
-            } else {
-              // circlePreview가 없으면 전체 데이터 표시
-              setCircle(fullCircle);
+                });
+                
+                // 나머지 블록(이미지 포함)은 백그라운드에서 처리
+                setTimeout(() => {
+                  setCircle({
+                    ...circle,
+                    content_blocks: fullCircle.content_blocks,
+                    images: fullCircle.images || [],
+                    text_content: fullCircle.text_content || ''
+                  });
+                  
+                  // content만 별도 캐시에 저장
+                  AsyncStorage.setItem(contentCacheKey, JSON.stringify({
+                    content: {
+                      content_blocks: fullCircle.content_blocks,
+                      images: fullCircle.images || [],
+                      text_content: fullCircle.text_content || ''
+                    },
+                    timestamp: Date.now()
+                  })).catch(() => {});
+                }, 0);
+              } else {
+                // circlePreview가 없으면 텍스트 블록만 먼저 표시
+                const textBlocks = fullCircle.content_blocks.filter(block => block.type === 'text');
+                setCircle({
+                  ...fullCircle,
+                  content_blocks: textBlocks,
+                  images: [] // 이미지는 나중에
+                });
+                
+                // 나머지 블록(이미지 포함)은 백그라운드에서 처리
+                setTimeout(() => {
+                  setCircle(fullCircle);
+                  
+                  // 전체 캐시에 저장
+                  AsyncStorage.setItem(cacheKey, JSON.stringify({
+                    circle: fullCircle,
+                    timestamp: Date.now()
+                  })).catch(() => {});
+                }, 0);
+              }
               
-              // 전체 캐시에 저장
-              AsyncStorage.setItem(cacheKey, JSON.stringify({
-                circle: fullCircle,
-                timestamp: Date.now()
-              })).catch(() => {});
-            }
-            
-            // 댓글과 관심리스트를 병렬로 로드 (성능 최적화)
-            await Promise.all([
-              loadComments(),
-              checkFavorite()
-            ]);
+              // 댓글과 관심리스트를 병렬로 로드 (성능 최적화)
+              await Promise.all([
+                loadComments(),
+                checkFavorite()
+              ]);
           } else {
             // 소모임을 찾을 수 없음 (다른 학교일 수 있음)
             if (__DEV__) {
