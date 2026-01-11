@@ -109,16 +109,17 @@ export default function HomeScreen({ navigation }) {
     adminSlotImageNames.push(getConfig(`login_admin_slot_${i}_image`, ''));
   }
 
-  // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (모든 이미지를 동일하게 병렬 로드)
+  // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (LoginScreen과 동일한 방식 - 캐싱 적용)
   useEffect(() => {
     if (adminSlotsCount <= 0) return;
     
     const loadAdminImageUrls = async () => {
-      // 모든 이미지 파일명 수집
+      // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= adminSlotsCount; i++) {
         const imageName = getConfig(`login_admin_slot_${i}_image`, '');
-        if (imageName) {
+        // EMPTY 값과 빈 문자열 필터링
+        if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
         }
       }
@@ -128,12 +129,30 @@ export default function HomeScreen({ navigation }) {
         return;
       }
       
-      // Supabase Storage에서 직접 이미지 URL 가져오기
+      // 캐시 키 생성 (모든 파일명을 정렬하여 일관된 키 생성)
+      const sortedNames = [...imageNames].sort().join(',');
+      const cacheKey = `admin_image_urls_${sortedNames}`;
+      
+      // 캐시에서 먼저 확인
+      const cachedUrls = await AsyncStorage.getItem(cacheKey);
+      if (cachedUrls) {
+        const parsedUrls = JSON.parse(cachedUrls);
+        // URL 객체로 변환
+        const urls = {};
+        Object.keys(parsedUrls).forEach(imageName => {
+          urls[imageName] = { uri: parsedUrls[imageName] };
+        });
+        setAdminImageUrls(urls);
+        return; // 캐시에서 가져왔으므로 API 호출 생략
+      }
+      
+      // 캐시에 없으면 Supabase Storage에서 직접 가져오기
       if (!supabase) {
         setAdminImageUrls({});
         return;
       }
       
+      // Supabase Storage에서 직접 URL 생성
       const urls = {};
       imageNames.forEach(imageName => {
         const trimmedName = String(imageName).trim();
@@ -143,15 +162,24 @@ export default function HomeScreen({ navigation }) {
             .from('images')
             .getPublicUrl(filePath);
           if (urlData?.publicUrl) {
-            urls[trimmedName] = { uri: urlData.publicUrl };
+            urls[trimmedName] = urlData.publicUrl;
           }
         }
       });
-      setAdminImageUrls(urls);
+      
+      // 캐시에 저장
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+      
+      // URL 객체로 변환
+      const urlObjects = {};
+      Object.keys(urls).forEach(imageName => {
+        urlObjects[imageName] = { uri: urls[imageName] };
+      });
+      setAdminImageUrls(urlObjects);
     };
     
     loadAdminImageUrls();
-  }, [adminSlotsCount, adminSlotImageNames.join(',')]);
+  }, [adminSlotsCount, adminSlotImageNames.join(','), getConfig]);
 
   const adminSlotWidth = 100;
   const adminSlotHeight = 100;

@@ -152,17 +152,24 @@ export default function CirclesScreen({ navigation, route }) {
     return partnersSlotImageNames.join(',');
   }, [partnersSlotImageNames]);
 
-  // Supabase Storage에서 Partners 모달 이미지 URL 가져오기 (배치 API 사용 - 성능 최적화)
+  // Supabase Storage에서 Partners 모달 이미지 URL 가져오기 (SelectUniScreen과 동일한 방식 - 캐싱 적용)
   useEffect(() => {
     if (slotsCount <= 0) return;
     
     const loadPartnersImageUrls = async () => {
+      if (!supabase) {
+        setPartnersImageUrls({});
+        return;
+      }
+      
       // 모든 이미지 파일명 수집
       const imageNames = [];
+      const slotNumbers = [];
       for (let i = 1; i <= slotsCount; i++) {
         const imageName = getConfig(`select_uni_slot_${i}`, '');
-        if (imageName) {
+        if (imageName && imageName.trim() !== '') {
           imageNames.push(imageName);
+          slotNumbers.push(i);
         }
       }
       
@@ -171,14 +178,31 @@ export default function CirclesScreen({ navigation, route }) {
         return;
       }
       
-      // Supabase Storage에서 직접 이미지 URL 가져오기
-      if (!supabase) {
-        setPartnersImageUrls({});
-        return;
-      }
+      // 캐시에서 병렬로 확인
+      const cacheKeys = imageNames.map((imageName, index) => ({
+        imageName,
+        slotNumber: slotNumbers[index],
+        cacheKey: `select_uni_slot_${slotNumbers[index]}_url_${imageName}`
+      }));
+      
+      const cachePromises = cacheKeys.map(({ cacheKey }) => AsyncStorage.getItem(cacheKey));
+      const cachedResults = await Promise.all(cachePromises);
       
       const urls = {};
-      imageNames.forEach(imageName => {
+      const toLoadFromSupabase = [];
+      
+      // 캐시된 URL과 새로 로드할 이미지 분리
+      cacheKeys.forEach(({ imageName }, index) => {
+        const cachedUrl = cachedResults[index];
+        if (cachedUrl) {
+          urls[imageName] = { uri: cachedUrl };
+        } else {
+          toLoadFromSupabase.push({ imageName, slotNumber: slotNumbers[index] });
+        }
+      });
+      
+      // Supabase Storage에서 직접 이미지 URL 가져오기 (동기적으로 빠르게 생성)
+      toLoadFromSupabase.forEach(({ imageName }) => {
         const trimmedName = String(imageName).trim();
         if (trimmedName) {
           const filePath = `assets/${trimmedName}`;
@@ -190,6 +214,17 @@ export default function CirclesScreen({ navigation, route }) {
           }
         }
       });
+      
+      // 새로 로드한 URL들을 캐시에 저장 (병렬로)
+      const savePromises = toLoadFromSupabase.map(({ imageName, slotNumber }) => {
+        if (urls[imageName]) {
+          const cacheKey = `select_uni_slot_${slotNumber}_url_${imageName}`;
+          return AsyncStorage.setItem(cacheKey, urls[imageName].uri);
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(savePromises);
+      
       setPartnersImageUrls(urls);
     };
     
