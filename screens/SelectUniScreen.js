@@ -221,10 +221,8 @@ export default function SelectUniScreen() {
       }
     };
     
-    // appConfig가 비어있지 않을 때만 실행
-    if (Object.keys(appConfig).length > 0) {
-      loadSlotImageUrls();
-    }
+    // appConfig가 비어있어도 하드코딩된 키로 접근하도록 항상 실행
+    loadSlotImageUrls();
   }, [fontsLoaded, configLoading, appConfig]);
 
   // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
