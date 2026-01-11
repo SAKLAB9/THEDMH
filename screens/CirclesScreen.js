@@ -398,12 +398,29 @@ export default function CirclesScreen({ navigation, route }) {
           if (circlesData.success && circlesData.circles) {
             setSavedCircles(circlesData.circles);
           } else {
+            if (__DEV__) {
+              console.error('[CirclesScreen] 소모임 데이터 형식 오류:', circlesData);
+            }
             setSavedCircles([]);
           }
         } else {
+          if (__DEV__) {
+            console.error(`[CirclesScreen] 소모임 로드 실패: ${circlesResponse.status} ${circlesResponse.statusText}`, {
+              url: `${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`,
+              university: targetUni,
+              universityCode
+            });
+          }
           setSavedCircles([]);
         }
       } catch (error) {
+        if (__DEV__) {
+          console.error('[CirclesScreen] 소모임 로드 오류:', error, {
+            university: targetUni,
+            universityCode: targetUni ? targetUni.toLowerCase() : null,
+            API_BASE_URL
+          });
+        }
         setSavedCircles([]);
       }
   }, [university, selectedChannel]);
@@ -493,7 +510,7 @@ export default function CirclesScreen({ navigation, route }) {
         // currentChannel에 따라 targetUni 결정
         const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
         
-        if (!targetUni) {
+        if (!targetUni || !targetUni.trim()) {
           if (isMounted) {
             setSavedCircles([]);
           }
@@ -509,12 +526,29 @@ export default function CirclesScreen({ navigation, route }) {
             if (circlesData.success && circlesData.circles) {
               setSavedCircles(circlesData.circles);
             } else {
+              if (__DEV__) {
+                console.error('[CirclesScreen] 소모임 데이터 형식 오류:', circlesData);
+              }
               setSavedCircles([]);
             }
           } else if (isMounted) {
+            if (__DEV__) {
+              console.error(`[CirclesScreen] 소모임 로드 실패: ${circlesResponse.status} ${circlesResponse.statusText}`, {
+                url: `${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`,
+                university: targetUni,
+                universityCode
+              });
+            }
             setSavedCircles([]);
           }
         } catch (error) {
+          if (__DEV__) {
+            console.error('[CirclesScreen] 소모임 로드 오류:', error, {
+              university: targetUni,
+              universityCode: targetUni ? targetUni.toLowerCase() : null,
+              API_BASE_URL
+            });
+          }
           if (isMounted) {
             setSavedCircles([]);
           }
