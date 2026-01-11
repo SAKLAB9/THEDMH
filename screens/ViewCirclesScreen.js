@@ -908,9 +908,13 @@ export default function ViewCirclesScreen({ route, navigation }) {
       }
 
       const result = await response.json();
-      setCircle(result.circle);
-      // 마감 후 데이터 새로고침
-      Alert.alert('성공', circle.isClosed ? '소모임이 다시 열렸습니다.' : '소모임이 마감되었습니다.');
+      if (result.success && result.circle) {
+        setCircle(result.circle);
+        // 마감 후 데이터 새로고침
+        Alert.alert('성공', circle.isClosed ? '소모임이 다시 열렸습니다.' : '소모임이 마감되었습니다.');
+      } else {
+        throw new Error('마감 상태 업데이트 실패');
+      }
     } catch (error) {
       Alert.alert('오류', error.message || '소모임 마감 중 오류가 발생했습니다.');
     }
