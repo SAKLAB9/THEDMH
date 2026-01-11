@@ -65,47 +65,20 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
         }
         
-        // views 컬럼이 없으면 자동으로 추가
-        try {
-          const checkViewsResult = await pool.query(
-            `SELECT column_name 
-             FROM information_schema.columns 
-             WHERE table_schema = 'public' 
-               AND table_name = $1 
-               AND column_name = 'views'`,
-            [tableName]
-          );
-          
-          if (checkViewsResult.rows.length === 0) {
-            await pool.query(`ALTER TABLE ${tableName} ADD COLUMN views INTEGER DEFAULT 0`);
-          }
-        } catch (colError) {
-          // 컬럼 추가 실패해도 계속 진행
-        }
-        
-        // 경조사 조회 (id를 정수로 변환)
+        // 경조사 조회 및 조회수 증가를 한 번에 처리 (성능 최적화)
         const lifeEventId = parseInt(id, 10);
         if (isNaN(lifeEventId)) {
           return res.status(400).json({ error: '유효하지 않은 경조사 ID입니다.' });
         }
         
+        // 조회수 증가와 데이터 조회를 한 번에 처리 (RETURNING 사용)
         const result = await pool.query(
-          `SELECT * FROM ${tableName} WHERE id = $1`,
+          `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1 RETURNING *`,
           [lifeEventId]
         );
         
         if (result.rows.length === 0) {
           return res.status(404).json({ error: '경조사를 찾을 수 없습니다.' });
-        }
-        
-        // 조회수 증가
-        try {
-          await pool.query(
-            `UPDATE ${tableName} SET views = COALESCE(views, 0) + 1 WHERE id = $1`,
-            [lifeEventId]
-          );
-        } catch (updateError) {
-          // 조회수 증가 실패해도 계속 진행
         }
         
         return res.json({

@@ -78,7 +78,7 @@ export default function ViewLifeEventScreen({ route, navigation }) {
   }), [uniColors]);
   const { lifeEventId } = route.params;
   const [lifeEvent, setLifeEvent] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // 초기 로딩 상태를 true로 변경
 
   // 경조사 탭 (useMemo로 감싸서 config 변경 시 재생성)
   const lifeEventTabs = React.useMemo(() => {
@@ -134,12 +134,12 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         return;
       }
 
-      setLoading(true);
       try {
         const universityCode = university.toLowerCase();
         const cacheKey = `lifeevent_${lifeEventId}_${universityCode}`;
         
-        // 캐시에서 먼저 확인
+        // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
+        let cachedLifeEvent = null;
         try {
           const cachedData = await AsyncStorage.getItem(cacheKey);
           if (cachedData) {
@@ -148,36 +148,41 @@ export default function ViewLifeEventScreen({ route, navigation }) {
             const CACHE_DURATION = 5 * 60 * 1000; // 5분
             
             if (cacheAge < CACHE_DURATION && parsedData.lifeEvent) {
-              // 캐시된 데이터를 먼저 표시
-              setLifeEvent(parsedData.lifeEvent);
-              setLoading(false);
-              
-              // 백그라운드에서 새 데이터 가져오기
-              fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
-                .then(response => {
-                  if (response.ok) {
-                    return response.json();
-                  }
-                  return null;
-                })
-                .then(data => {
-                  if (data && data.success && data.lifeEvent) {
-                    AsyncStorage.setItem(cacheKey, JSON.stringify({
-                      lifeEvent: data.lifeEvent,
-                      timestamp: Date.now()
-                    })).catch(() => {});
-                    setLifeEvent(data.lifeEvent);
-                  }
-                })
-                .catch(() => {});
-              
-              return; // 캐시가 있으면 여기서 종료
+              cachedLifeEvent = parsedData.lifeEvent;
             }
           }
         } catch (cacheError) {
-          // 캐시 읽기 오류는 무시하고 API 호출 계속
+          // 캐시 읽기 오류는 무시
         }
         
+        // 캐시가 있으면 즉시 표시하고 로딩 종료
+        if (cachedLifeEvent) {
+          setLifeEvent(cachedLifeEvent);
+          setLoading(false);
+          
+          // 백그라운드에서 새 데이터 가져오기
+          fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              return null;
+            })
+            .then(data => {
+              if (data && data.success && data.lifeEvent) {
+                AsyncStorage.setItem(cacheKey, JSON.stringify({
+                  lifeEvent: data.lifeEvent,
+                  timestamp: Date.now()
+                })).catch(() => {});
+                setLifeEvent(data.lifeEvent);
+              }
+            })
+            .catch(() => {});
+          
+          return; // 캐시가 있으면 여기서 종료
+        }
+        
+        // 캐시가 없으면 API 호출
         const url = `${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`;
         const response = await fetch(url);
         

@@ -79,7 +79,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
   }), [uniColors]);
   const { noticeId } = route.params;
   const [notice, setNotice] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // 초기 로딩 상태를 true로 변경
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
@@ -128,12 +128,12 @@ export default function ViewNoticeScreen({ route, navigation }) {
         return;
       }
 
-      setLoading(true);
       try {
         const universityCode = university.toLowerCase();
         const cacheKey = `notice_${noticeId}_${universityCode}`;
         
-        // 캐시에서 먼저 확인
+        // 캐시에서 먼저 확인 (동기적으로 빠르게 처리)
+        let cachedNotice = null;
         try {
           const cachedData = await AsyncStorage.getItem(cacheKey);
           if (cachedData) {
@@ -142,36 +142,41 @@ export default function ViewNoticeScreen({ route, navigation }) {
             const CACHE_DURATION = 5 * 60 * 1000; // 5분
             
             if (cacheAge < CACHE_DURATION && parsedData.notice) {
-              // 캐시된 데이터를 먼저 표시
-              setNotice(parsedData.notice);
-              setLoading(false);
-              
-              // 백그라운드에서 새 데이터 가져오기
-              fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
-                .then(response => {
-                  if (response.ok) {
-                    return response.json();
-                  }
-                  return null;
-                })
-                .then(data => {
-                  if (data && data.success && data.notice) {
-                    AsyncStorage.setItem(cacheKey, JSON.stringify({
-                      notice: data.notice,
-                      timestamp: Date.now()
-                    })).catch(() => {});
-                    setNotice(data.notice);
-                  }
-                })
-                .catch(() => {});
-              
-              return; // 캐시가 있으면 여기서 종료
+              cachedNotice = parsedData.notice;
             }
           }
         } catch (cacheError) {
-          // 캐시 읽기 오류는 무시하고 API 호출 계속
+          // 캐시 읽기 오류는 무시
         }
         
+        // 캐시가 있으면 즉시 표시하고 로딩 종료
+        if (cachedNotice) {
+          setNotice(cachedNotice);
+          setLoading(false);
+          
+          // 백그라운드에서 새 데이터 가져오기
+          fetch(`${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`)
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              return null;
+            })
+            .then(data => {
+              if (data && data.success && data.notice) {
+                AsyncStorage.setItem(cacheKey, JSON.stringify({
+                  notice: data.notice,
+                  timestamp: Date.now()
+                })).catch(() => {});
+                setNotice(data.notice);
+              }
+            })
+            .catch(() => {});
+          
+          return; // 캐시가 있으면 여기서 종료
+        }
+        
+        // 캐시가 없으면 API 호출
         const url = `${API_BASE_URL}/api/notices/${noticeId}?university=${encodeURIComponent(universityCode)}`;
         const response = await fetch(url);
         
