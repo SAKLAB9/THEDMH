@@ -3,6 +3,7 @@ import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Modal, Touchabl
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLoginColors } from '../utils/uniColors';
 import { useAppConfig } from '../contexts/AppConfigContext';
 import API_BASE_URL from '../config/api';
