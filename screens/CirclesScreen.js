@@ -45,6 +45,7 @@ export default function CirclesScreen({ navigation, route }) {
   // selectedChannel이 변경되면 즉시 데이터 초기화 (이전 데이터 깜빡임 방지)
   // targetUniversity가 아닌 selectedChannel을 기준으로 초기화하여 탭 전환 시 깜빡임 방지
   useEffect(() => {
+    console.log('[DEBUG useEffect] selectedChannel 변경, 데이터 초기화:', { selectedChannel });
     setSavedCircles([]);
   }, [selectedChannel]);
   
@@ -391,7 +392,10 @@ export default function CirclesScreen({ navigation, route }) {
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
       const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
+      console.log('[DEBUG loadCirclesData] 시작:', { selectedChannel, targetUni, university });
+      
       if (!targetUni || !targetUni.trim()) {
+        console.log('[DEBUG loadCirclesData] targetUni 없음, 빈 배열 설정');
         setSavedCircles([]);
         return;
       }
@@ -402,6 +406,8 @@ export default function CirclesScreen({ navigation, route }) {
         const cacheTimestampKey = `circles_timestamp_${universityCode}`;
         const CACHE_DURATION = 2 * 60 * 1000; // 2분
         
+        console.log('[DEBUG loadCirclesData] 캐시 확인:', { universityCode, cacheKey });
+        
         // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
         const cachedData = await AsyncStorage.getItem(cacheKey);
         const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
@@ -410,6 +416,7 @@ export default function CirclesScreen({ navigation, route }) {
         // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
         if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
           const cachedCircles = JSON.parse(cachedData);
+          console.log('[DEBUG loadCirclesData] 캐시 사용:', { universityCode, count: cachedCircles.length });
           
           // 캐시된 데이터를 즉시 표시 (빠른 응답)
           setSavedCircles(cachedCircles);
@@ -458,6 +465,7 @@ export default function CirclesScreen({ navigation, route }) {
         }
         
         // 캐시가 없거나 만료되었으면 새로 로드
+        console.log('[DEBUG loadCirclesData] API 호출:', { universityCode });
         const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
         if (circlesResponse.ok) {
           // 응답 텍스트를 받는 즉시 파싱 (성능 최적화)
@@ -465,6 +473,7 @@ export default function CirclesScreen({ navigation, route }) {
           try {
             const circlesData = JSON.parse(circlesText);
             if (circlesData.success && circlesData.circles) {
+              console.log('[DEBUG loadCirclesData] API 응답 성공:', { universityCode, count: circlesData.circles.length });
               setSavedCircles(circlesData.circles);
               // 캐시 저장 (비동기, 블로킹하지 않음 - HomeScreen과 동일)
               AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
@@ -577,7 +586,9 @@ export default function CirclesScreen({ navigation, route }) {
       const refreshData = async () => {
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
         let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
+        console.log('[DEBUG refreshData] 시작:', { selectedChannel, routeParams: route?.params?.selectedChannel });
       if (route?.params?.selectedChannel && route.params.selectedChannel !== selectedChannel) {
+        console.log('[DEBUG refreshData] route.params에서 selectedChannel 업데이트:', route.params.selectedChannel);
         setSelectedChannel(route.params.selectedChannel);
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
         } else {
@@ -588,6 +599,7 @@ export default function CirclesScreen({ navigation, route }) {
         
         // currentChannel에 따라 targetUni 결정
         const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
+        console.log('[DEBUG refreshData] targetUni 결정:', { currentChannel, targetUni, university });
         
         if (!targetUni) {
           if (isMounted) {
@@ -610,6 +622,7 @@ export default function CirclesScreen({ navigation, route }) {
           // 캐시가 있고 2분 이내면 기존 데이터 유지하고 뷰수만 백그라운드에서 업데이트
           if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION && isMounted) {
             const cachedCircles = JSON.parse(cachedData);
+            console.log('[DEBUG refreshData] 캐시 사용 (뷰수만 업데이트):', { universityCode, count: cachedCircles.length });
             // 기존 데이터 유지 (빈 배열로 초기화하지 않음)
             // 뷰수만 백그라운드에서 업데이트
             fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`, {
@@ -651,12 +664,14 @@ export default function CirclesScreen({ navigation, route }) {
           }
           
           // 캐시가 없거나 만료되었으면 새로 로드 (기존 데이터는 유지)
+          console.log('[DEBUG refreshData] API 호출:', { universityCode });
           const circlesResponse = await fetch(`${API_BASE_URL}/api/circles?university=${encodeURIComponent(universityCode)}`);
           if (circlesResponse.ok && isMounted) {
             const circlesText = await circlesResponse.text();
             try {
               const circlesData = JSON.parse(circlesText);
               if (circlesData.success && circlesData.circles) {
+                console.log('[DEBUG refreshData] API 응답 성공:', { universityCode, count: circlesData.circles.length });
                 setSavedCircles(circlesData.circles);
                 // 캐시 저장
                 AsyncStorage.setItem(cacheKey, JSON.stringify(circlesData.circles)).catch(() => {});
