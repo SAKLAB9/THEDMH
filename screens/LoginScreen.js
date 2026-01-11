@@ -419,50 +419,49 @@ export default function LoginScreen() {
       const sortedNames = [...imageNames].sort().join(',');
       const cacheKey = `admin_image_urls_${sortedNames}`;
       
-      try {
-        // 캐시에서 먼저 확인
-        const cachedUrls = await AsyncStorage.getItem(cacheKey);
-        if (cachedUrls) {
-          const parsedUrls = JSON.parse(cachedUrls);
-          // URL 객체로 변환
-          const urls = {};
-          Object.keys(parsedUrls).forEach(imageName => {
-            urls[imageName] = { uri: parsedUrls[imageName] };
-          });
-          setAdminImageUrls(urls);
-          return; // 캐시에서 가져왔으므로 API 호출 생략
-        }
-        
-        // 캐시에 없으면 Supabase Storage에서 직접 가져오기
-        if (!supabase) {
-          setAdminImageUrls({});
-          return;
-        }
-        
-        // Supabase Storage에서 직접 URL 생성
-        const urls = {};
-        imageNames.forEach(imageName => {
-          const trimmedName = String(imageName).trim();
-          if (trimmedName) {
-            const filePath = `assets/${trimmedName}`;
-            const { data: urlData } = supabase.storage
-              .from('images')
-              .getPublicUrl(filePath);
-            if (urlData?.publicUrl) {
-              urls[trimmedName] = urlData.publicUrl;
-            }
-          }
-        });
-        
-        // 캐시에 저장
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
-        
+      // 캐시에서 먼저 확인
+      const cachedUrls = await AsyncStorage.getItem(cacheKey);
+      if (cachedUrls) {
+        const parsedUrls = JSON.parse(cachedUrls);
         // URL 객체로 변환
-        const urlObjects = {};
-        Object.keys(urls).forEach(imageName => {
-          urlObjects[imageName] = { uri: urls[imageName] };
+        const urls = {};
+        Object.keys(parsedUrls).forEach(imageName => {
+          urls[imageName] = { uri: parsedUrls[imageName] };
         });
-        setAdminImageUrls(urlObjects);
+        setAdminImageUrls(urls);
+        return; // 캐시에서 가져왔으므로 API 호출 생략
+      }
+      
+      // 캐시에 없으면 Supabase Storage에서 직접 가져오기
+      if (!supabase) {
+        setAdminImageUrls({});
+        return;
+      }
+      
+      // Supabase Storage에서 직접 URL 생성
+      const urls = {};
+      imageNames.forEach(imageName => {
+        const trimmedName = String(imageName).trim();
+        if (trimmedName) {
+          const filePath = `assets/${trimmedName}`;
+          const { data: urlData } = supabase.storage
+            .from('images')
+            .getPublicUrl(filePath);
+          if (urlData?.publicUrl) {
+            urls[trimmedName] = urlData.publicUrl;
+          }
+        }
+      });
+      
+      // 캐시에 저장
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(urls));
+      
+      // URL 객체로 변환
+      const urlObjects = {};
+      Object.keys(urls).forEach(imageName => {
+        urlObjects[imageName] = { uri: urls[imageName] };
+      });
+      setAdminImageUrls(urlObjects);
     };
     
     loadAdminImageUrls();
