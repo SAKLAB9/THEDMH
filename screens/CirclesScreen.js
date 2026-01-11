@@ -675,9 +675,10 @@ export default function CirclesScreen({ navigation, route }) {
         
         // selectedChannel이 방금 변경되었다면 refreshData를 실행하지 않음
         // (이미 loadCirclesData가 실행 중이거나 실행되었을 수 있음)
-        if (selectedChannelRef.current !== currentChannel) {
+        const currentRefValue = selectedChannelRef.current;
+        if (currentRefValue !== currentChannel) {
           console.log('[DEBUG refreshData] 스킵 (selectedChannel이 방금 변경됨):', { 
-            current: selectedChannelRef.current, 
+            refValue: currentRefValue, 
             target: currentChannel 
           });
           return;
