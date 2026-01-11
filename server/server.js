@@ -1353,10 +1353,38 @@ app.get('/api/popups/:popupId/survey-responses', async (req, res) => {
 app.post('/api/upload-board-image', async (req, res) => {
   // upload-image로 리다이렉트 (하위 호환성)
   req.body.type = 'board';
-  // 같은 핸들러 재사용
-  return app._router.handle({ ...req, url: '/api/upload-image', method: 'POST' }, res, () => {
-    // upload-image 핸들러가 처리하도록
-  });
+  // upload-image 핸들러 재사용
+  const { imageData, filename, university } = req.body;
+  
+  if (!imageData) {
+    return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
+  }
+  
+  if (!university) {
+    return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
+  }
+  
+  const universityCode = await normalizeUniversityFromRequest(university, pool);
+  if (!universityCode) {
+    return res.status(400).json({ error: '유효하지 않은 university입니다.' });
+  }
+  
+  const imageFilename = filename || `board_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+  
+  try {
+    const imageUrl = await saveBoardImageToSupabase(imageData, imageFilename, universityCode);
+    return res.json({
+      success: true,
+      url: imageUrl,
+      filename: imageFilename
+    });
+  } catch (error) {
+    console.error('[API Upload Board Image] 이미지 저장 실패:', error);
+    return res.status(500).json({ 
+      error: '이미지 업로드 실패', 
+      message: error.message 
+    });
+  }
 });
     if (!universityCode) {
       return res.status(400).json({ error: '유효하지 않은 university입니다.' });
