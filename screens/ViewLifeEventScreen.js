@@ -211,6 +211,16 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         const response = await fetch(url);
         
         if (response.ok) {
+          // Content-Type 확인
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            if (__DEV__) {
+              console.error('[ViewLifeEventScreen] JSON이 아닌 응답:', text.substring(0, 200));
+            }
+            throw new Error('서버 응답이 JSON 형식이 아닙니다.');
+          }
+          
           const data = await response.json();
           if (data.success && data.lifeEvent) {
             // 캐시에 저장
@@ -235,9 +245,31 @@ export default function ViewLifeEventScreen({ route, navigation }) {
             }
           }
         } else {
-          const errorData = await response.json().catch(() => ({ error: '경조사를 불러올 수 없습니다.' }));
+          // 에러 응답 처리 (JSON이 아닐 수 있음)
+          let errorData = { error: '경조사를 불러올 수 없습니다.' };
+          try {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              errorData = await response.json();
+            } else {
+              const text = await response.text();
+              if (__DEV__) {
+                console.error(`[ViewLifeEventScreen] 서버 오류 (${response.status}):`, text.substring(0, 200));
+              }
+            }
+          } catch (parseError) {
+            if (__DEV__) {
+              console.error(`[ViewLifeEventScreen] 에러 응답 파싱 실패:`, parseError);
+            }
+          }
+          
           if (__DEV__) {
-            console.error(`[ViewLifeEventScreen] 서버 오류:`, errorData);
+            console.error(`[ViewLifeEventScreen] 서버 오류:`, {
+              status: response.status,
+              statusText: response.statusText,
+              url,
+              errorData
+            });
           }
           Alert.alert('오류', errorData.error || '경조사를 불러올 수 없습니다.');
           if (navigation.canGoBack()) {
