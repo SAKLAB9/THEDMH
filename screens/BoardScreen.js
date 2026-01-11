@@ -362,30 +362,12 @@ export default function BoardScreen({ navigation, route }) {
           if (postsData.success && postsData.posts) {
             setSavedPosts(postsData.posts);
           } else {
-            if (__DEV__) {
-              console.error('[BoardScreen] 게시글 데이터 형식 오류:', postsData);
-            }
             setSavedPosts([]);
           }
         } else {
-          if (__DEV__) {
-            console.error(`[BoardScreen] 게시글 로드 실패: ${postsResponse.status} ${postsResponse.statusText}`, {
-              url: `${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`,
-              university: targetUni,
-              universityCode,
-              API_BASE_URL
-            });
-          }
           setSavedPosts([]);
         }
       } catch (error) {
-        if (__DEV__) {
-          console.error('[BoardScreen] 게시글 로드 오류:', error, {
-            university: targetUni,
-            universityCode: targetUni ? targetUni.toLowerCase() : null,
-            API_BASE_URL
-          });
-        }
         setSavedPosts([]);
       }
   }, [university, selectedChannel]);
@@ -491,30 +473,12 @@ export default function BoardScreen({ navigation, route }) {
             if (postsData.success && postsData.posts) {
               setSavedPosts(postsData.posts);
             } else {
-              if (__DEV__) {
-                console.error('[BoardScreen] 게시글 데이터 형식 오류:', postsData);
-              }
               setSavedPosts([]);
             }
           } else if (isMounted) {
-            if (__DEV__) {
-              console.error(`[BoardScreen] 게시글 로드 실패: ${postsResponse.status} ${postsResponse.statusText}`, {
-                url: `${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`,
-                university: targetUni,
-                universityCode,
-                API_BASE_URL
-              });
-            }
             setSavedPosts([]);
           }
         } catch (error) {
-          if (__DEV__) {
-            console.error('[BoardScreen] 게시글 로드 오류:', error, {
-              university: targetUni,
-              universityCode: targetUni ? targetUni.toLowerCase() : null,
-              API_BASE_URL
-            });
-          }
           if (isMounted) {
             setSavedPosts([]);
           }
