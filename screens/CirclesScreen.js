@@ -613,13 +613,14 @@ export default function CirclesScreen({ navigation, route }) {
     React.useCallback(() => {
       let isMounted = true;
       
-      // selectedChannel이 방금 변경되었다면 refreshData를 완전히 스킵
-      // (loadCirclesData가 이미 처리 중이거나 처리했음)
+      // selectedChannelRef를 최신 값으로 업데이트 (useEffect보다 먼저 실행될 수 있음)
       const lastSelectedChannel = selectedChannelRef.current;
       const currentSelectedChannel = selectedChannel;
       
-      // selectedChannelRef와 state가 다르면 방금 변경된 것이므로 모든 refreshData 스킵
+      // selectedChannel이 변경되었다면 selectedChannelRef를 즉시 업데이트
       if (lastSelectedChannel !== currentSelectedChannel) {
+        selectedChannelRef.current = currentSelectedChannel;
+        // selectedChannel이 변경되었으므로 refreshData를 완전히 스킵 (loadCirclesData가 처리함)
         return () => {
           isMounted = false;
           if (intervalRef.current) {
