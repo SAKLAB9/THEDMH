@@ -26,6 +26,14 @@
       "dest": "/api/life-events.js"
     },
     {
+      "src": "/api/upload-image",
+      "dest": "/api/upload-image.js"
+    },
+    {
+      "src": "/api/upload-board-image",
+      "dest": "/api/upload-board-image.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server.js"
     },
