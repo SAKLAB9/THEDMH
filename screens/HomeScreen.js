@@ -342,6 +342,91 @@ export default function HomeScreen({ navigation }) {
             console.error('[HomeScreen] 로고 캐시 읽기 오류:', cacheError);
           }
           
+          // 공지사항과 경조사 캐시 확인
+          const noticesCacheKey = `home_notices_${universityCode}`;
+          const lifeEventsCacheKey = `home_life_events_${universityCode}`;
+          const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
+          
+          let cachedNotices = null;
+          let cachedLifeEvents = null;
+          let cacheTimestamp = null;
+          
+          try {
+            const [cachedNoticesStr, cachedLifeEventsStr, timestampStr] = await Promise.all([
+              AsyncStorage.getItem(noticesCacheKey),
+              AsyncStorage.getItem(lifeEventsCacheKey),
+              AsyncStorage.getItem(cacheTimestampKey)
+            ]);
+            
+            if (cachedNoticesStr) {
+              cachedNotices = JSON.parse(cachedNoticesStr);
+            }
+            if (cachedLifeEventsStr) {
+              cachedLifeEvents = JSON.parse(cachedLifeEventsStr);
+            }
+            if (timestampStr) {
+              cacheTimestamp = parseInt(timestampStr, 10);
+            }
+            
+            // 캐시가 있고 5분 이내면 캐시된 데이터 사용
+            const cacheAge = cacheTimestamp ? Date.now() - cacheTimestamp : Infinity;
+            const CACHE_DURATION = 5 * 60 * 1000; // 5분
+            
+            if (cacheAge < CACHE_DURATION && cachedNotices && cachedLifeEvents) {
+              // 캐시된 데이터를 먼저 표시
+              setSavedNotices(cachedNotices);
+              setSavedLifeEvents(cachedLifeEvents);
+              
+              // 백그라운드에서 새 데이터 가져오기 (캐시가 있으면 비동기로 업데이트)
+              Promise.all([
+                logoUrl 
+                  ? Promise.resolve(null)
+                  : fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(imageFileName)}`),
+                fetch(`${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`),
+                fetch(`${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`)
+              ]).then(([logoResponse, noticesResponse, lifeEventsResponse]) => {
+                // 로고 이미지 처리
+                if (logoResponse) {
+                  if (logoResponse.ok) {
+                    logoResponse.json().then(logoData => {
+                      if (logoData.success && logoData.url) {
+                        AsyncStorage.setItem(logoCacheKey, logoData.url).catch(() => {});
+                        setLogoImageUrl({ uri: logoData.url });
+                      }
+                    }).catch(() => {});
+                  }
+                }
+                
+                // 공지사항 업데이트
+                if (noticesResponse.ok) {
+                  noticesResponse.json().then(noticesData => {
+                    if (noticesData.success && noticesData.notices) {
+                      AsyncStorage.setItem(noticesCacheKey, JSON.stringify(noticesData.notices)).catch(() => {});
+                      AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
+                      setSavedNotices(noticesData.notices);
+                    }
+                  }).catch(() => {});
+                }
+                
+                // 경조사 업데이트
+                if (lifeEventsResponse.ok) {
+                  lifeEventsResponse.json().then(lifeEventsData => {
+                    if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+                      AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(lifeEventsData.lifeEvents)).catch(() => {});
+                      AsyncStorage.setItem(cacheTimestampKey, Date.now().toString()).catch(() => {});
+                      setSavedLifeEvents(lifeEventsData.lifeEvents);
+                    }
+                  }).catch(() => {});
+                }
+              }).catch(() => {});
+              
+              return; // 캐시가 있으면 여기서 종료
+            }
+          } catch (cacheError) {
+            // 캐시 읽기 오류는 무시하고 API 호출 계속
+          }
+          
+          // 캐시가 없거나 만료되었으면 API 호출
           // 로고 이미지, 공지사항, 경조사를 병렬로 불러오기 (성능 최적화)
           const promises = [
             // 로고는 캐시가 없을 때만 API 호출
@@ -370,7 +455,9 @@ export default function HomeScreen({ navigation }) {
                 setLogoImageUrl(null);
               }
             } else {
-              console.error('[HomeScreen] 로고 이미지 로드 실패:', logoResponse.status);
+              if (__DEV__) {
+                console.error('[HomeScreen] 로고 이미지 로드 실패:', logoResponse.status);
+              }
               setLogoImageUrl(null);
             }
           }
@@ -379,23 +466,44 @@ export default function HomeScreen({ navigation }) {
           if (noticesResponse.ok) {
             const noticesData = await noticesResponse.json();
             if (noticesData.success && noticesData.notices) {
+              // 캐시에 저장
+              try {
+                await AsyncStorage.setItem(noticesCacheKey, JSON.stringify(noticesData.notices));
+                await AsyncStorage.setItem(cacheTimestampKey, Date.now().toString());
+              } catch (cacheError) {
+                // 캐시 저장 실패는 무시
+              }
               setSavedNotices(noticesData.notices);
             } else {
-              console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+              if (__DEV__) {
+                console.error('[HomeScreen] 공지사항 데이터 형식 오류:', noticesData);
+              }
               setSavedNotices([]);
             }
           } else {
-            // 404 오류는 개발 모드에서만 로그
+            // 오류는 개발 모드에서만 로그
             if (__DEV__) {
-              console.error('[HomeScreen] 공지사항 로드 실패:', noticesResponse.status, `${API_BASE_URL}/api/notices?university=${encodeURIComponent(universityCode)}`);
+              console.error('[HomeScreen] 공지사항 로드 실패:', noticesResponse.status);
             }
-            setSavedNotices([]);
+            // 오류 시 캐시된 데이터가 있으면 사용
+            if (cachedNotices) {
+              setSavedNotices(cachedNotices);
+            } else {
+              setSavedNotices([]);
+            }
           }
 
           // 경조사 처리
           if (lifeEventsResponse.ok) {
             const lifeEventsData = await lifeEventsResponse.json();
             if (lifeEventsData.success && lifeEventsData.lifeEvents) {
+              // 캐시에 저장
+              try {
+                await AsyncStorage.setItem(lifeEventsCacheKey, JSON.stringify(lifeEventsData.lifeEvents));
+                await AsyncStorage.setItem(cacheTimestampKey, Date.now().toString());
+              } catch (cacheError) {
+                // 캐시 저장 실패는 무시
+              }
               setSavedLifeEvents(lifeEventsData.lifeEvents);
             } else {
               if (__DEV__) {
@@ -404,11 +512,16 @@ export default function HomeScreen({ navigation }) {
               setSavedLifeEvents([]);
             }
           } else {
-            // 404 오류는 개발 모드에서만 로그
+            // 오류는 개발 모드에서만 로그
             if (__DEV__) {
-              console.error('[HomeScreen] 경조사 로드 실패:', lifeEventsResponse.status, `${API_BASE_URL}/api/life-events?university=${encodeURIComponent(universityCode)}`);
+              console.error('[HomeScreen] 경조사 로드 실패:', lifeEventsResponse.status);
             }
-            setSavedLifeEvents([]);
+            // 오류 시 캐시된 데이터가 있으면 사용
+            if (cachedLifeEvents) {
+              setSavedLifeEvents(cachedLifeEvents);
+            } else {
+              setSavedLifeEvents([]);
+            }
           }
         } catch (error) {
           console.error('[HomeScreen] 데이터 로드 오류:', error);
