@@ -1669,7 +1669,7 @@ app.put('/api/notices/:id', async (req, res) => {
            SET title = $1, content_blocks = $2, text_content = $3, images = $4, category = $5, nickname = $6, author = $7, url = $8
            WHERE id = $9
            RETURNING *`,
-          [title, JSON.stringify(contentBlocks), textContent, images || [], category, (nickname && nickname.trim()) ? nickname.trim() : '관리자', author || '', (url && url.trim()) ? url.trim() : null, id]
+          [title, JSON.stringify(updatedContentBlocks), textContent, savedImageUrls, category, (nickname && nickname.trim()) ? nickname.trim() : '관리자', author || '', (url && url.trim()) ? url.trim() : null, id]
         );
         
         res.json({
@@ -2101,14 +2101,54 @@ app.put('/api/life-events/:id', async (req, res) => {
           });
         }
 
+        // 새로운 이미지 저장 및 URL 수집
+        const savedImageUrls = [...oldImages];
+        if (images && images.length > 0) {
+          for (let i = 0; i < images.length; i++) {
+            const imageData = images[i];
+            if (imageData && imageData.startsWith('data:image')) {
+              const timestamp = Date.now();
+              const filename = `notice_${timestamp}_${i}.jpg`;
+              try {
+                const imageUrl = await saveImage(imageData, filename, universityCode);
+                savedImageUrls.push(imageUrl);
+              } catch (error) {
+                console.error(`[경조사 수정] 이미지 저장 실패:`, error);
+              }
+            } else if (imageData && imageData.startsWith('http')) {
+              if (!savedImageUrls.includes(imageData)) {
+                savedImageUrls.push(imageData);
+              }
+            }
+          }
+        }
+
+        // contentBlocks의 이미지도 업로드 및 업데이트
+        const updatedContentBlocks = await Promise.all((contentBlocks || []).map(async (block, index) => {
+          if (block.type === 'image' && block.uri) {
+            if (block.uri.startsWith('data:image')) {
+              const timestamp = Date.now();
+              const filename = `notice_${timestamp}_block_${index}.jpg`;
+              try {
+                const imageUrl = await saveImage(block.uri, filename, universityCode);
+                return { ...block, uri: imageUrl };
+              } catch (error) {
+                console.error(`[경조사 수정] contentBlocks 이미지 저장 실패:`, error);
+                return block;
+              }
+            }
+          }
+          return block;
+        }));
+
         // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
         const newImageUrls = new Set();
-        (images || []).forEach(url => {
+        savedImageUrls.forEach(url => {
           if (url) {
             newImageUrls.add(url);
           }
         });
-        contentBlocks.forEach(block => {
+        updatedContentBlocks.forEach(block => {
           if (block.type === 'image' && block.uri) {
             newImageUrls.add(block.uri);
           }
@@ -2127,7 +2167,7 @@ app.put('/api/life-events/:id', async (req, res) => {
            SET title = $1, content_blocks = $2, text_content = $3, images = $4, category = $5, nickname = $6, author = $7, url = $8
            WHERE id = $9
            RETURNING *`,
-          [title, JSON.stringify(contentBlocks), textContent, images || [], category, (nickname && nickname.trim()) ? nickname.trim() : null, author || '', (url && url.trim()) ? url.trim() : null, id]
+          [title, JSON.stringify(updatedContentBlocks), textContent, savedImageUrls, category, (nickname && nickname.trim()) ? nickname.trim() : null, author || '', (url && url.trim()) ? url.trim() : null, id]
         );
         
         res.json({
