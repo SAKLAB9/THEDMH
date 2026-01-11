@@ -36,19 +36,11 @@ function ImageBlock({ uri }) {
       fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/board_images\//g, '/images/$1/');
       fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/circle_images\//g, '/images/$1/');
       
-      // 중복된 슬래시 제거 (// -> /)
+      // 슬래시 중복 제거 (// -> /)
       fixedUri = fixedUri.replace(/\/+/g, '/');
       
-      // 파일명에서 접두사 확인 및 경로 재구성
-      // URL에서 파일명 추출
-      const urlMatch = fixedUri.match(/\/([^\/]+)\/([^\/]+)$/);
-      if (urlMatch) {
-        const [, folder, filename] = urlMatch;
-        // 파일명에 접두사가 있으면 그대로, 없으면 notice_ 추가하지 않음 (이미 저장된 파일)
-        // 실제 Storage 경로는 학교이름/파일명 형식
-        // URL이 /images/nyu/image_xxx.jpg 형식이면 그대로 사용
-        return fixedUri;
-      }
+      // Supabase URL 변경 처리 (qgtwkhkmdsaypnsnrpbf -> waumfxamhuvhsblehsuf)
+      fixedUri = fixedUri.replace(/qgtwkhkmdsaypnsnrpbf\.supabase\.co/g, 'waumfxamhuvhsblehsuf.supabase.co');
       
       return fixedUri;
     }
