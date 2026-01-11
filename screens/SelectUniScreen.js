@@ -117,30 +117,48 @@ export default function SelectUniScreen() {
     }
   }, [slotsCount, slotImageNamesString, getConfig]);
 
-  // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (fallback 없음)
+  // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
     if (!fontsLoaded) return;
     
     const loadMainIconImage = async () => {
       const iconImageName = getConfig('select_uni_icon_image', 'icon.png');
-      if (iconImageName) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.url) {
-              setIconImageUrl({ uri: data.url });
-            } else {
-              setIconImageUrl(null);
-            }
+      
+      if (!iconImageName) {
+        setIconImageUrl(null);
+        return;
+      }
+      
+      // 캐시 키 생성
+      const cacheKey = `select_uni_icon_url_${iconImageName}`;
+      
+      try {
+        // 캐시에서 먼저 확인
+        const cachedUrl = await AsyncStorage.getItem(cacheKey);
+        if (cachedUrl) {
+          setIconImageUrl({ uri: cachedUrl });
+          return; // 캐시에서 가져왔으므로 API 호출 생략
+        }
+        
+        // 캐시에 없으면 API 호출
+        const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
+        const response = await fetch(apiUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.url) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, data.url);
+            setIconImageUrl({ uri: data.url });
           } else {
             setIconImageUrl(null);
           }
-        } catch (error) {
-          console.error('[SelectUniScreen] 아이콘 로드 실패:', error);
+        } else {
           setIconImageUrl(null);
         }
-      } else {
+      } catch (error) {
+        console.error('[SelectUniScreen] 아이콘 로드 실패:', error);
         setIconImageUrl(null);
       }
     };

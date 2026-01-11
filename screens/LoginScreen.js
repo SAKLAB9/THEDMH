@@ -327,45 +327,48 @@ export default function LoginScreen() {
     adminSlotImageNames.push(getConfig(`login_admin_slot_${i}_image`, ''));
   }
 
-  // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기 (fallback 없음)
+  // Supabase Storage에서 로그인 아이콘 이미지 URL 가져오기 (캐싱 적용)
   useEffect(() => {
     if (!fontsLoaded || configLoading) return;
     
     const loadLoginIconImage = async () => {
       const iconImageName = getConfig('login_icon_image', 'icon.png');
-      console.log('[LoginScreen] 아이콘 이미지 이름:', iconImageName);
-      console.log('[LoginScreen] config에서 login_icon_image:', getConfig('login_icon_image'));
       
-      if (iconImageName) {
-        try {
-          const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
-          console.log('[LoginScreen] API 호출 URL:', apiUrl);
+      if (!iconImageName) {
+        setIconImageUrl(null);
+        return;
+      }
+      
+      // 캐시 키 생성
+      const cacheKey = `login_icon_url_${iconImageName}`;
+      
+      try {
+        // 캐시에서 먼저 확인
+        const cachedUrl = await AsyncStorage.getItem(cacheKey);
+        if (cachedUrl) {
+          setIconImageUrl({ uri: cachedUrl });
+          return; // 캐시에서 가져왔으므로 API 호출 생략
+        }
+        
+        // 캐시에 없으면 API 호출
+        const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
+        const response = await fetch(apiUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
           
-          const response = await fetch(apiUrl);
-          console.log('[LoginScreen] API 응답 상태:', response.status);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('[LoginScreen] API 응답 데이터:', data);
-            
-            if (data.success && data.url) {
-              console.log('[LoginScreen] 아이콘 URL 로드 성공:', data.url);
-              setIconImageUrl({ uri: data.url });
-            } else {
-              console.warn('[LoginScreen] API 응답에 URL이 없음:', data);
-              setIconImageUrl(null);
-            }
+          if (data.success && data.url) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, data.url);
+            setIconImageUrl({ uri: data.url });
           } else {
-            const errorText = await response.text();
-            console.error('[LoginScreen] API 오류:', response.status, errorText);
             setIconImageUrl(null);
           }
-        } catch (error) {
-          console.error('[LoginScreen] 아이콘 로드 실패:', error);
+        } else {
           setIconImageUrl(null);
         }
-      } else {
-        console.warn('[LoginScreen] iconImageName이 없음');
+      } catch (error) {
+        console.error('[LoginScreen] 아이콘 로드 실패:', error);
         setIconImageUrl(null);
       }
     };
@@ -622,6 +625,7 @@ export default function LoginScreen() {
                     cursor: 'pointer',
                   }}
                   resizeMode="contain"
+                  cache="force-cache"
                 />
               </TouchableOpacity>
             ) : (
