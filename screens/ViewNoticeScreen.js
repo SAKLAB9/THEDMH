@@ -217,16 +217,29 @@ export default function ViewNoticeScreen({ route, navigation }) {
           
           const data = await response.json();
           if (data.success && data.notice) {
+            // content_blocks 파싱
+            let notice = { ...data.notice };
+            if (notice.content_blocks && typeof notice.content_blocks === 'string') {
+              try {
+                notice.content_blocks = JSON.parse(notice.content_blocks);
+              } catch (e) {
+                notice.content_blocks = [];
+              }
+            }
+            if (!Array.isArray(notice.content_blocks)) {
+              notice.content_blocks = [];
+            }
+            
             // 캐시에 저장
             try {
               await AsyncStorage.setItem(cacheKey, JSON.stringify({
-                notice: data.notice,
+                notice: notice,
                 timestamp: Date.now()
               }));
             } catch (cacheError) {
               // 캐시 저장 실패는 무시
             }
-            setNotice(data.notice);
+            setNotice(notice);
           } else {
             if (__DEV__) {
               console.error(`[ViewNoticeScreen] 공지사항을 찾을 수 없음`);
@@ -464,34 +477,45 @@ export default function ViewNoticeScreen({ route, navigation }) {
           )}
 
           {/* 본문 내용 */}
-          {contentBlocks.length > 0 && (
+          {contentBlocks && contentBlocks.length > 0 ? (
             <View className="mt-4">
               {contentBlocks.map((block, index) => {
-              if (block.type === 'image') {
-                return (
-                  <ImageBlock 
-                    key={block.id || `image_${index}`} 
-                    uri={block.uri} 
-                  />
-                );
-              } else if (block.type === 'text') {
-                return (
-                  <Text 
-                    key={block.id || `text_${index}`}
-                    className="text-base mb-4"
-                    style={{ 
-                      color: '#333',
-                      lineHeight: 24
-                    }}
-                  >
-                    {block.content}
-                  </Text>
-                );
-              }
-              return null;
+                if (block && block.type === 'image' && block.uri) {
+                  return (
+                    <ImageBlock 
+                      key={block.id || `image_${index}`} 
+                      uri={block.uri} 
+                    />
+                  );
+                } else if (block && block.type === 'text' && block.content) {
+                  return (
+                    <Text 
+                      key={block.id || `text_${index}`}
+                      className="text-base mb-4"
+                      style={{ 
+                        color: '#333',
+                        lineHeight: 24
+                      }}
+                    >
+                      {block.content}
+                    </Text>
+                  );
+                }
+                return null;
               })}
             </View>
-          )}
+          ) : notice?.text_content ? (
+            // contentBlocks가 없고 text_content가 있는 경우 (레거시 데이터)
+            <Text 
+              className="text-base mb-4"
+              style={{ 
+                color: '#333',
+                lineHeight: 24
+              }}
+            >
+              {notice.text_content}
+            </Text>
+          ) : null}
 
           {/* RSVP 버튼 */}
           {notice?.url && notice.url.trim() !== '' && (

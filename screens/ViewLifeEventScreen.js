@@ -172,36 +172,40 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           setLifeEvent(lifeEvent);
           setLoading(false);
           
-          // 백그라운드에서 새 데이터 가져오기
-          fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
-            .then(response => {
-              if (response.ok) {
-                return response.json();
-              }
-              return null;
-            })
-            .then(data => {
-              if (data && data.success && data.lifeEvent) {
-                // content_blocks 파싱
-                let updatedLifeEvent = data.lifeEvent;
-                if (updatedLifeEvent.content_blocks && typeof updatedLifeEvent.content_blocks === 'string') {
-                  try {
-                    updatedLifeEvent.content_blocks = JSON.parse(updatedLifeEvent.content_blocks);
-                  } catch (e) {
+          // 백그라운드에서 새 데이터 가져오기 (캐시 만료 시간이 지났을 때만)
+          const CACHE_REFRESH_THRESHOLD = 2 * 60 * 1000; // 2분
+          const cacheAge = Date.now() - (parsedData.timestamp || 0);
+          if (cacheAge > CACHE_REFRESH_THRESHOLD) {
+            fetch(`${API_BASE_URL}/api/life-events/${lifeEventId}?university=${encodeURIComponent(universityCode)}`)
+              .then(response => {
+                if (response.ok) {
+                  return response.json();
+                }
+                return null;
+              })
+              .then(data => {
+                if (data && data.success && data.lifeEvent) {
+                  // content_blocks 파싱
+                  let updatedLifeEvent = data.lifeEvent;
+                  if (updatedLifeEvent.content_blocks && typeof updatedLifeEvent.content_blocks === 'string') {
+                    try {
+                      updatedLifeEvent.content_blocks = JSON.parse(updatedLifeEvent.content_blocks);
+                    } catch (e) {
+                      updatedLifeEvent.content_blocks = [];
+                    }
+                  }
+                  if (!Array.isArray(updatedLifeEvent.content_blocks)) {
                     updatedLifeEvent.content_blocks = [];
                   }
+                  AsyncStorage.setItem(cacheKey, JSON.stringify({
+                    lifeEvent: updatedLifeEvent,
+                    timestamp: Date.now()
+                  })).catch(() => {});
+                  setLifeEvent(updatedLifeEvent);
                 }
-                if (!Array.isArray(updatedLifeEvent.content_blocks)) {
-                  updatedLifeEvent.content_blocks = [];
-                }
-                AsyncStorage.setItem(cacheKey, JSON.stringify({
-                  lifeEvent: updatedLifeEvent,
-                  timestamp: Date.now()
-                })).catch(() => {});
-                setLifeEvent(updatedLifeEvent);
-              }
-            })
-            .catch(() => {});
+              })
+              .catch(() => {});
+          }
           
           return; // 캐시가 있으면 여기서 종료
         }
@@ -223,16 +227,29 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           
           const data = await response.json();
           if (data.success && data.lifeEvent) {
+            // content_blocks 파싱
+            let lifeEvent = { ...data.lifeEvent };
+            if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
+              try {
+                lifeEvent.content_blocks = JSON.parse(lifeEvent.content_blocks);
+              } catch (e) {
+                lifeEvent.content_blocks = [];
+              }
+            }
+            if (!Array.isArray(lifeEvent.content_blocks)) {
+              lifeEvent.content_blocks = [];
+            }
+            
             // 캐시에 저장
             try {
               await AsyncStorage.setItem(cacheKey, JSON.stringify({
-                lifeEvent: data.lifeEvent,
+                lifeEvent: lifeEvent,
                 timestamp: Date.now()
               }));
             } catch (cacheError) {
               // 캐시 저장 실패는 무시
             }
-            setLifeEvent(data.lifeEvent);
+            setLifeEvent(lifeEvent);
           } else {
             if (__DEV__) {
               console.error(`[ViewLifeEventScreen] 경조사를 찾을 수 없음`);
@@ -558,34 +575,45 @@ export default function ViewLifeEventScreen({ route, navigation }) {
           )}
 
           {/* 본문 내용 */}
-          {contentBlocks.length > 0 && (
+          {contentBlocks && contentBlocks.length > 0 ? (
             <View className="mt-4">
               {contentBlocks.map((block, index) => {
-              if (block.type === 'image') {
-                return (
-                  <ImageBlock 
-                    key={block.id || `image_${index}`} 
-                    uri={block.uri} 
-                  />
-                );
-              } else if (block.type === 'text') {
-                return (
-                  <Text 
-                    key={block.id || `text_${index}`}
-                    className="text-base mb-4"
-                    style={{ 
-                      color: '#333',
-                      lineHeight: 24
-                    }}
-                  >
-                    {block.content}
-                  </Text>
-                );
-              }
-              return null;
+                if (block && block.type === 'image' && block.uri) {
+                  return (
+                    <ImageBlock 
+                      key={block.id || `image_${index}`} 
+                      uri={block.uri} 
+                    />
+                  );
+                } else if (block && block.type === 'text' && block.content) {
+                  return (
+                    <Text 
+                      key={block.id || `text_${index}`}
+                      className="text-base mb-4"
+                      style={{ 
+                        color: '#333',
+                        lineHeight: 24
+                      }}
+                    >
+                      {block.content}
+                    </Text>
+                  );
+                }
+                return null;
               })}
             </View>
-          )}
+          ) : lifeEvent?.text_content ? (
+            // contentBlocks가 없고 text_content가 있는 경우 (레거시 데이터)
+            <Text 
+              className="text-base mb-4"
+              style={{ 
+                color: '#333',
+                lineHeight: 24
+              }}
+            >
+              {lifeEvent.text_content}
+            </Text>
+          ) : null}
 
           {/* RSVP 버튼 */}
           {lifeEvent?.url && lifeEvent.url.trim() !== '' && (
