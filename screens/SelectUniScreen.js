@@ -103,66 +103,51 @@ export default function SelectUniScreen() {
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url`;
         
-        console.log(`[SelectUniScreen] 이미지 로드 시작 (${Platform.OS}):`, {
-          apiUrl,
-          imageNames,
-          imageCount: imageNames.length
-        });
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ filenames: imageNames }),
-        });
-        
-        console.log(`[SelectUniScreen] 이미지 API 응답 (${Platform.OS}):`, {
-          status: response.status,
-          ok: response.ok
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          console.log(`[SelectUniScreen] 이미지 API 데이터 (${Platform.OS}):`, {
-            success: data.success,
-            urlsCount: data.urls ? Object.keys(data.urls).length : 0
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filenames: imageNames }),
           });
           
-          if (data.success && data.urls) {
-            // 캐시에 저장 (24시간 유효)
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
+          if (response.ok) {
+            const data = await response.json();
             
-            // URL 객체로 변환
-            const urls = {};
-            Object.keys(data.urls).forEach(imageName => {
-              urls[imageName] = { uri: data.urls[imageName] };
-              console.log(`[SelectUniScreen] 이미지 URL 생성 (${Platform.OS}):`, imageName, data.urls[imageName]);
-            });
-            setImageUrls(urls);
+            if (data.success && data.urls) {
+              // 캐시에 저장 (24시간 유효)
+              await AsyncStorage.setItem(cacheKey, JSON.stringify(data.urls));
+              
+              // URL 객체로 변환
+              const urls = {};
+              Object.keys(data.urls).forEach(imageName => {
+                urls[imageName] = { uri: data.urls[imageName] };
+              });
+              setImageUrls(urls);
+            } else {
+              // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
+              setImageUrls({});
+            }
           } else {
-            console.warn(`[SelectUniScreen] 이미지 API 응답 실패 (${Platform.OS}):`, data);
+            // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+            // 개발 모드에서만 로그 출력
+            if (__DEV__) {
+              console.warn(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
+                status: response.status,
+                statusText: response.statusText
+              });
+            }
             setImageUrls({});
           }
-        } else {
-          const errorText = await response.text();
-          console.error(`[SelectUniScreen] 이미지 API HTTP 에러 (${Platform.OS}):`, {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
+        } catch (error) {
+          // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+          // 개발 모드에서만 로그 출력
+          if (__DEV__) {
+            console.warn(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error.message);
+          }
           setImageUrls({});
         }
-      } catch (error) {
-        console.error(`[SelectUniScreen] 이미지 로드 실패 (${Platform.OS}):`, error);
-        console.error(`[SelectUniScreen] 에러 상세:`, {
-          message: error.message,
-          stack: error.stack,
-          apiUrl: `${API_BASE_URL}/api/supabase-image-url`
-        });
-        setImageUrls({});
-      }
     };
     
     if (slotsCount > 0) {
@@ -196,52 +181,39 @@ export default function SelectUniScreen() {
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
         
-        console.log(`[SelectUniScreen] 메인 아이콘 로드 시작 (${Platform.OS}):`, {
-          apiUrl,
-          iconImageName
-        });
-        
-        const response = await fetch(apiUrl);
-        
-        console.log(`[SelectUniScreen] 메인 아이콘 API 응답 (${Platform.OS}):`, {
-          status: response.status,
-          ok: response.ok
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
+        try {
+          const response = await fetch(apiUrl);
           
-          console.log(`[SelectUniScreen] 메인 아이콘 API 데이터 (${Platform.OS}):`, {
-            success: data.success,
-            url: data.url
-          });
-          
-          if (data.success && data.url) {
-            // 캐시에 저장 (24시간 유효)
-            await AsyncStorage.setItem(cacheKey, data.url);
-            setIconImageUrl({ uri: data.url });
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.success && data.url) {
+              // 캐시에 저장 (24시간 유효)
+              await AsyncStorage.setItem(cacheKey, data.url);
+              setIconImageUrl({ uri: data.url });
+            } else {
+              // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
+              setIconImageUrl(null);
+            }
           } else {
-            console.warn(`[SelectUniScreen] 메인 아이콘 API 응답 실패 (${Platform.OS}):`, data);
+            // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+            // 개발 모드에서만 로그 출력
+            if (__DEV__) {
+              console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
+                status: response.status,
+                statusText: response.statusText
+              });
+            }
             setIconImageUrl(null);
           }
-        } else {
-          const errorText = await response.text();
-          console.error(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
+        } catch (error) {
+          // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+          // 개발 모드에서만 로그 출력
+          if (__DEV__) {
+            console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error.message);
+          }
           setIconImageUrl(null);
         }
-      } catch (error) {
-        console.error(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error);
-        console.error(`[SelectUniScreen] 에러 상세:`, {
-          message: error.message,
-          stack: error.stack,
-          apiUrl: `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`
-        });
-        setIconImageUrl(null);
-      }
     };
     
     loadMainIconImage();
