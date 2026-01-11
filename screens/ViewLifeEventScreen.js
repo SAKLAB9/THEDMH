@@ -157,7 +157,19 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         
         // 캐시가 있으면 즉시 표시하고 로딩 종료
         if (cachedLifeEvent) {
-          setLifeEvent(cachedLifeEvent);
+          // content_blocks 파싱 확인 (캐시에서 가져온 데이터도 파싱 필요)
+          let lifeEvent = { ...cachedLifeEvent };
+          if (lifeEvent.content_blocks && typeof lifeEvent.content_blocks === 'string') {
+            try {
+              lifeEvent.content_blocks = JSON.parse(lifeEvent.content_blocks);
+            } catch (e) {
+              lifeEvent.content_blocks = [];
+            }
+          }
+          if (!Array.isArray(lifeEvent.content_blocks)) {
+            lifeEvent.content_blocks = [];
+          }
+          setLifeEvent(lifeEvent);
           setLoading(false);
           
           // 백그라운드에서 새 데이터 가져오기
@@ -170,11 +182,23 @@ export default function ViewLifeEventScreen({ route, navigation }) {
             })
             .then(data => {
               if (data && data.success && data.lifeEvent) {
+                // content_blocks 파싱
+                let updatedLifeEvent = data.lifeEvent;
+                if (updatedLifeEvent.content_blocks && typeof updatedLifeEvent.content_blocks === 'string') {
+                  try {
+                    updatedLifeEvent.content_blocks = JSON.parse(updatedLifeEvent.content_blocks);
+                  } catch (e) {
+                    updatedLifeEvent.content_blocks = [];
+                  }
+                }
+                if (!Array.isArray(updatedLifeEvent.content_blocks)) {
+                  updatedLifeEvent.content_blocks = [];
+                }
                 AsyncStorage.setItem(cacheKey, JSON.stringify({
-                  lifeEvent: data.lifeEvent,
+                  lifeEvent: updatedLifeEvent,
                   timestamp: Date.now()
                 })).catch(() => {});
-                setLifeEvent(data.lifeEvent);
+                setLifeEvent(updatedLifeEvent);
               }
             })
             .catch(() => {});

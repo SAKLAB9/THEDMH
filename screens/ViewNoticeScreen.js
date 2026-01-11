@@ -151,7 +151,19 @@ export default function ViewNoticeScreen({ route, navigation }) {
         
         // 캐시가 있으면 즉시 표시하고 로딩 종료
         if (cachedNotice) {
-          setNotice(cachedNotice);
+          // content_blocks 파싱 확인 (캐시에서 가져온 데이터도 파싱 필요)
+          let notice = { ...cachedNotice };
+          if (notice.content_blocks && typeof notice.content_blocks === 'string') {
+            try {
+              notice.content_blocks = JSON.parse(notice.content_blocks);
+            } catch (e) {
+              notice.content_blocks = [];
+            }
+          }
+          if (!Array.isArray(notice.content_blocks)) {
+            notice.content_blocks = [];
+          }
+          setNotice(notice);
           setLoading(false);
           
           // 백그라운드에서 새 데이터 가져오기
@@ -164,11 +176,23 @@ export default function ViewNoticeScreen({ route, navigation }) {
             })
             .then(data => {
               if (data && data.success && data.notice) {
+                // content_blocks 파싱
+                let updatedNotice = data.notice;
+                if (updatedNotice.content_blocks && typeof updatedNotice.content_blocks === 'string') {
+                  try {
+                    updatedNotice.content_blocks = JSON.parse(updatedNotice.content_blocks);
+                  } catch (e) {
+                    updatedNotice.content_blocks = [];
+                  }
+                }
+                if (!Array.isArray(updatedNotice.content_blocks)) {
+                  updatedNotice.content_blocks = [];
+                }
                 AsyncStorage.setItem(cacheKey, JSON.stringify({
-                  notice: data.notice,
+                  notice: updatedNotice,
                   timestamp: Date.now()
                 })).catch(() => {});
-                setNotice(data.notice);
+                setNotice(updatedNotice);
               }
             })
             .catch(() => {});
