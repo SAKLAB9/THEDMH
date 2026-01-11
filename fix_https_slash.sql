@@ -1,5 +1,5 @@
 -- https:/ -> https:// 수정
--- 이미 잘못 업데이트된 content_blocks의 URL 수정
+-- 이미 잘못 업데이트된 images 배열과 content_blocks의 URL 수정
 
 -- ============================================
 -- 결과 저장용 임시 테이블 생성
@@ -14,10 +14,198 @@ CREATE TEMP TABLE IF NOT EXISTS update_results (
 TRUNCATE TABLE update_results;
 
 -- ============================================
+-- 학교별 테이블 - images 배열 업데이트
+-- ============================================
+
+-- 1. 공지사항 테이블 (images 배열)
+DO $$
+DECLARE
+    uni TEXT;
+    table_name TEXT;
+    universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
+    sql_text TEXT;
+BEGIN
+    FOREACH uni IN ARRAY universities
+    LOOP
+        table_name := uni || '_notices';
+        
+        BEGIN
+            sql_text := format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(
+                        regexp_replace(
+                            img,
+                            ''https:/'',
+                            ''https://'',
+                            ''g''
+                        )
+                    )
+                    FROM unnest(images) AS img
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img
+                    WHERE img LIKE ''%%https:/%%''
+                )
+            ', table_name);
+            
+            EXECUTE sql_text;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            INSERT INTO update_results VALUES (table_name || '_images', updated_count, 'Success');
+        EXCEPTION WHEN undefined_column THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'No images column');
+        WHEN OTHERS THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'Error: ' || SQLERRM);
+        END;
+    END LOOP;
+END $$;
+
+-- 2. 경조사 테이블 (images 배열)
+DO $$
+DECLARE
+    uni TEXT;
+    table_name TEXT;
+    universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
+    sql_text TEXT;
+BEGIN
+    FOREACH uni IN ARRAY universities
+    LOOP
+        table_name := uni || '_life_events';
+        
+        BEGIN
+            sql_text := format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(
+                        regexp_replace(
+                            img,
+                            ''https:/'',
+                            ''https://'',
+                            ''g''
+                        )
+                    )
+                    FROM unnest(images) AS img
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img
+                    WHERE img LIKE ''%%https:/%%''
+                )
+            ', table_name);
+            
+            EXECUTE sql_text;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            INSERT INTO update_results VALUES (table_name || '_images', updated_count, 'Success');
+        EXCEPTION WHEN undefined_column THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'No images column');
+        WHEN OTHERS THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'Error: ' || SQLERRM);
+        END;
+    END LOOP;
+END $$;
+
+-- 3. 게시판 테이블 (images 배열)
+DO $$
+DECLARE
+    uni TEXT;
+    table_name TEXT;
+    universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
+    sql_text TEXT;
+BEGIN
+    FOREACH uni IN ARRAY universities
+    LOOP
+        table_name := uni || '_board_posts';
+        
+        BEGIN
+            sql_text := format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(
+                        regexp_replace(
+                            img,
+                            ''https:/'',
+                            ''https://'',
+                            ''g''
+                        )
+                    )
+                    FROM unnest(images) AS img
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img
+                    WHERE img LIKE ''%%https:/%%''
+                )
+            ', table_name);
+            
+            EXECUTE sql_text;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            INSERT INTO update_results VALUES (table_name || '_images', updated_count, 'Success');
+        EXCEPTION WHEN undefined_column THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'No images column');
+        WHEN OTHERS THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'Error: ' || SQLERRM);
+        END;
+    END LOOP;
+END $$;
+
+-- 4. 소모임 테이블 (images 배열)
+DO $$
+DECLARE
+    uni TEXT;
+    table_name TEXT;
+    universities TEXT[] := ARRAY['nyu', 'cornell', 'usc', 'columbia', 'miuhub'];
+    updated_count INTEGER;
+    sql_text TEXT;
+BEGIN
+    FOREACH uni IN ARRAY universities
+    LOOP
+        table_name := uni || '_circles';
+        
+        BEGIN
+            sql_text := format('
+                UPDATE %I 
+                SET images = (
+                    SELECT array_agg(
+                        regexp_replace(
+                            img,
+                            ''https:/'',
+                            ''https://'',
+                            ''g''
+                        )
+                    )
+                    FROM unnest(images) AS img
+                )
+                WHERE images IS NOT NULL 
+                AND array_length(images, 1) > 0
+                AND EXISTS (
+                    SELECT 1 FROM unnest(images) AS img
+                    WHERE img LIKE ''%%https:/%%''
+                )
+            ', table_name);
+            
+            EXECUTE sql_text;
+            GET DIAGNOSTICS updated_count = ROW_COUNT;
+            INSERT INTO update_results VALUES (table_name || '_images', updated_count, 'Success');
+        EXCEPTION WHEN undefined_column THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'No images column');
+        WHEN OTHERS THEN
+            INSERT INTO update_results VALUES (table_name || '_images', 0, 'Error: ' || SQLERRM);
+        END;
+    END LOOP;
+END $$;
+
+-- ============================================
 -- 학교별 테이블 - content_blocks 업데이트
 -- ============================================
 
--- 1. 공지사항 테이블
+-- 5. 공지사항 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -61,16 +249,16 @@ BEGIN
             
             EXECUTE sql_text;
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'No content_blocks column');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'No content_blocks column');
         WHEN OTHERS THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
 
--- 2. 경조사 테이블
+-- 6. 경조사 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -123,7 +311,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- 3. 게시판 테이블
+-- 7. 게시판 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -167,16 +355,16 @@ BEGIN
             
             EXECUTE sql_text;
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'No content_blocks column');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'No content_blocks column');
         WHEN OTHERS THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
 
--- 4. 소모임 테이블
+-- 8. 소모임 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -220,16 +408,16 @@ BEGIN
             
             EXECUTE sql_text;
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'No content_blocks column');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'No content_blocks column');
         WHEN OTHERS THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
 
--- 5. 게시판 댓글 테이블
+-- 9. 게시판 댓글 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -273,16 +461,16 @@ BEGIN
             
             EXECUTE sql_text;
             GET DIAGNOSTICS updated_count = ROW_COUNT;
-            INSERT INTO update_results VALUES (table_name, updated_count, 'Success');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', updated_count, 'Success');
         EXCEPTION WHEN undefined_column THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'No content_blocks column');
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'No content_blocks column');
         WHEN OTHERS THEN
-            INSERT INTO update_results VALUES (table_name, 0, 'Error: ' || SQLERRM);
+            INSERT INTO update_results VALUES (table_name || '_content_blocks', 0, 'Error: ' || SQLERRM);
         END;
     END LOOP;
 END $$;
 
--- 6. 소모임 댓글 테이블
+-- 10. 소모임 댓글 테이블 (content_blocks)
 DO $$
 DECLARE
     uni TEXT;
@@ -339,7 +527,7 @@ END $$;
 -- MIUHub 및 공통 테이블
 -- ============================================
 
--- 7. MIUHub Featured 테이블
+-- 11. MIUHub Featured 테이블 (content_blocks)
 DO $$
 DECLARE
     updated_count INTEGER;
@@ -372,17 +560,17 @@ BEGIN
         AND content_blocks::text LIKE '%https:/%';
         
         GET DIAGNOSTICS updated_count = ROW_COUNT;
-        INSERT INTO update_results VALUES ('miuhub_featured', updated_count, 'Success');
+        INSERT INTO update_results VALUES ('miuhub_featured_content_blocks', updated_count, 'Success');
     EXCEPTION WHEN undefined_table THEN
-        INSERT INTO update_results VALUES ('miuhub_featured', 0, 'Table does not exist');
+        INSERT INTO update_results VALUES ('miuhub_featured_content_blocks', 0, 'Table does not exist');
     WHEN undefined_column THEN
-        INSERT INTO update_results VALUES ('miuhub_featured', 0, 'No content_blocks column');
+        INSERT INTO update_results VALUES ('miuhub_featured_content_blocks', 0, 'No content_blocks column');
     WHEN OTHERS THEN
-        INSERT INTO update_results VALUES ('miuhub_featured', 0, 'Error: ' || SQLERRM);
+        INSERT INTO update_results VALUES ('miuhub_featured_content_blocks', 0, 'Error: ' || SQLERRM);
     END;
 END $$;
 
--- 8. 팝업 테이블
+-- 12. 팝업 테이블 (content_blocks)
 DO $$
 DECLARE
     updated_count INTEGER;
@@ -415,13 +603,13 @@ BEGIN
         AND content_blocks::text LIKE '%https:/%';
         
         GET DIAGNOSTICS updated_count = ROW_COUNT;
-        INSERT INTO update_results VALUES ('popups', updated_count, 'Success');
+        INSERT INTO update_results VALUES ('popups_content_blocks', updated_count, 'Success');
     EXCEPTION WHEN undefined_table THEN
-        INSERT INTO update_results VALUES ('popups', 0, 'Table does not exist');
+        INSERT INTO update_results VALUES ('popups_content_blocks', 0, 'Table does not exist');
     WHEN undefined_column THEN
-        INSERT INTO update_results VALUES ('popups', 0, 'No content_blocks column');
+        INSERT INTO update_results VALUES ('popups_content_blocks', 0, 'No content_blocks column');
     WHEN OTHERS THEN
-        INSERT INTO update_results VALUES ('popups', 0, 'Error: ' || SQLERRM);
+        INSERT INTO update_results VALUES ('popups_content_blocks', 0, 'Error: ' || SQLERRM);
     END;
 END $$;
 
