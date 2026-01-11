@@ -42,10 +42,11 @@ export default function CirclesScreen({ navigation, route }) {
     return selectedChannel || university || null;
   }, [selectedChannel, university]);
   
-  // targetUniversity가 변경되면 즉시 데이터 초기화 (이전 데이터 깜빡임 방지)
+  // selectedChannel이 변경되면 즉시 데이터 초기화 (이전 데이터 깜빡임 방지)
+  // targetUniversity가 아닌 selectedChannel을 기준으로 초기화하여 탭 전환 시 깜빡임 방지
   useEffect(() => {
     setSavedCircles([]);
-  }, [targetUniversity]);
+  }, [selectedChannel]);
   
   const uniColors = useMemo(() => getUniColors(targetUniversity, config), [targetUniversity, getColorConfig, appConfig]);
   
