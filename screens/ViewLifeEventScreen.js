@@ -314,16 +314,26 @@ export default function ViewLifeEventScreen({ route, navigation }) {
     );
   };
 
-  if (loading) {
+  // 스켈레톤 UI: 로딩 중이거나 데이터가 없을 때 기본 레이아웃 표시
+  if (loading || !lifeEvent) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary }}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+      <View className="flex-1" style={{ backgroundColor: colors.primary }}>
+        <View className="flex-1 bg-white" style={{ marginTop: 72 }}>
+          <View className="flex-row items-center justify-between px-6 pt-6 pb-4 border-b border-gray-200">
+            <View style={{ width: 80, height: 24, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
+            <View style={{ width: 24, height: 24, backgroundColor: '#E5E7EB', borderRadius: 12 }} />
+          </View>
+          <ScrollView className="px-6 py-4">
+            <View style={{ width: '100%', height: 32, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16 }} />
+            <View style={{ width: '60%', height: 20, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 24 }} />
+            <View style={{ width: '100%', height: 200, backgroundColor: '#E5E7EB', borderRadius: 8, marginBottom: 16 }} />
+            <View style={{ width: '100%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8 }} />
+            <View style={{ width: '90%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 8 }} />
+            <View style={{ width: '80%', height: 16, backgroundColor: '#E5E7EB', borderRadius: 4 }} />
+          </ScrollView>
+        </View>
       </View>
     );
-  }
-
-  if (!lifeEvent) {
-    return null;
   }
 
   const contentBlocks = lifeEvent.content_blocks || [];
