@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // API 기본 URL 설정
 // 개발 환경: 웹은 localhost, 모바일은 컴퓨터의 로컬 IP 주소 사용
@@ -6,15 +7,21 @@ import { Platform } from 'react-native';
 
 // 환경 변수에서 API URL을 가져올 수 있도록 설정
 const getApiBaseUrl = () => {
-  // 환경 변수가 설정되어 있으면 우선 사용
+  // app.json의 extra 섹션에서 가져오기 (우선순위 1)
+  const apiUrlFromConfig = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL;
+  if (apiUrlFromConfig) {
+    return apiUrlFromConfig;
+  }
+
+  // process.env에서 가져오기 (우선순위 2)
   if (process.env.EXPO_PUBLIC_API_BASE_URL) {
     return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
 
   // 프로덕션 환경
   if (!__DEV__) {
-    // Vercel 배포 URL 사용 (환경 변수에서 가져오거나 기본값 사용)
-    return process.env.EXPO_PUBLIC_API_BASE_URL || 'https://thedmh.vercel.app';
+    // Vercel 배포 URL 사용 (기본값)
+    return 'https://thedmh.vercel.app';
   }
 
   // 개발 환경
