@@ -372,7 +372,8 @@ export default function BoardScreen({ navigation, route }) {
             console.error(`[BoardScreen] 게시글 로드 실패: ${postsResponse.status} ${postsResponse.statusText}`, {
               url: `${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`,
               university: targetUni,
-              universityCode
+              universityCode,
+              API_BASE_URL
             });
           }
           setSavedPosts([]);
@@ -500,7 +501,8 @@ export default function BoardScreen({ navigation, route }) {
               console.error(`[BoardScreen] 게시글 로드 실패: ${postsResponse.status} ${postsResponse.statusText}`, {
                 url: `${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`,
                 university: targetUni,
-                universityCode
+                universityCode,
+                API_BASE_URL
               });
             }
             setSavedPosts([]);
