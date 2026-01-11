@@ -180,39 +180,38 @@ export default function SelectUniScreen() {
         // 캐시에 없으면 API 호출
         const apiUrl = `${API_BASE_URL}/api/supabase-image-url?filename=${encodeURIComponent(iconImageName)}`;
         
-        try {
-          const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
           
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.success && data.url) {
-              // 캐시에 저장 (24시간 유효)
-              await AsyncStorage.setItem(cacheKey, data.url);
-              setIconImageUrl({ uri: data.url });
-            } else {
-              // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
-              setIconImageUrl(null);
-            }
+          if (data.success && data.url) {
+            // 캐시에 저장 (24시간 유효)
+            await AsyncStorage.setItem(cacheKey, data.url);
+            setIconImageUrl({ uri: data.url });
           } else {
-            // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
-            // 개발 모드에서만 로그 출력
-            if (__DEV__) {
-              console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
-                status: response.status,
-                statusText: response.statusText
-              });
-            }
+            // API 응답 실패 시 조용히 처리 (캐시가 있으면 문제 없음)
             setIconImageUrl(null);
           }
-        } catch (error) {
-          // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        } else {
+          // HTTP 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
           // 개발 모드에서만 로그 출력
           if (__DEV__) {
-            console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error.message);
+            console.warn(`[SelectUniScreen] 메인 아이콘 API HTTP 에러 (${Platform.OS}):`, {
+              status: response.status,
+              statusText: response.statusText
+            });
           }
           setIconImageUrl(null);
         }
+      } catch (error) {
+        // 네트워크 에러 시 조용히 처리 (캐시가 있으면 문제 없음)
+        // 개발 모드에서만 로그 출력
+        if (__DEV__) {
+          console.warn(`[SelectUniScreen] 메인 아이콘 로드 실패 (${Platform.OS}):`, error.message);
+        }
+        setIconImageUrl(null);
+      }
     };
     
     loadMainIconImage();
