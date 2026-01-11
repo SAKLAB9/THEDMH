@@ -36,8 +36,8 @@ function ImageBlock({ uri }) {
       fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/board_images\//g, '/images/$1/');
       fixedUri = fixedUri.replace(/\/images\/([^\/]+)\/circle_images\//g, '/images/$1/');
       
-      // 슬래시 중복 제거 (// -> /)
-      fixedUri = fixedUri.replace(/\/+/g, '/');
+      // 슬래시 중복 제거 (// -> /) - 하지만 https://는 유지
+      fixedUri = fixedUri.replace(/([^:])\/+/g, '$1/');
       
       return fixedUri;
     }
