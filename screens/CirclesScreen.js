@@ -1084,9 +1084,9 @@ export default function CirclesScreen({ navigation, route }) {
     featuredToInsert.forEach(({ position, circle }) => {
       // 이미 circles에 있는 항목은 제외 (중복 방지)
       if (!circles.some(c => (c.adId || c.id) === (circle.adId || circle.id))) {
-        if (position <= circles.length) {
-          circles.splice(position, 0, circle);
-        }
+        // position이 circles.length보다 크면 circles.length로 조정 (배열 끝에 추가)
+        const insertPosition = Math.min(position, circles.length);
+        circles.splice(insertPosition, 0, circle);
       }
     });
   }
