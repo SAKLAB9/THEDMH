@@ -114,16 +114,16 @@ export default function SelectUniScreen() {
       const key = `select_uni_slot_${i}`;
       const imageName = appConfig[key] || '';
       
-      if (imageName && imageName.trim() !== '' && imageName !== 'EMPTY') {
-        const row = Math.ceil(i / 2);
-        const col = ((i - 1) % 2) + 1;
-        slots.push({
-          slotNumber: i,
-          row,
-          col,
-          imageName: imageName.trim(),
-        });
-      }
+      // Login/Home 방식: 빈 슬롯도 포함하되, EMPTY는 필터링
+      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName.trim() : null;
+      const row = Math.ceil(i / 2);
+      const col = ((i - 1) % 2) + 1;
+      slots.push({
+        slotNumber: i,
+        row,
+        col,
+        imageName: validImageName,
+      });
     }
     
     return slots;
@@ -149,11 +149,13 @@ export default function SelectUniScreen() {
       
       // 캐시에서 병렬로 확인 (만료 시간: 24시간)
       const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
-      const cacheKeys = slotData.map(slot => ({
-        imageName: slot.imageName,
-        cacheKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}`,
-        timestampKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}_timestamp`
-      }));
+      const cacheKeys = slotData
+        .filter(slot => slot.imageName) // imageName이 있는 슬롯만
+        .map(slot => ({
+          imageName: slot.imageName,
+          cacheKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}`,
+          timestampKey: `select_uni_slot_${slot.slotNumber}_url_${slot.imageName}_timestamp`
+        }));
       
       const cachePromises = cacheKeys.map(({ cacheKey }) => AsyncStorage.getItem(cacheKey));
       const timestampPromises = cacheKeys.map(({ timestampKey }) => AsyncStorage.getItem(timestampKey));
@@ -287,7 +289,7 @@ export default function SelectUniScreen() {
   const slotImages = useMemo(() => {
     return slotData.map(slot => ({
       ...slot,
-      imageUrl: imageUrls[slot.imageName] || null,
+      imageUrl: slot.imageName ? (imageUrls[slot.imageName] || null) : null,
     }));
   }, [slotData, imageUrls]);
 

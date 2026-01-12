@@ -103,7 +103,7 @@ export default function HomeScreen({ navigation }) {
   // 관리자 모달 설정 (LoginScreen과 동일)
   const adminSlotsCount = getConfigNumber('login_admin_slots_count', 3);
   
-  // Admin 모달 슬롯 이미지 파일명들 가져오기 (의존성 배열용)
+  // Admin 모달 슬롯 이미지 파일명들 가져오기 (의존성 배열용) - SelectUniScreen 방식
   const adminSlotImageNames = [];
   for (let i = 1; i <= adminSlotsCount; i++) {
     adminSlotImageNames.push(getConfig(`login_admin_slot_${i}`, ''));
@@ -114,15 +114,20 @@ export default function HomeScreen({ navigation }) {
     if (adminSlotsCount <= 0) return;
     
     const loadAdminImageUrls = async () => {
-      // 모든 이미지 파일명 수집 (EMPTY 값 제외)
-      const imageNames = [];
+      // SelectUniScreen 방식: 모든 슬롯 데이터 수집 (빈 슬롯 필터링)
+      const slots = [];
       for (let i = 1; i <= adminSlotsCount; i++) {
         const imageName = getConfig(`login_admin_slot_${i}`, '');
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
-          imageNames.push(imageName);
+          slots.push({
+            slotNumber: i,
+            imageName: imageName.trim(),
+          });
         }
       }
+      
+      const imageNames = slots.map(slot => slot.imageName);
       
       if (imageNames.length === 0) {
         setAdminImageUrls({});
@@ -210,16 +215,25 @@ export default function HomeScreen({ navigation }) {
   const adminModalWidthPercent = 90;
   const adminModalMaxWidth = 400;
   
-  // Admin 모달 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
-  const adminSlotImages = [];
-  for (let i = 1; i <= adminSlotsCount; i++) {
-    const imageName = getConfig(`login_admin_slot_${i}_image`, '');
-    if (imageName) {
-      adminSlotImages.push(adminImageUrls[imageName] || null);
-    } else {
-      adminSlotImages.push(null);
+  // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯 필터링)
+  const adminSlotImages = useMemo(() => {
+    if (!adminSlotsCount || adminSlotsCount <= 0) return [];
+    
+    const slots = [];
+    for (let i = 1; i <= adminSlotsCount; i++) {
+      const imageName = getConfig(`login_admin_slot_${i}`, '');
+      // EMPTY 값과 빈 문자열 필터링
+      if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
+        const imageUrl = adminImageUrls[imageName.trim()] || null;
+        slots.push({
+          slotNumber: i,
+          imageName: imageName.trim(),
+          imageUrl: imageUrl,
+        });
+      }
     }
-  }
+    return slots;
+  }, [adminSlotsCount, getConfig, adminImageUrls]);
   
   // 모달 높이 계산
   const calculateAdminModalHeight = () => {
@@ -1311,7 +1325,7 @@ export default function HomeScreen({ navigation }) {
                 }}>
                   {adminSlotImages.map((imageSource, index) => {
                     // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                    const imageName = getConfig(`login_admin_slot_${index + 1}`, '');
+                    const imageName = getConfig(`login_admin_slot_${index + 1}_image`, '');
                     let universityCode = null; // users 테이블에 저장할 소문자 코드
                     let universityDisplayName = null; // 표시용 display name
                     if (imageName) {
@@ -1324,7 +1338,7 @@ export default function HomeScreen({ navigation }) {
                     
                     return (
                       <TouchableOpacity
-                        key={index}
+                        key={slot.slotNumber}
                         onPress={async () => {
                           if (universityCode && universityDisplayName) {
                             try {
