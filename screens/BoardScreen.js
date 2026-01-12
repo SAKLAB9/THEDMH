@@ -917,9 +917,10 @@ export default function BoardScreen({ navigation, route }) {
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
         if (position >= 0) {
-          const featuredPost = allPosts.find(p => p.id === featuredItem.contentId);
-          // 글의 category가 featuredItem.category와 일치하는지 확인
-          if (featuredPost && featuredPost.category === featuredItem.category) {
+          // filteredPosts에서 찾기 (이미 activeTab으로 필터링된 데이터)
+          const featuredPost = filteredPosts.find(p => p.id === featuredItem.contentId);
+          // 글의 category가 activeTab과 일치하는지 확인 (이중 체크)
+          if (featuredPost && featuredPost.category === activeTab) {
             featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);
           }
