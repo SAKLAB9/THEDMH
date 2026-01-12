@@ -1586,7 +1586,7 @@ export default function WriteCirclesScreen({ navigation, route }) {
                   })}
               </View>
 
-              <Text className="text-base font-semibold text-gray-900 mb-2">RSVP (optional)</Text>
+              <Text className="text-base font-semibold text-gray-900 mb-2">{getConfig('lifeevent_write_url_label')}</Text>
               <TextInput
                 className="border border-gray-300 rounded-lg text-base bg-white mb-4"
                 placeholder="바로가기 버튼이 생성됩니다"

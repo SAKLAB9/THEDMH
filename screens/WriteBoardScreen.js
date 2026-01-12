@@ -739,7 +739,7 @@ export default function WriteBoardScreen({ navigation, route }) {
                   })}
               </View>
 
-              <Text className="text-base font-semibold text-gray-900 mb-2">Link (optional)</Text>
+              <Text className="text-base font-semibold text-gray-900 mb-2">{getConfig('notice_write_url_label')}</Text>
               <TextInput
                 className="border border-gray-300 rounded-lg text-base bg-white mb-4"
                 placeholder="https://example.com"
