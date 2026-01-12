@@ -840,12 +840,12 @@ export default function BoardScreen({ navigation, route }) {
   }, [allPosts, activeTab, titleSearch, contentSearch, showFavoritesOnly, favoritePosts, getConfig]);
 
   // 페이지네이션
-  const currentPage = pageByTab[activeTab] || 1;
+      const currentPage = pageByTab[activeTab] || 1;
   const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   let posts = filteredPosts.slice(startIndex, endIndex);
-
+  
   // Featured 삽입 로직
   // 작동 방식:
   // 1. 해당 글의 카테고리를 먼저 파악
@@ -856,7 +856,7 @@ export default function BoardScreen({ navigation, route }) {
     if (selectedChannel !== 'MIUHub') {
       return posts;
     }
-
+    
     // Featured 항목 찾기 (전체 리스트에서)
     const featuredItems = [];
     const allFeaturedIds = new Set(); // 모든 featured 항목 ID (원래 자리에서 제거용)
@@ -891,7 +891,7 @@ export default function BoardScreen({ navigation, route }) {
         }
       }
     });
-
+    
     // 원본 posts에서 모든 featured 항목 제거 (원래 자리에서 안 보이게)
     const postsWithoutFeatured = posts.filter(post => !allFeaturedIds.has(post.id));
 
