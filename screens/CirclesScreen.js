@@ -81,8 +81,9 @@ export default function CirclesScreen({ navigation, route }) {
     primary: uniColors.primary,
     buttonTextColor: uniColors.buttonTextColor,
   }), [uniColors]);
+  const [activeTab, setActiveTab] = useState('전체');
   const tabs = useMemo(() => {
-    const tabs = [];
+    const tabs = ['전체'];
     const tab1 = getConfig('circles_tab1');
     const tab2 = getConfig('circles_tab2');
     const tab3 = getConfig('circles_tab3');
@@ -94,8 +95,6 @@ export default function CirclesScreen({ navigation, route }) {
     return tabs;
   }, [getConfig, appConfig]);
   
-  const defaultTab = tabs.length > 0 ? tabs[0] : null;
-  const [activeTab, setActiveTab] = useState(defaultTab);
   const [pageByTab, setPageByTab] = useState({});
   
   // pageByTab 초기화 및 업데이트 (tabs가 변경될 때)
@@ -110,10 +109,10 @@ export default function CirclesScreen({ navigation, route }) {
       return newPageByTab;
     });
     
-    // activeTab이 더 이상 유효하지 않으면 첫 번째 탭으로 리셋
+    // activeTab이 더 이상 유효하지 않으면 '전체'로 리셋
     setActiveTab(prevTab => {
       if (!tabs.includes(prevTab)) {
-        return tabs.length > 0 ? tabs[0] : null;
+        return '전체';
       }
       return prevTab;
     });
@@ -124,7 +123,7 @@ export default function CirclesScreen({ navigation, route }) {
   const [toastMessage, setToastMessage] = useState('');
   
   // 필터링 상태
-  const [selectedRegion, setSelectedRegion] = useState('전체'); // 지역 필터는 '전체' 고정
+  const [selectedRegion, setSelectedRegion] = useState('전체');
   const [keywordSearch, setKeywordSearch] = useState('');
   const [excludeClosed, setExcludeClosed] = useState(false);
   const [sortBy, setSortBy] = useState('newest'); // 'newest' 또는 'eventDate'
@@ -822,9 +821,7 @@ export default function CirclesScreen({ navigation, route }) {
 
   // 필터링 및 정렬 로직 (useMemo로 변경하여 activeTab 변경 시 즉시 재계산)
   const filteredCircles = useMemo(() => {
-    // activeTab이 null이거나 첫 번째 탭이면 모든 항목 표시, 아니면 해당 카테고리만 필터링
-    const defaultTab = tabs.length > 0 ? tabs[0] : null;
-    let filtered = (!activeTab || activeTab === defaultTab)
+    let filtered = activeTab === '전체' 
     ? allCircles 
     : allCircles.filter(circle => circle.category === activeTab);
     
@@ -1158,7 +1155,7 @@ export default function CirclesScreen({ navigation, route }) {
               <Text className="text-sm font-bold mr-2" style={{ color: colors.primary }}>소모임 만들기</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('WriteCircles', { 
-                  category: activeTab || (tabs.length > 0 ? tabs[0] : ''),
+                  category: activeTab === '전체' ? getConfig('circles_tab1') : activeTab,
                   selectedChannel: selectedChannel
                 })}
                 className="border rounded items-center justify-center"

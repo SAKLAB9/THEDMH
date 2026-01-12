@@ -80,8 +80,9 @@ export default function BoardScreen({ navigation, route }) {
     primary: uniColors.primary,
     buttonTextColor: uniColors.buttonTextColor,
   }), [uniColors]);
+  const [activeTab, setActiveTab] = useState('전체');
   const tabs = useMemo(() => {
-    const tabs = [];
+    const tabs = ['전체'];
     const tab1 = getConfig('board_tab1');
     const tab2 = getConfig('board_tab2');
     const tab3 = getConfig('board_tab3');
@@ -93,8 +94,6 @@ export default function BoardScreen({ navigation, route }) {
     return tabs;
   }, [getConfig, appConfig]);
   
-  const defaultTab = tabs.length > 0 ? tabs[0] : null;
-  const [activeTab, setActiveTab] = useState(defaultTab);
   const [pageByTab, setPageByTab] = useState({});
   
   // pageByTab 초기화 및 업데이트 (tabs가 변경될 때)
@@ -109,9 +108,9 @@ export default function BoardScreen({ navigation, route }) {
       return newPageByTab;
     });
     
-    // activeTab이 더 이상 유효하지 않으면 첫 번째 탭으로 리셋
+    // activeTab이 더 이상 유효하지 않으면 '전체'로 리셋
     if (!tabs.includes(activeTab)) {
-      setActiveTab(tabs.length > 0 ? tabs[0] : null);
+      setActiveTab('전체');
     }
   }, [tabs, activeTab]);
   const itemsPerPage = getConfigNumber('board_items_per_page');
@@ -789,9 +788,8 @@ export default function BoardScreen({ navigation, route }) {
 
   // 필터링 로직 (카테고리, 제목 검색, 내용 검색) - useMemo로 변경하여 activeTab 변경 시 즉시 재계산
   const filteredPosts = useMemo(() => {
-    // 카테고리 필터: activeTab이 null이거나 첫 번째 탭이면 모든 항목 표시, 아니면 해당 카테고리만 필터링
-    const defaultTab = tabs.length > 0 ? tabs[0] : null;
-    let filtered = (!activeTab || activeTab === defaultTab)
+    // 카테고리 필터
+    let filtered = activeTab === '전체'
       ? allPosts
       : allPosts.filter(post => post.category === activeTab);
     
