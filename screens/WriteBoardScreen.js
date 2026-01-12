@@ -462,7 +462,7 @@ export default function WriteBoardScreen({ navigation, route }) {
 
       // 저장 성공 시 캐시 무효화 (공지사항과 동일하게)
       try {
-        const universityCode = normalizedUniversity;
+        const universityCode = normalizedUniversity.toLowerCase();
         
         // 수정 모드인 경우 해당 게시글의 캐시 무효화
         if (isEditMode && editBoardId) {
@@ -473,7 +473,6 @@ export default function WriteBoardScreen({ navigation, route }) {
         }
         
         // 게시글 목록 캐시 무효화 (새 글이 추가되거나 수정되었으므로)
-        // BoardScreen은 현재 캐시를 사용하지 않지만, 일관성을 위해 무효화
         const postsCacheKey = `posts_${universityCode}`;
         const postsTimestampKey = `posts_timestamp_${universityCode}`;
         await Promise.all([
