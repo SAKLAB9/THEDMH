@@ -1543,14 +1543,12 @@ export default function ViewBoardScreen({ route, navigation }) {
                         endDate: `${adEndDate.getFullYear()}-${String(adEndDate.getMonth() + 1).padStart(2, '0')}-${String(adEndDate.getDate()).padStart(2, '0')}`,
                         university: currentUniversity,
                       };
-                      console.log('광고 저장 요청:', requestBody);
                       const response = await fetch(`${API_BASE_URL}/api/featured`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(requestBody),
                       });
                       const responseData = await response.json().catch(() => ({}));
-                      console.log('광고 저장 응답:', response.status, responseData);
                       if (!response.ok) {
                         throw new Error(responseData.error || responseData.message || '설정 저장에 실패했습니다.');
                       }
@@ -1565,7 +1563,6 @@ export default function ViewBoardScreen({ route, navigation }) {
                         navigation.navigate('Board', { selectedChannel, refreshFeatured: true });
                       }
                     } catch (error) {
-                      console.error('광고 저장 오류:', error);
                       Alert.alert('오류', error.message || '설정 저장에 실패했습니다.');
                     }
                   }}

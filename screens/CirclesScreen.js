@@ -1037,7 +1037,14 @@ export default function CirclesScreen({ navigation, route }) {
     
     // 삽입할 Featured들을 위치별로 정렬 (위치가 큰 것부터 삽입하여 인덱스 변화 방지)
     const featuredToInsert = [];
+    const insertedContentIds = new Set(); // 이미 삽입된 contentId 추적
+    
     activeFeatured.forEach(featuredItem => {
+      // 같은 contentId가 이미 삽입되었으면 스킵 (중복 방지)
+      if (insertedContentIds.has(featuredItem.contentId)) {
+        return;
+      }
+      
       // 카테고리 페이지 Featured
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
@@ -1045,16 +1052,18 @@ export default function CirclesScreen({ navigation, route }) {
           const featuredCircle = allCircles.find(c => c.id === featuredItem.contentId);
           if (featuredCircle) {
             featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
+            insertedContentIds.add(featuredItem.contentId);
           }
         }
       }
-      // 전체 페이지 Featured
-      if (featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
+      // 전체 페이지 Featured (카테고리 페이지에 삽입되지 않은 경우만)
+      else if (featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
         const position = featuredItem.allPosition - 1; // 1-based to 0-based
         if (position >= 0) {
           const featuredCircle = allCircles.find(c => c.id === featuredItem.contentId);
           if (featuredCircle) {
             featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
+            insertedContentIds.add(featuredItem.contentId);
           }
         }
       }
@@ -1063,8 +1072,11 @@ export default function CirclesScreen({ navigation, route }) {
     // 위치가 큰 것부터 삽입 (인덱스 변화 방지)
     featuredToInsert.sort((a, b) => b.position - a.position);
     featuredToInsert.forEach(({ position, circle }) => {
-      if (position <= circles.length) {
-        circles.splice(position, 0, circle);
+      // 이미 circles에 있는 항목은 제외 (중복 방지)
+      if (!circles.some(c => (c.adId || c.id) === (circle.adId || circle.id))) {
+        if (position <= circles.length) {
+          circles.splice(position, 0, circle);
+        }
       }
     });
   }
