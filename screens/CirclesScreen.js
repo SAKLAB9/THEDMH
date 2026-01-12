@@ -1055,10 +1055,9 @@ export default function CirclesScreen({ navigation, route }) {
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
         if (position >= 0) {
-          // filteredCircles에서 찾기 (이미 activeTab으로 필터링된 데이터)
-          const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId);
-          // 글의 category가 activeTab과 일치하는지 확인 (이중 체크)
-          if (featuredCircle && featuredCircle.category === activeTab) {
+          // filteredCircles에서 찾아야 해당 카테고리의 글만 찾음
+          const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId && c.category === featuredItem.category);
+          if (featuredCircle) {
             featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);
           }
