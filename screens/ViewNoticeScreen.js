@@ -664,6 +664,31 @@ export default function ViewNoticeScreen({ route, navigation }) {
         throw new Error(errorData.error || '공지사항 삭제에 실패했습니다.');
       }
 
+      // 삭제 성공 시 캐시 무효화
+      try {
+        const universityCode = normalizedUniversity;
+        
+        // 개별 notice 캐시 무효화
+        const noticeCacheKey = `notice_${noticeId}_${universityCode}`;
+        const noticeContentCacheKey = `notice_content_${noticeId}_${universityCode}`;
+        
+        // 공지사항 목록 캐시 무효화
+        const noticesCacheKey = `home_notices_${universityCode}`;
+        const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
+        
+        await Promise.all([
+          AsyncStorage.removeItem(noticeCacheKey),
+          AsyncStorage.removeItem(noticeContentCacheKey),
+          AsyncStorage.removeItem(noticesCacheKey),
+          AsyncStorage.removeItem(cacheTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[ViewNoticeScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
+
       Alert.alert('성공', '공지사항이 삭제되었습니다.', [
         {
           text: '확인',

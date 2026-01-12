@@ -496,6 +496,32 @@ export default function WriteLifeEventScreen({ navigation, route }) {
 
       const result = await response.json();
 
+      // 저장 성공 시 캐시 무효화 (공지사항과 동일하게)
+      try {
+        const universityCode = universityValue;
+        
+        // 수정 모드인 경우 해당 경조사의 캐시 무효화
+        if (isEditMode && editNoticeId) {
+          const lifeEventCacheKey = `lifeEvent_${editNoticeId}_${universityCode}`;
+          const lifeEventContentCacheKey = `lifeEvent_content_${editNoticeId}_${universityCode}`;
+          await AsyncStorage.removeItem(lifeEventCacheKey);
+          await AsyncStorage.removeItem(lifeEventContentCacheKey);
+        }
+        
+        // 경조사 목록 캐시 무효화 (새 글이 추가되거나 수정되었으므로)
+        const lifeEventsCacheKey = `home_life_events_${universityCode}`;
+        const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
+        await Promise.all([
+          AsyncStorage.removeItem(lifeEventsCacheKey),
+          AsyncStorage.removeItem(cacheTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[WriteLifeEventScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
+
       Alert.alert(
         '성공',
         isEditMode 

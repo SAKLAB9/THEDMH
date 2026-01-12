@@ -627,6 +627,31 @@ export default function ViewLifeEventScreen({ route, navigation }) {
         throw new Error(errorData.error || '경조사 삭제에 실패했습니다.');
       }
 
+      // 삭제 성공 시 캐시 무효화
+      try {
+        const universityCode = normalizedUniversity;
+        
+        // 개별 lifeEvent 캐시 무효화
+        const lifeEventCacheKey = `lifeEvent_${lifeEventId}_${universityCode}`;
+        const lifeEventContentCacheKey = `lifeEvent_content_${lifeEventId}_${universityCode}`;
+        
+        // 경조사 목록 캐시 무효화
+        const lifeEventsCacheKey = `home_life_events_${universityCode}`;
+        const cacheTimestampKey = `home_data_timestamp_${universityCode}`;
+        
+        await Promise.all([
+          AsyncStorage.removeItem(lifeEventCacheKey),
+          AsyncStorage.removeItem(lifeEventContentCacheKey),
+          AsyncStorage.removeItem(lifeEventsCacheKey),
+          AsyncStorage.removeItem(cacheTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[ViewLifeEventScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
+
       Alert.alert('성공', '경조사가 삭제되었습니다.', [
         {
           text: '확인',

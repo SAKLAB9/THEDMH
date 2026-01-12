@@ -718,27 +718,29 @@ export default function WriteCirclesScreen({ navigation, route }) {
 
       const result = await response.json();
 
-      // 수정 모드일 때 캐시 무효화
-      if (isEditMode && editCircleId) {
-        try {
-          const universityCode = normalizedUniversity.toLowerCase();
+      // 저장 성공 시 캐시 무효화 (공지사항과 동일하게)
+      try {
+        const universityCode = normalizedUniversity.toLowerCase();
+        
+        // 수정 모드인 경우 해당 circle의 캐시 무효화
+        if (isEditMode && editCircleId) {
           const circleCacheKey = `circle_${editCircleId}_${universityCode}`;
           const contentCacheKey = `circle_content_${editCircleId}_${universityCode}`;
           await AsyncStorage.removeItem(circleCacheKey);
           await AsyncStorage.removeItem(contentCacheKey);
-          
-          // 소모임 목록 캐시 무효화 (수정되었으므로)
-          const circlesCacheKey = `circles_${universityCode}`;
-          const circlesTimestampKey = `circles_timestamp_${universityCode}`;
-          await Promise.all([
-            AsyncStorage.removeItem(circlesCacheKey),
-            AsyncStorage.removeItem(circlesTimestampKey)
-          ]);
-        } catch (cacheError) {
-          // 캐시 무효화 실패는 무시 (중요하지 않음)
-          if (__DEV__) {
-            console.warn('[WriteCirclesScreen] 캐시 무효화 실패:', cacheError);
-          }
+        }
+        
+        // circles 목록 캐시 무효화 (새 글이 추가되거나 수정되었으므로)
+        const circlesCacheKey = `circles_${universityCode}`;
+        const circlesTimestampKey = `circles_timestamp_${universityCode}`;
+        await Promise.all([
+          AsyncStorage.removeItem(circlesCacheKey),
+          AsyncStorage.removeItem(circlesTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[WriteCirclesScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 
