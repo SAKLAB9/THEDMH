@@ -3725,9 +3725,9 @@ app.put('/api/circles/:id', async (req, res) => {
     
     // images 배열 처리 (빈 배열도 유효한 값으로 처리)
     // 클라이언트에서 전달된 images 배열을 그대로 사용 (없으면 빈 배열)
-    const finalImages = Array.isArray(images) ? images : [];
-    for (let i = 0; i < finalImages.length; i++) {
-      const imageData = finalImages[i];
+    const imagesArray = Array.isArray(images) ? images : [];
+    for (let i = 0; i < imagesArray.length; i++) {
+      const imageData = imagesArray[i];
       if (imageData && imageData.startsWith('data:image')) {
         // base64 이미지 업로드
         const timestamp = Date.now();
