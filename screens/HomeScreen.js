@@ -1323,7 +1323,7 @@ export default function HomeScreen({ navigation }) {
                 }}
               >
                 <Text className="text-xl font-bold mb-6 text-center" style={{ color: LOGIN_COLORS.primary }}>
-                  Admin University
+                  Select University
                 </Text>
                 
                 <View style={{ 
