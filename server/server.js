@@ -3765,40 +3765,10 @@ app.put('/api/circles/:id', async (req, res) => {
     // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
     const savedImageUrls = newImageUrls;
 
-    const existingContentBlocks = oldContentBlocks;
+    const existingContentBlocks = typeof oldContentBlocks === 'string' 
+      ? JSON.parse(oldContentBlocks) 
+      : oldContentBlocks;
     const existingBlockIds = new Set(existingContentBlocks.map(block => block.id).filter(id => id));
-
-    const updatedContentBlocks = await Promise.all((contentBlocks || []).map(async (block, index) => {
-      if (block.type === 'image' && block.uri) {
-        if (block.uri.startsWith('data:image')) {
-          const timestamp = Date.now();
-          const filename = `circle_${timestamp}_block_${index}.jpg`;
-          const imageUrl = await saveCircleImage(block.uri, filename, universityCode);
-          return { ...block, uri: imageUrl };
-        }
-      }
-      return block;
-    }));
-    
-    // 새로운 이미지 URL 수집 (모든 이미지 URL 수집 - Supabase Storage 포함)
-    const newImageUrls = new Set();
-    savedImageUrls.forEach(imageUrl => {
-      if (imageUrl) {
-        newImageUrls.add(imageUrl);
-      }
-    });
-    updatedContentBlocks.forEach(block => {
-      if (block.type === 'image' && block.uri) {
-        newImageUrls.add(block.uri);
-      }
-    });
-    
-    // 삭제된 이미지 파일 제거
-    oldImageUrls.forEach(imageUrl => {
-      if (!newImageUrls.has(imageUrl)) {
-        deleteCircleImageFile(imageUrl);
-      }
-    });
 
     const mergedContentBlocks = [...existingContentBlocks];
     updatedContentBlocks.forEach(newBlock => {
@@ -3813,11 +3783,9 @@ app.put('/api/circles/:id', async (req, res) => {
       }
     });
     
-    // content_blocks의 이미지 URI를 images 배열에도 포함 (동기화)
-    const finalImageBlocks = mergedContentBlocks.filter(block => block.type === 'image');
-    const contentBlockImageUris = finalImageBlocks.map(block => block.uri).filter(uri => uri);
-    const finalImages = [...new Set([...savedImageUrls, ...contentBlockImageUris])]; // 중복 제거
-    console.log(`[Circles PUT] ${universityCode} - 최종 images 배열 개수: ${finalImages.length}, content_blocks 이미지 개수: ${finalImageBlocks.length}`);
+    // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
+    const finalImages = savedImageUrls;
+    console.log(`[Circles PUT] ${universityCode} - 최종 images 배열 개수: ${finalImages.length}`);
 
     if (USE_DATABASE) {
       try {
