@@ -3783,7 +3783,7 @@ app.put('/api/circles/:id', async (req, res) => {
            RETURNING *`,
           [
             title,
-            JSON.stringify(mergedContentBlocks),
+            JSON.stringify(finalContentBlocks),
             textContent || '',
             finalImages, // content_blocks의 이미지도 포함한 최종 images 배열
             category,
