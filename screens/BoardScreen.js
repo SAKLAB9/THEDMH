@@ -117,7 +117,6 @@ export default function BoardScreen({ navigation, route }) {
   const [savedPosts, setSavedPosts] = useState([]);
   const [favoritePosts, setFavoritePosts] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
-  const [featured, setFeatured] = useState([]);
   
   // 필터링 상태
   const [titleSearch, setTitleSearch] = useState('');
@@ -508,37 +507,6 @@ export default function BoardScreen({ navigation, route }) {
     loadPostsData();
   }, [loadPostsData]);
 
-  // Featured 데이터 로드 함수
-  const loadFeaturedData = React.useCallback(async (forceRefresh = false) => {
-    if (selectedChannel !== 'MIUHub') {
-      setFeatured([]);
-      return;
-    }
-
-    try {
-      // 캐시 무시하고 항상 최신 데이터 가져오기
-      const featuredResponse = await fetch(`${API_BASE_URL}/api/featured?university=miuhub&type=board`, {
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      if (featuredResponse.ok) {
-        const featuredData = await featuredResponse.json();
-        if (featuredData.success && featuredData.featured) {
-          setFeatured(featuredData.featured);
-        } else {
-          setFeatured([]);
-        }
-      } else {
-        setFeatured([]);
-      }
-    } catch (error) {
-      setFeatured([]);
-    }
-  }, [selectedChannel]);
-
-  // selectedChannel이 변경될 때마다 Featured 데이터 불러오기
-  useEffect(() => {
-    loadFeaturedData();
-  }, [loadFeaturedData]);
 
   // 관심리스트 로드 함수
   const loadFavoritePosts = React.useCallback(async () => {
@@ -614,9 +582,8 @@ export default function BoardScreen({ navigation, route }) {
         };
       }
       
-      // refreshFeatured 파라미터가 있으면 featured 데이터 새로고침
+      // refreshFeatured 파라미터가 있으면 (제거됨 - featured 로직 제거)
       if (route?.params?.refreshFeatured) {
-        loadFeaturedData();
         // 파라미터 제거 (다음 포커스 시 다시 실행되지 않도록)
         navigation.setParams({ refreshFeatured: undefined });
       }
@@ -857,146 +824,12 @@ export default function BoardScreen({ navigation, route }) {
     return filtered;
   }, [allPosts, activeTab, titleSearch, contentSearch, showFavoritesOnly, favoritePosts, getConfig]);
 
-  // MIUHub일 때 Featured로 사용될 post ID 수집 (페이지네이션 전에 제외하기 위해)
-  let featuredContentIds = new Set();
-  if (selectedChannel === 'MIUHub' && featured.length > 0) {
-    const now = new Date();
-    const activeFeatured = featured.filter(featuredItem => {
-      if (!featuredItem.startDate || !featuredItem.endDate) return false;
-      const start = new Date(featuredItem.startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(featuredItem.endDate);
-      end.setHours(23, 59, 59, 999);
-      return now >= start && now <= end;
-    });
-    
-    activeFeatured.forEach(featuredItem => {
-      const currentPage = pageByTab[activeTab] || 1;
-      
-      // 각 탭마다 독립적인 리스트로 처리
-      // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
-      // "전체" 탭도 하나의 카테고리처럼 처리
-      const isTabFeatured = featuredItem.category 
-        && featuredItem.category === activeTab 
-        && featuredItem.categoryPage 
-        && featuredItem.categoryPage !== 0 
-        && featuredItem.categoryPage === currentPage 
-        && featuredItem.categoryPosition;
-      
-      // 하위 호환성을 위한 전체 페이지 featured 체크
-      // allPage와 allPosition이 있고 activeTab이 "전체"이면 전체 페이지 featured로 간주
-      const isLegacyAllPageFeatured = featuredItem.allPage 
-        && featuredItem.allPosition 
-        && featuredItem.allPage === currentPage 
-        && activeTab === '전체';
-      
-      if (isTabFeatured) {
-        featuredContentIds.add(featuredItem.contentId);
-      } else if (isLegacyAllPageFeatured) {
-        featuredContentIds.add(featuredItem.contentId);
-      }
-    });
-  }
-  
-  // Featured로 사용될 post를 제외하고 페이지네이션
-  const postsWithoutFeatured = filteredPosts.filter(p => !featuredContentIds.has(p.id));
+  // 페이지네이션
   const currentPage = pageByTab[activeTab] || 1;
-  const totalPages = Math.ceil(postsWithoutFeatured.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  let posts = postsWithoutFeatured.slice(startIndex, endIndex);
-  
-  // MIUHub일 때 Featured 삽입
-  if (selectedChannel === 'MIUHub' && featured.length > 0) {
-    const now = new Date();
-    const activeFeatured = featured.filter(featuredItem => {
-      if (!featuredItem.startDate || !featuredItem.endDate) return false;
-      const start = new Date(featuredItem.startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(featuredItem.endDate);
-      end.setHours(23, 59, 59, 999);
-      return now >= start && now <= end;
-    });
-    
-    // 삽입할 Featured들을 위치별로 정렬 (위치가 큰 것부터 삽입하여 인덱스 변화 방지)
-    const featuredToInsert = [];
-    const insertedContentIds = new Set(); // 이미 삽입된 contentId 추적
-    
-    activeFeatured.forEach(featuredItem => {
-      // 같은 contentId가 이미 삽입되었으면 스킵 (중복 방지)
-      if (insertedContentIds.has(featuredItem.contentId)) {
-        return;
-      }
-      
-      const currentPage = pageByTab[activeTab] || 1;
-      
-      // 각 탭마다 독립적인 리스트로 처리
-      // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
-      // "전체" 탭도 하나의 카테고리처럼 처리
-      const isTabFeatured = featuredItem.category 
-        && featuredItem.category === activeTab 
-        && featuredItem.categoryPage 
-        && featuredItem.categoryPage !== 0 
-        && featuredItem.categoryPage === currentPage 
-        && featuredItem.categoryPosition;
-      
-      // 하위 호환성을 위한 전체 페이지 featured 체크
-      // allPage와 allPosition이 있고 activeTab이 "전체"이면 전체 페이지 featured로 간주
-      const isLegacyAllPageFeatured = featuredItem.allPage 
-        && featuredItem.allPosition 
-        && featuredItem.allPage === currentPage 
-        && activeTab === '전체';
-      
-      if (isTabFeatured) {
-        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
-        // position 1 -> index 0 (왼쪽 첫 번째)
-        // position 2 -> index 1 (오른쪽 첫 번째)
-        // position 3 -> index 2 (왼쪽 두 번째)
-        // position 4 -> index 3 (오른쪽 두 번째)
-        const originalPosition = featuredItem.categoryPosition; // 1-based
-        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
-        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
-        const position = row * 2 + col; // 0-based index
-        if (position >= 0) {
-          // filteredPosts에서 찾아야 해당 탭의 글만 찾음
-          const featuredPost = filteredPosts.find(p => p.id === featuredItem.contentId && p.category === featuredItem.category);
-          if (featuredPost) {
-            featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
-            insertedContentIds.add(featuredItem.contentId);
-          }
-        }
-      } else if (isLegacyAllPageFeatured) {
-        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
-        // position 1 -> index 0 (왼쪽 첫 번째)
-        // position 2 -> index 1 (오른쪽 첫 번째)
-        // position 3 -> index 2 (왼쪽 두 번째)
-        // position 4 -> index 3 (오른쪽 두 번째)
-        const originalPosition = featuredItem.allPosition; // 1-based
-        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
-        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
-        const position = row * 2 + col; // 0-based index
-        if (position >= 0) {
-          // filteredPosts에서 찾아야 필터링된 데이터에서 찾음 (전체 탭 포함)
-          const featuredPost = filteredPosts.find(p => p.id === featuredItem.contentId);
-          if (featuredPost) {
-            featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
-            insertedContentIds.add(featuredItem.contentId);
-          }
-        }
-      }
-    });
-    
-    // 위치가 큰 것부터 삽입 (인덱스 변화 방지)
-    featuredToInsert.sort((a, b) => b.position - a.position);
-    featuredToInsert.forEach(({ position, post }) => {
-      // 이미 posts에 있는 항목은 제외 (중복 방지)
-      if (!posts.some(p => (p.adId || p.id) === (post.adId || post.id))) {
-        // position이 posts.length보다 크면 posts.length로 조정 (배열 끝에 추가)
-        const insertPosition = Math.min(position, posts.length);
-        posts.splice(insertPosition, 0, post);
-      }
-    });
-  }
+  let posts = filteredPosts.slice(startIndex, endIndex);
 
   // 날짜 포맷 함수
   const formatDate = (dateString) => {
