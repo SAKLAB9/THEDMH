@@ -1623,25 +1623,22 @@ export default function ViewCirclesScreen({ route, navigation }) {
 
                     const result = await response.json();
                     
-                    // 삭제된 경우 즉시 리프레시
+                    // 삭제된 경우 처리
                     if (result.deleted) {
                       if (reportType === 'circle') {
-                        // 글 삭제: 화면에서 나가기
-                        Alert.alert('완료', result.message || '신고가 접수되어 삭제되었습니다.', [
+                        // 글 삭제: 3번 신고 모였지만 즉시 반영하지 않음 (나갔다 들어와야 없어짐)
+                        Alert.alert('완료', result.message || '신고가 접수되었습니다. 검토 후 조치하겠습니다.', [
                           {
                             text: '확인',
                             onPress: () => {
                               setShowReportModal(false);
-                              if (navigation.canGoBack()) {
-                                navigation.goBack();
-                              } else {
-                                navigation.navigate('Main');
-                              }
+                              setReportReason('');
+                              setReportDescription('');
                             }
                           }
                         ]);
                       } else {
-                        // 댓글 삭제: 댓글 목록 리프레시
+                        // 댓글/대댓글 삭제: 1번 신고하면 즉시 반영
                         Alert.alert('완료', result.message || '댓글이 삭제되었습니다.', [
                           {
                             text: '확인',
@@ -1649,7 +1646,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
                               setShowReportModal(false);
                               setReportReason('');
                               setReportDescription('');
-                              loadComments(); // 댓글 목록 리프레시
+                              loadComments(); // 댓글 목록 즉시 리프레시
                             }
                           }
                         ]);

@@ -1064,18 +1064,15 @@ export default function ViewLifeEventScreen({ route, navigation }) {
 
                     const result = await response.json();
                     
-                    // 삭제된 경우 즉시 리프레시
+                    // 삭제된 경우 처리 (글은 3번 신고 모였지만 즉시 반영하지 않음)
                     if (result.deleted) {
-                      Alert.alert('완료', result.message || '신고가 접수되어 삭제되었습니다.', [
+                      Alert.alert('완료', result.message || '신고가 접수되었습니다. 검토 후 조치하겠습니다.', [
                         {
                           text: '확인',
                           onPress: () => {
                             setShowReportModal(false);
-                            if (navigation.canGoBack()) {
-                              navigation.goBack();
-                            } else {
-                              navigation.navigate('Main', { screen: 'Home' });
-                            }
+                            setReportReason('');
+                            setReportDescription('');
                           }
                         }
                       ]);
