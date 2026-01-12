@@ -301,12 +301,21 @@ export default function WriteCirclesScreen({ navigation, route }) {
         // content_blocks를 복사하고 각 블록에 고유 ID가 없으면 생성
         blocks = editCircle.content_blocks.map((block, index) => {
           if (!block.id) {
-            return {
+            const newBlock = {
               ...block,
               id: block.type === 'image' 
                 ? `img_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`
                 : `text_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`
             };
+            // 이미지 블록의 경우 uri가 확실히 보존되도록
+            if (block.type === 'image' && block.uri) {
+              newBlock.uri = block.uri;
+            }
+            return newBlock;
+          }
+          // id가 있어도 이미지 블록의 uri는 보존
+          if (block.type === 'image' && block.uri) {
+            return { ...block, uri: block.uri };
           }
           return block;
         });
