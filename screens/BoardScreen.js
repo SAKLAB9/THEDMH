@@ -22,17 +22,56 @@ export default function BoardScreen({ navigation, route }) {
   );
   
   // university가 변경되면 selectedChannel도 업데이트 (route.params.selectedChannel이 없을 때만)
+  // 단, 사용자가 직접 MIUHub를 선택한 경우에는 university로 덮어쓰지 않음
   useEffect(() => {
-    if (!route?.params?.selectedChannel && university) {
+    // route.params.selectedChannel이 있으면 무시 (사용자가 직접 선택한 경우)
+    if (route?.params?.selectedChannel) {
+      return;
+    }
+    
+    // selectedChannel이 'MIUHub'인 경우 university로 덮어쓰지 않음
+    if (selectedChannel === 'MIUHub') {
+      return;
+    }
+    
+    if (university) {
       setSelectedChannel(university);
-    } else if (!route?.params?.selectedChannel && !university) {
+    } else if (!university) {
       setSelectedChannel(null);
     }
-  }, [university, route?.params?.selectedChannel]);
+  }, [university, route?.params?.selectedChannel, selectedChannel]);
   
   // selectedChannel에 따라 대학 색상 가져오기 (MIUHub도 포함)
+  // admin으로 학교 변경 시 university를 우선 사용하여 즉시 반영되도록 함
   const targetUniversity = useMemo(() => {
-    return selectedChannel === 'MIUHub' ? 'miuhub' : (selectedChannel || university || null);
+    if (selectedChannel === 'MIUHub') return 'miuhub';
+    // selectedChannel이 university와 다르면 university를 우선 사용 (admin으로 학교 변경 시)
+    if (university && selectedChannel !== university) {
+      return university;
+    }
+    return selectedChannel || university || null;
+  }, [selectedChannel, university]);
+  
+  // selectedChannel 변경 추적용 ref
+  const selectedChannelRef = useRef(selectedChannel);
+  
+  // selectedChannel이 변경되면 즉시 해당 채널의 캐시 확인 및 표시
+  useEffect(() => {
+    const prevChannel = selectedChannelRef.current;
+    
+    // selectedChannel이 실제로 변경되었을 때만 실행
+    if (prevChannel === selectedChannel) {
+      return;
+    }
+    
+    // selectedChannelRef를 먼저 업데이트 (useFocusEffect가 실행되기 전에)
+    selectedChannelRef.current = selectedChannel;
+    
+    // 채널이 변경되면 즉시 이전 데이터 초기화 (깜빡임 방지)
+    setSavedPosts([]);
+    
+    // 채널이 변경되면 캐시 무시하고 새로 로드 (MIUHub <-> 학교 탭 전환 시)
+    loadPostsData(true);
   }, [selectedChannel, university]);
   
   const uniColors = useMemo(() => getUniColors(targetUniversity, config), [targetUniversity, getColorConfig, appConfig]);
@@ -344,39 +383,130 @@ export default function BoardScreen({ navigation, route }) {
     }
   };
 
-  // Posts 데이터 로드 함수
-  const loadPostsData = React.useCallback(async () => {
+  // Posts 데이터 로드 함수 (뷰수/댓글수는 캐시 안 쓰고 항상 최신)
+  const loadPostsData = React.useCallback(async (forceRefresh = false) => {
+      // selectedChannelRef를 사용하여 최신 값 확인 (클로저 문제 방지)
+      const currentSelectedChannel = selectedChannelRef.current;
       // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
-      const targetUni = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
+      const targetUni = currentSelectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
-      if (!targetUni) {
+      if (!targetUni || !targetUni.trim()) {
         setSavedPosts([]);
         return;
       }
 
       try {
         const universityCode = targetUni.toLowerCase();
+        const cacheKey = `posts_${universityCode}`;
+        const cacheTimestampKey = `posts_timestamp_${universityCode}`;
+        const CACHE_DURATION = 2 * 60 * 1000; // 2분
+        const now = Date.now();
         
+        // forceRefresh가 true이면 캐시 무시하고 바로 API 호출
+        if (forceRefresh) {
+        } else {
+          // 캐시 확인 (뷰수/댓글수는 제외하고 나머지만 캐시 사용)
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+          
+          // 캐시가 있고 2분 이내면 캐시 먼저 표시하고 백그라운드에서 뷰수/댓글수 업데이트
+          if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION) {
+            const cachedPosts = JSON.parse(cachedData);
+            
+            // 캐시된 데이터를 즉시 표시 (빠른 응답)
+            setSavedPosts(cachedPosts);
+            
+            // 백그라운드에서 뷰수/댓글수만 최신 데이터로 업데이트
+            fetch(`${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`, {
+              headers: { 'Cache-Control': 'no-cache' }
+            })
+              .then(async response => {
+                if (response.ok) {
+                  const responseText = await response.text();
+                  try {
+                    return JSON.parse(responseText);
+                  } catch (e) {
+                    return null;
+                  }
+                }
+                return null;
+              })
+              .then(postsData => {
+                if (postsData && postsData.success && postsData.posts) {
+                  // 캐시된 데이터와 최신 데이터를 병합 (뷰수와 댓글수 업데이트)
+                  const updatedPosts = cachedPosts.map(cachedPost => {
+                    const latestPost = postsData.posts.find(p => p.id === cachedPost.id);
+                    if (latestPost) {
+                      return {
+                        ...cachedPost,
+                        views: latestPost.views,
+                        commentCount: latestPost.commentCount || 0
+                      };
+                    }
+                    return cachedPost;
+                  });
+                  setSavedPosts(updatedPosts);
+                  // 업데이트된 데이터를 캐시에 저장
+                  AsyncStorage.setItem(cacheKey, JSON.stringify(updatedPosts)).catch(() => {});
+                }
+              })
+              .catch(() => {
+                // 백그라운드 업데이트 실패는 무시 (이미 캐시된 데이터 표시됨)
+              });
+            
+            return; // 캐시 사용 시 여기서 종료
+          }
+        }
+        
+        // 캐시가 없거나 만료되었거나 forceRefresh이면 새로 로드
         const postsResponse = await fetch(`${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`);
         if (postsResponse.ok) {
-          const postsData = await postsResponse.json();
-          if (postsData.success && postsData.posts) {
-            setSavedPosts(postsData.posts);
-          } else {
+          // 응답 텍스트를 받는 즉시 파싱 (성능 최적화)
+          const postsText = await postsResponse.text();
+          try {
+            const postsData = JSON.parse(postsText);
+            if (postsData.success && postsData.posts) {
+              setSavedPosts(postsData.posts);
+              // 캐시 저장 (비동기, 블로킹하지 않음)
+              AsyncStorage.setItem(cacheKey, JSON.stringify(postsData.posts)).catch(() => {});
+              AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
+            } else {
+              setSavedPosts([]);
+            }
+          } catch (parseError) {
             setSavedPosts([]);
           }
         } else {
-          setSavedPosts([]);
+          await postsResponse.text().catch(() => '');
+          // 오류 시 캐시된 데이터가 있으면 사용
+          const errorCachedData = await AsyncStorage.getItem(cacheKey);
+          if (errorCachedData) {
+            setSavedPosts(JSON.parse(errorCachedData));
+          } else {
+            setSavedPosts([]);
+          }
         }
       } catch (error) {
-        setSavedPosts([]);
+        // 에러 발생 시 캐시된 데이터가 있으면 사용
+        try {
+          const cacheKey = `posts_${targetUni.toLowerCase()}`;
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            setSavedPosts(JSON.parse(cachedData));
+          } else {
+            setSavedPosts([]);
+          }
+        } catch {
+          setSavedPosts([]);
+        }
       }
   }, [university, selectedChannel]);
 
   // university 또는 selectedChannel이 변경될 때마다 Posts 데이터 불러오기
-  useEffect(() => {
-    loadPostsData();
-  }, [loadPostsData]);
+  // 주의: selectedChannel 변경은 위의 useEffect에서 loadPostsData(true)로 처리하므로 여기서는 제거
+  // useEffect(() => {
+  //   loadPostsData();
+  // }, [loadPostsData]);
 
   // Featured 데이터 로드 함수
   const loadFeaturedData = React.useCallback(async () => {
@@ -434,31 +564,76 @@ export default function BoardScreen({ navigation, route }) {
 
   // 화면이 포커스될 때마다 route.params에서 selectedChannel 업데이트 및 데이터 새로고침
   const intervalRef = useRef(null);
+  const modalJustClosedRef = useRef(false);
+  
+  // 모달이 닫힐 때 추적
+  useEffect(() => {
+    if (!showPartnersModal) {
+      // 모달이 닫혔다는 것을 표시 (다음 useFocusEffect 실행 시 차단)
+      modalJustClosedRef.current = true;
+      // 짧은 시간 후 리셋 (모달이 닫힌 후 useFocusEffect가 실행될 시간을 줌)
+      setTimeout(() => {
+        modalJustClosedRef.current = false;
+      }, 100);
+    }
+  }, [showPartnersModal]);
   
   useFocusEffect(
     React.useCallback(() => {
       let isMounted = true;
       
+      // selectedChannelRef를 최신 값으로 업데이트 (useEffect보다 먼저 실행될 수 있음)
+      const lastSelectedChannel = selectedChannelRef.current;
+      const currentSelectedChannel = selectedChannel;
+      
+      // selectedChannel이 변경되었다면 selectedChannelRef를 즉시 업데이트
+      if (lastSelectedChannel !== currentSelectedChannel) {
+        selectedChannelRef.current = currentSelectedChannel;
+        // selectedChannel이 변경되었으므로 refreshData를 완전히 스킵 (loadPostsData가 처리함)
+        return () => {
+          isMounted = false;
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        };
+      }
+      
+      // 모달이 방금 닫혔다면 refreshData를 실행하지 않음 (loadPostsData가 이미 처리함)
+      if (modalJustClosedRef.current) {
+        modalJustClosedRef.current = false; // 리셋
+        return () => {
+          isMounted = false;
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        };
+      }
+      
       // 화면 포커스 시 config 새로고침 (캐시 무시)
-      const targetUniForConfig = selectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
-      if (targetUniForConfig) {
-        loadConfig(targetUniForConfig, true);
+      // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
+      if (university) {
+        loadConfig(university, true);
       } else {
         loadConfig(null, true);
       }
       
       const refreshData = async () => {
+      
       // route.params에서 selectedChannel이 전달되었을 때만 업데이트
-        let currentChannel = selectedChannel; // 현재 상태를 기본값으로 사용
-      if (route?.params?.selectedChannel) {
-        setSelectedChannel(route.params.selectedChannel);
+        let currentChannel = currentSelectedChannel; // selectedChannelRef의 최신 값 사용
+        
+        // route.params가 있고 selectedChannel과 다를 때만 업데이트
+        if (route?.params?.selectedChannel && route.params.selectedChannel !== currentSelectedChannel) {
+          setSelectedChannel(route.params.selectedChannel);
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
         }
         
         // currentChannel에 따라 targetUni 결정
         const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
         
-        if (!targetUni || !targetUni.trim()) {
+        if (!targetUni) {
           if (isMounted) {
             setSavedPosts([]);
           }
@@ -467,21 +642,110 @@ export default function BoardScreen({ navigation, route }) {
 
         try {
           const universityCode = targetUni.toLowerCase();
+          const cacheKey = `posts_${universityCode}`;
+          const cacheTimestampKey = `posts_timestamp_${universityCode}`;
+          const now = Date.now();
+          const CACHE_DURATION = 2 * 60 * 1000; // 2분
           
+          // 캐시 확인
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          const cachedTimestamp = await AsyncStorage.getItem(cacheTimestampKey);
+          
+          // 캐시가 있고 2분 이내면 기존 데이터 유지하고 새로운 것만 추가, 뷰수 업데이트
+          if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp, 10)) < CACHE_DURATION && isMounted) {
+            const cachedPosts = JSON.parse(cachedData);
+            // 기존 데이터의 가장 최신 created_at 찾기 (새로운 항목만 가져오기 위해)
+            const latestCreatedAt = cachedPosts.length > 0 
+              ? Math.max(...cachedPosts.map(p => new Date(p.created_at || 0).getTime()))
+              : 0;
+            
+            // 기존 데이터 유지 (빈 배열로 초기화하지 않음)
+            // 새로운 항목만 가져오고 뷰수/댓글수 업데이트
+            const sinceParam = latestCreatedAt > 0 ? `&since=${latestCreatedAt}` : '';
+            fetch(`${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}${sinceParam}`, {
+              headers: { 'Cache-Control': 'no-cache' }
+            })
+              .then(async response => {
+                if (response.ok && isMounted) {
+                  const responseText = await response.text();
+                  try {
+                    const postsData = JSON.parse(responseText);
+                    if (postsData && postsData.success && postsData.posts) {
+                      // 기존 posts의 ID 집합 생성 (중복 체크용)
+                      const existingIds = new Set(cachedPosts.map(p => p.id));
+                      
+                      // 새로운 항목만 필터링 (기존에 없는 것만)
+                      const newPosts = postsData.posts.filter(p => !existingIds.has(p.id));
+                      
+                      // 기존 항목의 뷰수와 댓글수 업데이트
+                      const updatedPosts = cachedPosts.map(cachedPost => {
+                        const latestPost = postsData.posts.find(p => p.id === cachedPost.id);
+                        if (latestPost) {
+                          return {
+                            ...cachedPost,
+                            views: latestPost.views,
+                            commentCount: latestPost.commentCount || 0
+                          };
+                        }
+                        return cachedPost;
+                      });
+                      
+                      // 새로운 항목을 앞에 추가 (최신순 유지)
+                      const finalPosts = [...newPosts, ...updatedPosts];
+                      
+                      if (isMounted) {
+                        setSavedPosts(finalPosts);
+                        AsyncStorage.setItem(cacheKey, JSON.stringify(finalPosts)).catch(() => {});
+                      }
+                    }
+                  } catch (e) {
+                    // 파싱 오류는 무시 (기존 데이터 유지)
+                  }
+                }
+              })
+              .catch(() => {
+                // 오류는 무시 (기존 데이터 유지)
+              });
+            return; // 캐시가 있으면 여기서 종료
+          }
+          
+          // 캐시가 없거나 만료되었으면 새로 로드 (기존 데이터는 유지)
           const postsResponse = await fetch(`${API_BASE_URL}/api/posts?university=${encodeURIComponent(universityCode)}`);
           if (postsResponse.ok && isMounted) {
-            const postsData = await postsResponse.json();
-            if (postsData.success && postsData.posts) {
-              setSavedPosts(postsData.posts);
-            } else {
-              setSavedPosts([]);
+            const postsText = await postsResponse.text();
+            try {
+              const postsData = JSON.parse(postsText);
+              if (postsData.success && postsData.posts) {
+                setSavedPosts(postsData.posts);
+                // 캐시 저장
+                AsyncStorage.setItem(cacheKey, JSON.stringify(postsData.posts)).catch(() => {});
+                AsyncStorage.setItem(cacheTimestampKey, now.toString()).catch(() => {});
+              } else if (isMounted) {
+                // 데이터가 없으면 기존 데이터 유지 (빈 배열로 초기화하지 않음)
+                if (!cachedData) {
+                  setSavedPosts([]);
+                }
+              }
+            } catch (parseError) {
+              // 파싱 오류 시 기존 데이터 유지
+              if (!cachedData && isMounted) {
+                setSavedPosts([]);
+              }
             }
           } else if (isMounted) {
-            setSavedPosts([]);
+            // 오류 시 기존 데이터 유지 (빈 배열로 초기화하지 않음)
+            if (!cachedData) {
+              setSavedPosts([]);
+            }
           }
         } catch (error) {
+          // 오류 시 캐시된 데이터가 있으면 사용
           if (isMounted) {
-            setSavedPosts([]);
+            const cacheKey = `posts_${targetUni.toLowerCase()}`;
+            const cachedData = await AsyncStorage.getItem(cacheKey).catch(() => null);
+            if (!cachedData) {
+              setSavedPosts([]);
+            }
           }
         }
         
@@ -508,8 +772,13 @@ export default function BoardScreen({ navigation, route }) {
         }
       };
       
-      // 즉시 새로고침
-      refreshData();
+      // selectedChannel이 변경 중이 아닐 때만 즉시 새로고침
+      // selectedChannel 변경은 loadPostsData가 처리하므로 refreshData는 스킵
+      // 또한 화면이 이미 포커스되어 있고 selectedChannel이 변경되지 않았을 때만 실행
+      const shouldRefresh = !route?.params?.selectedChannel || route.params.selectedChannel === selectedChannel;
+      if (shouldRefresh) {
+        refreshData();
+      }
       
       // 2분(120초)마다 자동 새로고침 (새 글 확인)
       intervalRef.current = setInterval(() => {
@@ -523,7 +792,7 @@ export default function BoardScreen({ navigation, route }) {
           intervalRef.current = null;
         }
       };
-    }, [route?.params?.selectedChannel, selectedChannel, university, loadConfig])
+    }, [route?.params?.selectedChannel, university, loadConfig, selectedChannel])
   );
 
   // API에서 불러온 게시글만 사용
@@ -776,11 +1045,13 @@ export default function BoardScreen({ navigation, route }) {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
+              // MIUHub 선택과 동시에 데이터 로드 시작 (selectedChannel 변경 시 useEffect에서 자동으로 loadPostsData 호출됨)
               setSelectedChannel('MIUHub');
               setPageByTab(prev => ({
                 ...prev,
                 [activeTab]: 1,
               }));
+              // 모달은 별도로 열기 (데이터 로드와 동시에)
               setShowPartnersModal(true);
             }}
             style={{
