@@ -1008,8 +1008,30 @@ export default function CirclesScreen({ navigation, route }) {
       return now >= start && now <= end;
     });
     
+    console.log('[CirclesScreen] Featured 체크 시작:', {
+      activeTab,
+      currentPage: pageByTab[activeTab] || 1,
+      activeFeaturedCount: activeFeatured.length,
+      pageByTab
+    });
+    
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
+      
+      console.log('[CirclesScreen] Featured 항목 체크:', {
+        contentId: featuredItem.contentId,
+        category: featuredItem.category,
+        categoryType: typeof featuredItem.category,
+        activeTab,
+        activeTabType: typeof activeTab,
+        categoryEquals: featuredItem.category === activeTab,
+        categoryPage: featuredItem.categoryPage,
+        categoryPageType: typeof featuredItem.categoryPage,
+        categoryPosition: featuredItem.categoryPosition,
+        currentPage,
+        allPage: featuredItem.allPage,
+        allPosition: featuredItem.allPosition
+      });
       
       // 각 탭마다 독립적인 리스트로 처리
       // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
@@ -1029,9 +1051,18 @@ export default function CirclesScreen({ navigation, route }) {
         && featuredItem.allPosition 
         && activeTab === '전체';
       
+      console.log('[CirclesScreen] Featured 조건 결과:', {
+        contentId: featuredItem.contentId,
+        isTabFeatured,
+        isLegacyAllPageFeatured,
+        willAdd: isTabFeatured || isLegacyAllPageFeatured
+      });
+      
       if (isTabFeatured) {
+        console.log('[CirclesScreen] 탭 Featured 매칭됨:', featuredItem.contentId);
         featuredContentIds.add(featuredItem.contentId);
       } else if (isLegacyAllPageFeatured) {
+        console.log('[CirclesScreen] 레거시 전체 Featured 매칭됨:', featuredItem.contentId);
         featuredContentIds.add(featuredItem.contentId);
       }
     });

@@ -870,8 +870,30 @@ export default function BoardScreen({ navigation, route }) {
       return now >= start && now <= end;
     });
     
+    console.log('[BoardScreen] Featured 체크 시작:', {
+      activeTab,
+      currentPage: pageByTab[activeTab] || 1,
+      activeFeaturedCount: activeFeatured.length,
+      pageByTab
+    });
+    
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
+      
+      console.log('[BoardScreen] Featured 항목 체크:', {
+        contentId: featuredItem.contentId,
+        category: featuredItem.category,
+        categoryType: typeof featuredItem.category,
+        activeTab,
+        activeTabType: typeof activeTab,
+        categoryEquals: featuredItem.category === activeTab,
+        categoryPage: featuredItem.categoryPage,
+        categoryPageType: typeof featuredItem.categoryPage,
+        categoryPosition: featuredItem.categoryPosition,
+        currentPage,
+        allPage: featuredItem.allPage,
+        allPosition: featuredItem.allPosition
+      });
       
       // 각 탭마다 독립적인 리스트로 처리
       // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
@@ -891,9 +913,18 @@ export default function BoardScreen({ navigation, route }) {
         && featuredItem.allPosition 
         && activeTab === '전체';
       
+      console.log('[BoardScreen] Featured 조건 결과:', {
+        contentId: featuredItem.contentId,
+        isTabFeatured,
+        isLegacyAllPageFeatured,
+        willAdd: isTabFeatured || isLegacyAllPageFeatured
+      });
+      
       if (isTabFeatured) {
+        console.log('[BoardScreen] 탭 Featured 매칭됨:', featuredItem.contentId);
         featuredContentIds.add(featuredItem.contentId);
       } else if (isLegacyAllPageFeatured) {
+        console.log('[BoardScreen] 레거시 전체 Featured 매칭됨:', featuredItem.contentId);
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -923,11 +954,27 @@ export default function BoardScreen({ navigation, route }) {
     const featuredToInsert = [];
     const insertedContentIds = new Set(); // 이미 삽입된 contentId 추적
     
+    console.log('[BoardScreen] Featured 삽입 체크 시작:', {
+      activeTab,
+      currentPage,
+      activeFeaturedCount: activeFeatured.length
+    });
+    
     activeFeatured.forEach(featuredItem => {
       // 같은 contentId가 이미 삽입되었으면 스킵 (중복 방지)
       if (insertedContentIds.has(featuredItem.contentId)) {
         return;
       }
+      
+      console.log('[BoardScreen] Featured 삽입 항목 체크:', {
+        contentId: featuredItem.contentId,
+        category: featuredItem.category,
+        activeTab,
+        categoryEquals: featuredItem.category === activeTab,
+        categoryPage: featuredItem.categoryPage,
+        currentPage,
+        categoryPosition: featuredItem.categoryPosition
+      });
       
       // 각 탭마다 독립적인 리스트로 처리
       // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
@@ -946,7 +993,15 @@ export default function BoardScreen({ navigation, route }) {
         && featuredItem.allPosition 
         && activeTab === '전체';
       
+      console.log('[BoardScreen] Featured 삽입 조건 결과:', {
+        contentId: featuredItem.contentId,
+        isTabFeatured,
+        isLegacyAllPageFeatured,
+        willInsert: isTabFeatured || isLegacyAllPageFeatured
+      });
+      
       if (isTabFeatured) {
+        console.log('[BoardScreen] 탭 Featured 삽입:', featuredItem.contentId);
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
         // position 1 -> index 0 (왼쪽 첫 번째)
         // position 2 -> index 1 (오른쪽 첫 번째)
