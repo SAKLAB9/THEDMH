@@ -1908,7 +1908,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
                       setShowAdModal(false);
                       // featured 저장 후 CirclesScreen으로 돌아가면서 새로고침
                       if (navigation.canGoBack()) {
-                        navigation.navigate('Club', { selectedChannel, refreshFeatured: true });
+                        navigation.navigate('Main', { screen: 'Club', params: { selectedChannel, refreshFeatured: true } });
                       }
                     } catch (error) {
                       Alert.alert('오류', error.message || '설정 저장에 실패했습니다.');

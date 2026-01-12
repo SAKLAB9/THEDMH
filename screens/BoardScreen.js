@@ -869,9 +869,12 @@ export default function BoardScreen({ navigation, route }) {
     
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
-      // 현재 페이지와 탭에 해당하는 Featured만 수집
-      if ((featuredItem.categoryPage === currentPage && featuredItem.category === activeTab) || 
-          (featuredItem.allPage === currentPage)) {
+      // 카테고리 Featured: 해당 카테고리 탭에서만 수집
+      if (featuredItem.categoryPage === currentPage && featuredItem.category === activeTab) {
+        featuredContentIds.add(featuredItem.contentId);
+      }
+      // 전체 페이지 Featured: 모든 탭에서 수집
+      else if (featuredItem.allPage === currentPage) {
         featuredContentIds.add(featuredItem.contentId);
       }
     });
