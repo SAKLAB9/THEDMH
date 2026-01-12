@@ -196,7 +196,11 @@ export default function ProfileScreen() {
         return;
       }
       
-      setLogoImageUrl({ uri: urlData.publicUrl });
+      // 로고 이미지 크기에 맞춰 압축 (일반적으로 300x300 정도)
+      const logoSize = 300;
+      const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
+      
+      setLogoImageUrl({ uri: optimizedUrl });
     };
     
     loadLogoImage();

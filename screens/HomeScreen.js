@@ -338,7 +338,10 @@ export default function HomeScreen({ navigation }) {
             .from('images')
             .getPublicUrl(filePath);
           if (urlData?.publicUrl) {
-            setLogoImageUrl({ uri: urlData.publicUrl });
+            // 로고 이미지 크기에 맞춰 압축 (일반적으로 300x300 정도)
+            const logoSize = 300;
+            const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
+            setLogoImageUrl({ uri: optimizedUrl });
           } else {
             setLogoImageUrl(null);
           }
@@ -515,8 +518,11 @@ export default function HomeScreen({ navigation }) {
                   .from('images')
                   .getPublicUrl(filePath);
                 if (urlData?.publicUrl) {
-                  AsyncStorage.setItem(logoCacheKey, urlData.publicUrl).catch(() => {});
-                  setLogoImageUrl({ uri: urlData.publicUrl });
+                  // 로고 이미지 크기에 맞춰 압축 (일반적으로 300x300 정도)
+                  const logoSize = 300;
+                  const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
+                  AsyncStorage.setItem(logoCacheKey, optimizedUrl).catch(() => {});
+                  setLogoImageUrl({ uri: optimizedUrl });
                 }
               }
               
@@ -627,12 +633,15 @@ export default function HomeScreen({ navigation }) {
               .from('images')
               .getPublicUrl(filePath);
             if (urlData?.publicUrl) {
+              // 로고 이미지 크기에 맞춰 압축 (일반적으로 300x300 정도)
+              const logoSize = 300;
+              const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
               try {
-                await AsyncStorage.setItem(logoCacheKey, urlData.publicUrl);
+                await AsyncStorage.setItem(logoCacheKey, optimizedUrl);
               } catch (cacheError) {
                 // 캐시 저장 실패는 무시
               }
-              setLogoImageUrl({ uri: urlData.publicUrl });
+              setLogoImageUrl({ uri: optimizedUrl });
             } else {
               setLogoImageUrl(null);
             }

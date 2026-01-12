@@ -62,9 +62,13 @@ export default function SignUpScreen({ route }) {
           return;
         }
         
+        // 아이콘 크기에 맞춰 압축 (일반적으로 200x200 정도)
+        const iconSize = 200;
+        const optimizedUrl = `${urlData.publicUrl}?width=${iconSize}&height=${iconSize}`;
+        
         // 캐시에 저장
-        await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
-        setIconImageUrl({ uri: urlData.publicUrl });
+        await AsyncStorage.setItem(cacheKey, optimizedUrl);
+        setIconImageUrl({ uri: optimizedUrl });
       } catch (error) {
         // 이미지 로드 실패 시 무시
         setIconImageUrl(null);
