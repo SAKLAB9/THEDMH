@@ -110,10 +110,10 @@ export default function ViewCirclesScreen({ route, navigation }) {
   const config = { getColorConfig };
   const { circleId, selectedChannel, circlePreview, forceRefresh } = route?.params || {};
   
-  // university만 사용 (selectedChannel 제거)
+  // selectedChannel에 따라 university와 색상 결정
   const targetUniversity = useMemo(() => {
-    return university || null;
-  }, [university]);
+    return selectedChannel === 'MIUHub' ? 'miuhub' : (selectedChannel || university || null);
+  }, [selectedChannel, university]);
   
   const uniColors = useMemo(() => getUniColors(targetUniversity, config), [targetUniversity, getColorConfig]);
   const colors = useMemo(() => ({

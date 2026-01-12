@@ -41,10 +41,16 @@ export default function BoardScreen({ navigation, route }) {
     }
   }, [university, route?.params?.selectedChannel, selectedChannel]);
   
-  // university만 사용 (selectedChannel 제거)
+  // selectedChannel에 따라 대학 색상 가져오기 (MIUHub도 포함)
+  // admin으로 학교 변경 시 university를 우선 사용하여 즉시 반영되도록 함
   const targetUniversity = useMemo(() => {
-    return university || null;
-  }, [university]);
+    if (selectedChannel === 'MIUHub') return 'miuhub';
+    // selectedChannel이 university와 다르면 university를 우선 사용 (admin으로 학교 변경 시)
+    if (university && selectedChannel !== university) {
+      return university;
+    }
+    return selectedChannel || university || null;
+  }, [selectedChannel, university]);
   
   // selectedChannel 변경 추적용 ref
   const selectedChannelRef = useRef(selectedChannel);
@@ -379,8 +385,10 @@ export default function BoardScreen({ navigation, route }) {
 
   // Posts 데이터 로드 함수 (뷰수/댓글수는 캐시 안 쓰고 항상 최신)
   const loadPostsData = React.useCallback(async (forceRefresh = false) => {
-      // university만 사용
-      const targetUni = university || null;
+      // selectedChannelRef를 사용하여 최신 값 확인 (클로저 문제 방지)
+      const currentSelectedChannel = selectedChannelRef.current;
+      // selectedChannel이 MIUHub이면 miuhub 테이블 사용, 아니면 university 사용
+      const targetUni = currentSelectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
       
       if (!targetUni || !targetUni.trim()) {
         setSavedPosts([]);
@@ -622,8 +630,8 @@ export default function BoardScreen({ navigation, route }) {
           currentChannel = route.params.selectedChannel; // 업데이트된 값 사용
         }
         
-        // university만 사용
-        const targetUni = university || null;
+        // currentChannel에 따라 targetUni 결정
+        const targetUni = currentChannel === 'MIUHub' ? 'miuhub' : (university || null);
         
         if (!targetUni) {
           if (isMounted) {
