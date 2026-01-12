@@ -1074,16 +1074,36 @@ export default function ViewNoticeScreen({ route, navigation }) {
                       throw new Error(errorData.error || '신고 접수에 실패했습니다.');
                     }
 
-                    Alert.alert('완료', '신고가 접수되었습니다. 검토 후 조치하겠습니다.', [
-                      {
-                        text: '확인',
-                        onPress: () => {
-                          setShowReportModal(false);
-                          setReportReason('');
-                          setReportDescription('');
+                    const result = await response.json();
+                    
+                    // 삭제된 경우 즉시 리프레시
+                    if (result.deleted) {
+                      Alert.alert('완료', result.message || '신고가 접수되어 삭제되었습니다.', [
+                        {
+                          text: '확인',
+                          onPress: () => {
+                            setShowReportModal(false);
+                            if (navigation.canGoBack()) {
+                              navigation.goBack();
+                            } else {
+                              navigation.navigate('Main', { screen: 'Home' });
+                            }
+                          }
                         }
-                      }
-                    ]);
+                      ]);
+                    } else {
+                      // 삭제되지 않은 경우 (신고만 접수)
+                      Alert.alert('완료', result.message || '신고가 접수되었습니다. 검토 후 조치하겠습니다.', [
+                        {
+                          text: '확인',
+                          onPress: () => {
+                            setShowReportModal(false);
+                            setReportReason('');
+                            setReportDescription('');
+                          }
+                        }
+                      ]);
+                    }
                   } catch (error) {
                     Alert.alert('오류', `신고 처리 중 오류가 발생했습니다: ${error.message}`);
                   }
