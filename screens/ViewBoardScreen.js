@@ -109,10 +109,10 @@ export default function ViewBoardScreen({ route, navigation }) {
   const config = { getColorConfig };
   const { postId, selectedChannel } = route?.params || {};
   
-  // selectedChannel에 따라 university와 색상 결정
+  // university만 사용 (selectedChannel 제거)
   const targetUniversity = useMemo(() => {
-    return selectedChannel === 'MIUHub' ? 'miuhub' : (selectedChannel || university || null);
-  }, [selectedChannel, university]);
+    return university || null;
+  }, [university]);
   
   const uniColors = useMemo(() => getUniColors(targetUniversity, config), [targetUniversity, getColorConfig]);
   const colors = useMemo(() => ({
