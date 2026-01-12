@@ -201,8 +201,9 @@ export default function SelectUniScreen() {
       }
       
       // Supabase Storage에서 직접 이미지 URL 가져오기 (동기적으로 빠르게 생성)
-      // 캐시 버스팅을 위해 타임스탬프 추가
+      // 슬롯 크기에 맞춰 압축 (성능 최적화)
       const currentTimestamp = Date.now();
+      const imageSize = Math.max(slotWidth, slotHeight); // 슬롯 크기에 맞춰 리사이즈
       toLoadFromSupabase.forEach(imageName => {
         const trimmedName = String(imageName).trim();
         if (trimmedName) {
@@ -211,8 +212,8 @@ export default function SelectUniScreen() {
             .from('images')
             .getPublicUrl(filePath);
           if (urlData?.publicUrl) {
-            // 쿼리 파라미터로 캐시 버스팅 (브라우저/앱 레벨 캐시 무효화)
-            urls[trimmedName] = { uri: `${urlData.publicUrl}?v=${currentTimestamp}` };
+            // 슬롯 크기에 맞춰 압축 + 캐시 버스팅
+            urls[trimmedName] = { uri: `${urlData.publicUrl}?width=${imageSize}&height=${imageSize}&v=${currentTimestamp}` };
           }
         }
       });
@@ -278,9 +279,13 @@ export default function SelectUniScreen() {
           return;
         }
         
+        // 아이콘 크기에 맞춰 압축 (일반적으로 200x200 정도)
+        const iconSize = 200;
+        const optimizedUrl = `${urlData.publicUrl}?width=${iconSize}&height=${iconSize}`;
+        
         // 캐시에 저장
-        await AsyncStorage.setItem(cacheKey, urlData.publicUrl);
-        setIconImageUrl({ uri: urlData.publicUrl });
+        await AsyncStorage.setItem(cacheKey, optimizedUrl);
+        setIconImageUrl({ uri: optimizedUrl });
       } catch (error) {
         setIconImageUrl(null);
       }

@@ -255,9 +255,9 @@ export default function BoardScreen({ navigation, route }) {
         ]);
       }
       
-      // Supabase Storage에서 직접 이미지 URL 가져오기 (동기적으로 빠르게 생성)
-      // 캐시 버스팅을 위해 타임스탬프 추가
+      // Supabase Storage에서 직접 이미지 URL 가져오기 (슬롯 크기에 맞춰 압축)
       const currentTimestamp = Date.now();
+      const imageSize = Math.max(slotWidth, slotHeight); // 슬롯 크기에 맞춰 리사이즈
       toLoadFromSupabase.forEach(({ imageName }) => {
         const trimmedName = String(imageName).trim();
         if (trimmedName) {
@@ -266,8 +266,8 @@ export default function BoardScreen({ navigation, route }) {
             .from('images')
             .getPublicUrl(filePath);
           if (urlData?.publicUrl) {
-            // 쿼리 파라미터로 캐시 버스팅 (브라우저/앱 레벨 캐시 무효화)
-            urls[trimmedName] = { uri: `${urlData.publicUrl}?v=${currentTimestamp}` };
+            // 슬롯 크기에 맞춰 압축 + 캐시 버스팅
+            urls[trimmedName] = { uri: `${urlData.publicUrl}?width=${imageSize}&height=${imageSize}&v=${currentTimestamp}` };
           }
         }
       });
