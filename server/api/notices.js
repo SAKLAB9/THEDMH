@@ -39,14 +39,6 @@ module.exports = async (req, res) => {
     
     // POST 요청 처리 (공지사항 등록)
     if (req.method === 'POST') {
-      console.log('[API Notices POST] 요청 받음');
-      console.log('[API Notices POST] req.body:', {
-        title: req.body?.title,
-        university: req.body?.university,
-        category: req.body?.category,
-        hasContentBlocks: !!req.body?.contentBlocks,
-        contentBlocksLength: req.body?.contentBlocks?.length
-      });
       
       const { title, contentBlocks, textContent, images, category, nickname, author, url, university } = req.body;
       

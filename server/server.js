@@ -254,22 +254,17 @@ if (USE_DATABASE) {
 
   pool.query('SELECT NOW()')
     .then(() => {
-      console.log('[서버 시작] 데이터베이스 연결 성공');
       // 데이터베이스 연결 후 정적 파일 경로 등록
       registerStaticPaths();
       
       // pool이 준비된 후에 삭제 함수 등록 (raffle, featured)
-      console.log('[서버 시작] 만료된 raffle 삭제 함수 등록');
       deleteExpiredRaffles();
       setInterval(deleteExpiredRaffles, 60 * 1000);
-      console.log('[서버 시작] 만료된 raffle 삭제 함수 등록 완료, 1분마다 실행');
       
-      console.log('[서버 시작] 만료된 featured 삭제 함수 등록');
       deleteExpiredFeatured();
       
       // Featured는 일 단위이므로 1시간마다 체크 (자정 이후 최대 1시간 내에 삭제)
       setInterval(deleteExpiredFeatured, 60 * 60 * 1000); // 1시간마다
-      console.log('[서버 시작] 만료된 featured 삭제 함수 등록 완료, 1시간마다 실행');
     })
     .catch((error) => {
       console.error('[서버 시작] 데이터베이스 연결 실패:', error.message);
@@ -321,13 +316,11 @@ const saveCircleImage = async (base64Data, filename, university) => {
   }
   
   const uni = getUniversityPrefix(university);
-  console.log(`[saveCircleImage] university: ${university}, uni: ${uni}, filename: ${filename}`);
   
   // Supabase Storage 사용
   if (USE_DATABASE && process.env.SUPABASE_URL && (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY)) {
     try {
       const imageUrl = await saveCircleImageToSupabase(base64Data, filename, university);
-      console.log(`[saveCircleImage] Supabase Storage 저장 완료: ${imageUrl}`);
       return imageUrl;
     } catch (error) {
       console.error(`[saveCircleImage] Supabase Storage 저장 실패:`, error.message);
@@ -349,7 +342,6 @@ const saveCircleImage = async (base64Data, filename, university) => {
   
   const baseUrl = process.env.BASE_URL || `http://192.168.10.102:${PORT}`;
   const imageUrl = `${baseUrl}/${uni}/circlesimage/${filename}`;
-  console.log(`[saveCircleImage] 파일 시스템 저장 완료: ${imageUrl}`);
   return imageUrl;
 };
 
@@ -490,7 +482,6 @@ app.delete('/api/delete-image', async (req, res) => {
 app.get('/api/supabase-image-url', async (req, res) => {
   try {
     const { filename } = req.query;
-    console.log('[API supabase-image-url] 단일 요청 받음, filename:', filename);
     
     if (!filename) {
       console.error('[API supabase-image-url] filename이 없음');
@@ -549,7 +540,6 @@ app.get('/api/supabase-image-url', async (req, res) => {
 app.post('/api/supabase-image-url', async (req, res) => {
   try {
     const { filenames } = req.body;
-    console.log('[API supabase-image-url] 배치 요청 받음, filenames:', filenames);
     
     if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
       return res.status(400).json({ error: 'filenames 배열이 필요합니다.' });
@@ -873,14 +863,7 @@ app.post('/api/popups', async (req, res) => {
     if (content_blocks && Array.isArray(content_blocks)) {
       const announcementBlocks = content_blocks.filter(block => block.type === 'announcement');
       if (announcementBlocks.length > 0) {
-        console.log('[server] 공고 블록 발견:', announcementBlocks.length, '개');
         announcementBlocks.forEach((block, idx) => {
-          console.log(`[server] 공고 블록 ${idx + 1}:`, {
-            id: block.id,
-            type: block.type,
-            title: block.title,
-            content: block.content
-          });
         });
       }
     }
@@ -1544,20 +1527,16 @@ app.post('/api/notices', async (req, res) => {
                 const verifyCalled = verifyResult.rows[0]?.is_called || false;
                 const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
                 
-                console.log(`[공지사항 등록] 시퀀스 재설정 완료: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
                 
                 // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
                 if (verifyNextId <= maxId) {
                   // 여전히 문제가 있으면 더 높은 값으로 재설정
                   const safeId = maxId + 1;
                   await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
-                  console.warn(`[공지사항 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
                 }
               } else {
-                console.log(`[공지사항 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
               }
             } else {
-              console.warn(`[공지사항 등록] 시퀀스를 찾을 수 없음: ${tableName} - ID를 수동으로 지정해야 할 수 있습니다.`);
             }
           } catch (seqError) {
             // 시퀀스 재설정 실패해도 계속 진행 (시퀀스가 없을 수도 있음)
@@ -1599,7 +1578,6 @@ app.get('/api/notices', async (req, res) => {
   try {
     const { university, category, since } = req.query;
     
-    console.log('[공지사항 목록 조회] 요청:', { university, category, since });
     
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
@@ -1608,14 +1586,12 @@ app.get('/api/notices', async (req, res) => {
     if (USE_DATABASE && pool) {
       try {
         const universityCode = await normalizeUniversityFromRequest(university, pool);
-        console.log('[공지사항 목록 조회] universityCode:', universityCode);
         
         if (!universityCode) {
           return res.status(400).json({ error: '유효하지 않은 university입니다.' });
         }
         
         const tableName = getNoticesTableName(universityCode);
-        console.log('[공지사항 목록 조회] tableName:', tableName);
         
         if (!tableName) {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
@@ -1644,14 +1620,12 @@ app.get('/api/notices', async (req, res) => {
         
         query += ` ORDER BY created_at DESC`;
         
-        console.log('[공지사항 목록 조회] 쿼리 실행:', query, params);
         
         let result;
         try {
           result = await pool.query(query, params);
         } catch (queryError) {
           // 컬럼이 없는 경우를 대비해 간단한 쿼리로 재시도
-          console.warn('[공지사항 목록 조회] 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
           let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
           if (category && category !== '전체') {
             simpleQuery += ` WHERE category = $1`;
@@ -1669,7 +1643,6 @@ app.get('/api/notices', async (req, res) => {
           }));
         }
         
-        console.log('[공지사항 목록 조회] 결과:', result.rows.length, '개');
         
         // 결과에 기본값 추가 (컬럼이 없는 경우)
         const processedRows = result.rows.map(row => ({
@@ -1689,7 +1662,6 @@ app.get('/api/notices', async (req, res) => {
         res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
-      console.log('[공지사항 목록 조회] 데이터베이스 미사용');
       res.json({
         success: true,
         notices: []
@@ -1737,7 +1709,6 @@ app.post('/api/notices/:id/increment-views', async (req, res) => {
         
         // 1분 이내에 같은 요청이 있으면 무시
         if (cached && (now - cached) < VIEW_INCREMENT_CACHE_DURATION) {
-          console.log(`[공지사항 뷰수 증가] 중복 요청 무시: ${cacheKey} (${now - cached}ms 전)`);
           // 현재 뷰수만 반환 (증가하지 않음)
           const currentResult = await pool.query(
             `SELECT views FROM ${tableName} WHERE id = $1`,
@@ -1774,7 +1745,6 @@ app.post('/api/notices/:id/increment-views', async (req, res) => {
           return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
         }
         
-        console.log(`[공지사항 뷰수 증가] 성공: ${tableName} id=${noticeId}, views=${result.rows[0].views}`);
         
         res.json({
           success: true,
@@ -1798,7 +1768,6 @@ app.get('/api/notices/:id', async (req, res) => {
     const { id } = req.params;
     const { university } = req.query;
     
-    console.log(`[공지사항 상세 조회 시작] id: ${id}, university: ${university}`);
     
     if (!university) {
       console.error('[공지사항 상세 조회] university 파라미터 누락');
@@ -1808,14 +1777,12 @@ app.get('/api/notices/:id', async (req, res) => {
     if (USE_DATABASE && pool) {
       try {
         const universityCode = await normalizeUniversityFromRequest(university, pool);
-        console.log(`[공지사항 상세 조회] university: ${university}, universityCode: ${universityCode}, id: ${id}`);
         if (!universityCode) {
           console.error(`[공지사항 상세 조회] 유효하지 않은 university: ${university}`);
           return res.status(400).json({ error: '유효하지 않은 university입니다.' });
         }
         
         const tableName = getNoticesTableName(universityCode);
-        console.log(`[공지사항 상세 조회] tableName: ${tableName}`);
         
         if (!tableName) {
           console.error(`[공지사항 상세 조회] 테이블 이름 생성 실패: universityCode=${universityCode}`);
@@ -1829,20 +1796,16 @@ app.get('/api/notices/:id', async (req, res) => {
           return res.status(400).json({ error: '유효하지 않은 공지사항 ID입니다.' });
         }
         
-        console.log(`[공지사항 상세 조회] 쿼리 실행: SELECT * FROM ${tableName} WHERE id = $1 (noticeId=${noticeId})`);
         const result = await pool.query(
           `SELECT * FROM ${tableName} WHERE id = $1`,
           [noticeId]
         );
         
-        console.log(`[공지사항 상세 조회] 쿼리 결과: ${result.rows.length}개`);
         
         if (result.rows.length === 0) {
-          console.warn(`[공지사항 상세 조회] 공지사항을 찾을 수 없음: id=${id}, tableName=${tableName}`);
           return res.status(404).json({ error: '공지사항을 찾을 수 없습니다.' });
         }
         
-        console.log(`[공지사항 상세 조회] 성공: id=${id}`);
         res.json({
           success: true,
           notice: result.rows[0]
@@ -2041,7 +2004,6 @@ app.put('/api/notices/:id', async (req, res) => {
         oldImageUrls.forEach(url => {
           if (!newImageUrls.includes(url)) {
             deletedImageUrls.push(url);
-            console.log(`[공지사항 수정] 삭제할 이미지 (나중에 처리): ${url}`);
           }
         });
         
@@ -2206,7 +2168,6 @@ app.get('/api/life-events', async (req, res) => {
   try {
     const { university, category, since } = req.query;
     
-    console.log('[경조사 목록 조회] 요청:', { university, category, since });
     
     if (!university) {
       return res.status(400).json({ error: 'university 파라미터가 필요합니다.' });
@@ -2215,14 +2176,12 @@ app.get('/api/life-events', async (req, res) => {
     if (USE_DATABASE && pool) {
       try {
         const universityCode = await normalizeUniversityFromRequest(university, pool);
-        console.log('[경조사 목록 조회] universityCode:', universityCode);
         
         if (!universityCode) {
           return res.status(400).json({ error: '유효하지 않은 university입니다.' });
         }
         
         const tableName = getLifeEventsTableName(universityCode);
-        console.log('[경조사 목록 조회] tableName:', tableName);
         
         if (!tableName) {
           return res.status(400).json({ error: '테이블 이름을 생성할 수 없습니다.' });
@@ -2266,14 +2225,12 @@ app.get('/api/life-events', async (req, res) => {
         
         query += ` ORDER BY created_at DESC`;
         
-        console.log('[경조사 목록 조회] 쿼리 실행:', query, params);
         
         let result;
         try {
           result = await pool.query(query, params);
         } catch (queryError) {
           // 컬럼이 없는 경우를 대비해 간단한 쿼리로 재시도
-          console.warn('[경조사 목록 조회] 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
           let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
           if (category && category !== '전체') {
             simpleQuery += ` WHERE category = $1`;
@@ -2291,7 +2248,6 @@ app.get('/api/life-events', async (req, res) => {
           }));
         }
         
-        console.log('[경조사 목록 조회] 결과:', result.rows.length, '개');
         
         // 결과에 기본값 추가 (컬럼이 없는 경우)
         const processedRows = result.rows.map(row => ({
@@ -2311,7 +2267,6 @@ app.get('/api/life-events', async (req, res) => {
         res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
-      console.log('[경조사 목록 조회] 데이터베이스 미사용');
       res.json({
         success: true,
         lifeEvents: []
@@ -2408,7 +2363,6 @@ app.post('/api/life-events/:id/increment-views', async (req, res) => {
         
         // 1분 이내에 같은 요청이 있으면 무시
         if (cached && (now - cached) < VIEW_INCREMENT_CACHE_DURATION) {
-          console.log(`[경조사 뷰수 증가] 중복 요청 무시: ${cacheKey} (${now - cached}ms 전)`);
           // 현재 뷰수만 반환 (증가하지 않음)
           const currentResult = await pool.query(
             `SELECT views FROM ${tableName} WHERE id = $1`,
@@ -2445,7 +2399,6 @@ app.post('/api/life-events/:id/increment-views', async (req, res) => {
           return res.status(404).json({ error: '경조사를 찾을 수 없습니다.' });
         }
         
-        console.log(`[경조사 뷰수 증가] 성공: ${tableName} id=${lifeEventId}, views=${result.rows[0].views}`);
         
         res.json({
           success: true,
@@ -2467,17 +2420,9 @@ app.post('/api/life-events/:id/increment-views', async (req, res) => {
 // 경조사 등록 API
 app.post('/api/life-events', async (req, res) => {
   try {
-    console.log('[경조사 등록 API] 요청 받음 - 전체 req.body:', JSON.stringify(req.body, null, 2));
     
     const { title, contentBlocks, textContent, images, category, nickname, author, url, university } = req.body;
 
-    console.log('[경조사 등록 API] 파싱된 값:', {
-      title: !!title,
-      contentBlocks: !!contentBlocks,
-      category: category,
-      university: university,
-      universityType: typeof university,
-      reqBodyKeys: Object.keys(req.body || {}),
       reqBodyUniversity: req.body?.university
     });
 
@@ -2556,17 +2501,14 @@ app.post('/api/life-events', async (req, res) => {
                 const verifyCalled = verifyResult.rows[0]?.is_called || false;
                 const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
                 
-                console.log(`[Life Events 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
                 
                 // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
                 if (verifyNextId <= maxId) {
                   // 여전히 문제가 있으면 더 높은 값으로 재설정
                   const safeId = maxId + 1;
                   await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
-                  console.warn(`[Life Events 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
                 }
               } else {
-                console.log(`[Life Events 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
               }
             }
           } catch (seqError) {
@@ -2755,7 +2697,6 @@ app.put('/api/life-events/:id', async (req, res) => {
         oldImageUrls.forEach(url => {
           if (!newImageUrls.includes(url)) {
             deletedImageUrls.push(url);
-            console.log(`[경조사 수정] 삭제할 이미지 (나중에 처리): ${url}`);
           }
         });
 
@@ -2904,12 +2845,10 @@ app.get('/api/circles', async (req, res) => {
             
             if (checkResult.rows.length === 0) {
               await pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${col.name} ${col.type}`);
-              console.log(`[Circles 목록 조회] 컬럼 추가: ${tableName}.${col.name}`);
             }
           }
         } catch (colError) {
           // 컬럼 추가 실패해도 계속 진행
-          console.warn('[Circles 목록 조회] 컬럼 확인/추가 실패:', colError.message);
         }
         
         // 댓글 테이블 이름 가져오기
@@ -2972,7 +2911,6 @@ app.get('/api/circles', async (req, res) => {
           result = await pool.query(query, params);
         } catch (queryError) {
           // JOIN 쿼리 실패 시 간단한 쿼리로 재시도
-          console.warn('[Circles 목록 조회] JOIN 쿼리 실패, 간단한 쿼리로 재시도:', queryError.message);
           let simpleQuery = `SELECT id, title, category, author, created_at FROM ${tableName}`;
           if (category && category !== '전체') {
             simpleQuery += ` WHERE category = $1`;
@@ -3156,11 +3094,9 @@ app.post('/api/circles', async (req, res) => {
       }
     }
 
-    console.log(`[Circles POST] contentBlocks 처리 시작, 개수: ${contentBlocks?.length || 0}`);
     const updatedContentBlocks = await Promise.all(contentBlocks.map(async (block, index) => {
       if (block.type === 'image' && block.uri && block.uri.startsWith('data:image')) {
         try {
-          console.log(`[Circles POST] contentBlock[${index}] 이미지 저장 시작`);
           const timestamp = Date.now();
           const filename = `circle_${timestamp}_block_${index}.jpg`;
           if (!universityCode) {
@@ -3172,7 +3108,6 @@ app.post('/api/circles', async (req, res) => {
             console.error(`[Circles POST] contentBlock 이미지 저장 실패: universityCode=${universityCode}, filename=${filename}`);
             throw new Error('이미지 저장에 실패했습니다.');
           }
-          console.log(`[Circles POST] contentBlock[${index}] 이미지 저장 완료: ${imageUrl}, universityCode: ${universityCode}`);
           return { ...block, uri: imageUrl };
         } catch (imageError) {
           console.error(`[Circles POST] contentBlock 이미지 저장 오류 (${index}번째, ${universityCode}):`, imageError.message, imageError.stack);
@@ -3181,23 +3116,15 @@ app.post('/api/circles', async (req, res) => {
       }
       return block;
     }));
-    console.log(`[Circles POST] contentBlocks 처리 완료, 개수: ${updatedContentBlocks?.length || 0}, universityCode: ${universityCode}`);
     
     // 디버깅: 최종 content_blocks의 이미지 블록 확인
     const finalImageBlocks = updatedContentBlocks.filter(block => block.type === 'image');
-    console.log(`[Circles POST] ${universityCode} - 최종 이미지 블록 개수: ${finalImageBlocks.length}`);
     finalImageBlocks.forEach((block, idx) => {
-      console.log(`[Circles POST] ${universityCode} - 최종 이미지 블록[${idx}]:`, {
-        id: block.id,
-        type: block.type,
-        uri: block.uri
-      });
     });
     
     // content_blocks의 이미지 URI를 images 배열에도 포함 (동기화)
     const contentBlockImageUris = finalImageBlocks.map(block => block.uri).filter(uri => uri);
     const finalImages = [...new Set([...savedImageUrls, ...contentBlockImageUris])]; // 중복 제거
-    console.log(`[Circles POST] ${universityCode} - 최종 images 배열 개수: ${finalImages.length}`);
 
     if (USE_DATABASE && pool) {
       try {
@@ -3232,17 +3159,14 @@ app.post('/api/circles', async (req, res) => {
                 const verifyCalled = verifyResult.rows[0]?.is_called || false;
                 const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
                 
-                console.log(`[Circles 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
                 
                 // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
                 if (verifyNextId <= maxId) {
                   // 여전히 문제가 있으면 더 높은 값으로 재설정
                   const safeId = maxId + 1;
                   await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
-                  console.warn(`[Circles 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
                 }
               } else {
-                console.log(`[Circles 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
               }
             }
           } catch (seqError) {
@@ -3436,7 +3360,6 @@ app.post('/api/circles/:id/increment-views', async (req, res) => {
         
         // 1분 이내에 같은 요청이 있으면 무시
         if (cached && (now - cached) < VIEW_INCREMENT_CACHE_DURATION) {
-          console.log(`[소모임 뷰수 증가] 중복 요청 무시: ${cacheKey} (${now - cached}ms 전)`);
           // 현재 뷰수만 반환 (증가하지 않음)
           const currentResult = await pool.query(
             `SELECT views FROM ${tableName} WHERE id = $1`,
@@ -3473,7 +3396,6 @@ app.post('/api/circles/:id/increment-views', async (req, res) => {
           return res.status(404).json({ error: '소모임을 찾을 수 없습니다.' });
         }
         
-        console.log(`[소모임 뷰수 증가] 성공: ${tableName} id=${circleId}, views=${result.rows[0].views}`);
         
         res.json({
           success: true,
@@ -3548,21 +3470,13 @@ app.get('/api/circles/:id', async (req, res) => {
         
         // content_blocks가 배열이 아니면 빈 배열로 설정
         if (!Array.isArray(circle.content_blocks)) {
-          console.warn(`[Circles GET /:id] content_blocks가 배열이 아님 (${universityCode}):`, typeof circle.content_blocks, circle.content_blocks);
           circle.content_blocks = [];
         }
         
         // 디버깅: content_blocks의 이미지 블록 확인
         if (circle.content_blocks && circle.content_blocks.length > 0) {
           const imageBlocks = circle.content_blocks.filter(block => block.type === 'image');
-          console.log(`[Circles GET /:id] ${universityCode} - content_blocks 이미지 블록 개수: ${imageBlocks.length}`);
           imageBlocks.forEach((block, idx) => {
-            console.log(`[Circles GET /:id] ${universityCode} - 이미지 블록[${idx}]:`, {
-              id: block.id,
-              type: block.type,
-              uri: block.uri,
-              uri_type: typeof block.uri
-            });
           });
         }
         
@@ -3761,7 +3675,6 @@ app.put('/api/circles/:id', async (req, res) => {
     oldImageUrls.forEach(url => {
       if (!newImageUrls.includes(url)) {
         deletedImageUrls.push(url);
-        console.log(`[Circles 수정] 삭제할 이미지 (나중에 처리): ${url}`);
       }
     });
     
@@ -3774,7 +3687,6 @@ app.put('/api/circles/:id', async (req, res) => {
     
     // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
     const finalImages = savedImageUrls;
-    console.log(`[Circles PUT] ${universityCode} - 최종 images 배열 개수: ${finalImages.length}, content_blocks 개수: ${finalContentBlocks.length}`);
 
     if (USE_DATABASE) {
       try {
@@ -4189,17 +4101,14 @@ app.post('/api/posts', async (req, res) => {
                 const verifyCalled = verifyResult.rows[0]?.is_called || false;
                 const verifyNextId = verifyCalled ? verifyVal + 1 : verifyVal;
                 
-                console.log(`[게시판 등록] 시퀀스 재설정: 테이블=${tableName}, maxId=${maxId}, currSeq=${currVal}, 재설정 후 다음 ID=${verifyNextId}`);
                 
                 // 안전 확인: 생성될 ID가 테이블에 이미 존재하는지 확인
                 if (verifyNextId <= maxId) {
                   // 여전히 문제가 있으면 더 높은 값으로 재설정
                   const safeId = maxId + 1;
                   await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
-                  console.warn(`[게시판 등록] 안전 재설정: 테이블=${tableName}, maxId=${maxId}, 다음 ID=${safeId + 1}`);
                 }
               } else {
-                console.log(`[게시판 등록] 시퀀스 동기화 불필요: 테이블=${tableName}, maxId=${maxId}, nextSeqVal=${nextSeqVal}`);
               }
             }
           } catch (seqError) {
@@ -4379,7 +4288,6 @@ app.put('/api/posts/:id', async (req, res) => {
     oldImageUrls.forEach(url => {
       if (!newImageUrls.includes(url)) {
         deletedImageUrls.push(url);
-        console.log(`[게시판 수정] 삭제할 이미지 (나중에 처리): ${url}`);
       }
     });
     
@@ -6410,24 +6318,18 @@ app.post('/api/reports', async (req, res) => {
 // App Config 조회 API
 app.get('/api/config', async (req, res) => {
   try {
-    console.log('[API Config] 요청 받음');
-    console.log('[API Config] USE_DATABASE:', USE_DATABASE);
-    console.log('[API Config] pool 존재:', !!pool);
     
     if (USE_DATABASE && pool) {
       try {
         const query = 'SELECT key, value FROM app_config';
-        console.log('[API Config] 쿼리 실행:', query);
         
         const result = await pool.query(query);
-        console.log('[API Config] 조회된 레코드 수:', result.rows.length);
         
         const config = {};
         result.rows.forEach(row => {
           config[row.key] = row.value;
         });
         
-        console.log('[API Config] 반환할 config 키 목록:', Object.keys(config));
         res.json({
           success: true,
           config: config
@@ -6437,7 +6339,6 @@ app.get('/api/config', async (req, res) => {
         console.error('[API Config] 에러 상세:', error.message);
         // 데이터베이스 연결 오류 시 빈 config 반환 (앱이 계속 작동하도록)
         if (error.message && (error.message.includes('Tenant') || error.message.includes('user not found') || error.message.includes('connection'))) {
-          console.warn('[API Config] 데이터베이스 연결 실패 - 빈 config 반환');
           return res.json({
             success: true,
             config: {}
@@ -6446,7 +6347,6 @@ app.get('/api/config', async (req, res) => {
         res.status(500).json({ error: '서버 오류가 발생했습니다.', message: error.message });
       }
     } else {
-      console.warn('[API Config] 데이터베이스 연결 없음 - 빈 config 반환');
       res.json({
         success: true,
         config: {}
@@ -6716,7 +6616,6 @@ async function deleteExpiredFeatured() {
               `DELETE FROM ${tableName} WHERE id = $1`,
               [row.id]
             );
-            console.log(`[Featured 삭제] ID ${row.id} 삭제됨 (end_date: ${endDate.toISOString()})`);
           }
         } catch (e) {
           // 개별 항목 처리 실패해도 계속 진행
@@ -6738,12 +6637,9 @@ async function deleteExpiredFeatured() {
 if (process.env.VERCEL !== '1') {
   // 로컬 개발 환경에서만 app.listen 실행
   app.listen(PORT, () => {
-    console.log(`[서버 시작] 서버가 포트 ${PORT}에서 실행 중입니다.`);
     if (!USE_DATABASE) {
       registerStaticPaths();
-      console.log('[서버 시작] USE_DATABASE가 false이므로 파일 시스템 모드로 실행');
     } else {
-      console.log('[서버 시작] 데이터베이스 모드로 실행');
     }
   });
 }

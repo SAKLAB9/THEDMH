@@ -327,13 +327,11 @@ export default function WriteNoticeScreen({ navigation, route }) {
                 
                 if (!response.ok) {
                   if (__DEV__) {
-                    console.warn('[WriteNoticeScreen] 이미지 삭제 실패:', await response.text());
                   }
                   // 삭제 실패해도 UI에서는 제거 (이미지는 나중에 cleanup으로 삭제 가능)
                 }
               } catch (error) {
                 if (__DEV__) {
-                  console.warn('[WriteNoticeScreen] 이미지 삭제 오류:', error);
                 }
                 // 삭제 실패해도 UI에서는 제거
               }
@@ -492,11 +490,6 @@ export default function WriteNoticeScreen({ navigation, route }) {
       
       const universityValue = university.toLowerCase();
       if (__DEV__) {
-        console.log('[WriteNoticeScreen] 저장 요청:', {
-          university: universityValue,
-          isEditMode,
-          editNoticeId
-        });
       }
       
       // API 서버로 전송 (수정 모드면 PUT, 아니면 POST)
@@ -518,11 +511,6 @@ export default function WriteNoticeScreen({ navigation, route }) {
       };
       
       if (__DEV__) {
-        console.log('[WriteNoticeScreen] 요청 본문:', {
-          ...requestBody,
-          contentBlocks: requestBody.contentBlocks.length,
-          images: requestBody.images.length
-        });
       }
       
       const response = await fetch(apiUrl, {
@@ -575,7 +563,6 @@ export default function WriteNoticeScreen({ navigation, route }) {
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
-          console.warn('[WriteNoticeScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 

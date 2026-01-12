@@ -629,7 +629,6 @@ export default function ViewLifeEventScreen({ route, navigation }) {
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
-          console.warn('[ViewLifeEventScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 

@@ -209,7 +209,6 @@ export default function LoginScreen() {
     // 앱이 이미 열려있을 때 딥링크 처리
     const handleDeepLink = async (event) => {
       const { url } = event;
-      // console.log('[딥링크] 수신:', url);
       
       // Supabase URL 또는 딥링크 URL 처리
       if (url && (url.includes('reset-password') || url.includes('supabase.co/auth/v1/callback'))) {
@@ -231,7 +230,6 @@ export default function LoginScreen() {
             }
 
             if (session) {
-              // console.log('[딥링크] 세션 설정 완료, 비밀번호 재설정 모달 열기');
               setShowResetPasswordModal(true);
             } else {
               Alert.alert('오류', '비밀번호 재설정 링크가 유효하지 않습니다.');
@@ -242,10 +240,8 @@ export default function LoginScreen() {
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             
             if (!sessionError && session) {
-              // console.log('[딥링크] 기존 세션 확인됨, 비밀번호 재설정 모달 열기');
               setShowResetPasswordModal(true);
             } else {
-              // console.log('[딥링크] 세션이 없음');
               Alert.alert('오류', '비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다.');
             }
           }
@@ -258,7 +254,6 @@ export default function LoginScreen() {
 
     // 초기 URL 확인 (앱이 딥링크로 열렸을 때)
     Linking.getInitialURL().then(async (url) => {
-      // console.log('[딥링크] 초기 URL:', url);
       if (url && (url.includes('reset-password') || url.includes('supabase.co/auth/v1/callback'))) {
         try {
           const tokens = parseTokensFromURL(url);
@@ -589,7 +584,6 @@ export default function LoginScreen() {
           if (authError.message?.includes('Invalid login credentials') || authError.message?.includes('Invalid')) {
             // 개발 모드에서만 상세 로그
             if (__DEV__) {
-              console.log('[Login] 인증 실패:', authError.message);
             }
             alert('이메일 또는 비밀번호가 올바르지 않습니다.');
           } else {
@@ -1187,7 +1181,6 @@ export default function LoginScreen() {
                               throw new Error(errorMessage);
                             }
 
-                            console.log('[비밀번호 찾기] 이메일 전송 성공:', findEmail.trim());
 
                             Alert.alert(
                               '이메일 전송 완료',

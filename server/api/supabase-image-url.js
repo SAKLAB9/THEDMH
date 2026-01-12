@@ -19,7 +19,6 @@ module.exports = async (req, res) => {
     // POST 요청: 배치 조회 (여러 이미지)
     if (req.method === 'POST') {
       const { filenames } = req.body;
-      console.log('[API supabase-image-url] 배치 요청 받음, filenames:', filenames);
       
       if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
         console.error('[API supabase-image-url] filenames 배열이 없음');
@@ -83,7 +82,6 @@ module.exports = async (req, res) => {
     
     // GET 요청: 단일 이미지 조회
     const { filename } = req.query;
-    console.log('[API supabase-image-url] 단일 요청 받음, filename:', filename);
     
     if (!filename) {
       console.error('[API supabase-image-url] filename이 없음');
@@ -97,8 +95,6 @@ module.exports = async (req, res) => {
     if (process.env.SUPABASE_URL) {
       const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
       
-      console.log('[API supabase-image-url] SUPABASE_URL:', process.env.SUPABASE_URL);
-      console.log('[API supabase-image-url] supabaseKey 존재:', !!supabaseKey);
       
       if (!supabaseKey) {
         console.error('[API supabase-image-url] Supabase 키가 없음');
@@ -112,7 +108,6 @@ module.exports = async (req, res) => {
       
       // Supabase Storage public URL 생성
       const filePath = `assets/${filename}`;
-      console.log('[API supabase-image-url] 파일 경로:', filePath);
       
       const { data: urlData, error: urlError } = supabaseClient.storage
         .from('images')
@@ -127,7 +122,6 @@ module.exports = async (req, res) => {
         });
       }
       
-      console.log('[API supabase-image-url] 생성된 URL:', urlData.publicUrl);
       
       return res.json({ 
         success: true, 
@@ -136,7 +130,6 @@ module.exports = async (req, res) => {
     }
     
     // Supabase가 설정되지 않은 경우 fallback
-    console.warn('[API supabase-image-url] Supabase 설정 없음 - fallback 사용');
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     const imageUrl = `${baseUrl}/images/${filename}`;
     

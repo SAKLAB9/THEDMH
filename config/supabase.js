@@ -24,7 +24,6 @@ if (SUPABASE_URL && SUPABASE_URL !== '' && SUPABASE_ANON_KEY && SUPABASE_ANON_KE
   }
 } else {
   if (__DEV__) {
-    console.warn('[Supabase] URL 또는 Key가 설정되지 않았습니다.');
   }
 }
 

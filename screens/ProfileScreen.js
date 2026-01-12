@@ -226,10 +226,6 @@ export default function ProfileScreen() {
       // raffle이 있을 때만 로그 출력 (과부하 방지)
       if (result.success && result.raffles && result.raffles.length > 0) {
         if (!silent) {
-          console.log('[Profile] Raffle 발견:', {
-            count: result.raffles.length,
-            latestId: result.raffles[0]?.id
-          });
         }
         
         setRaffles(result.raffles);

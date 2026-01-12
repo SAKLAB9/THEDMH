@@ -482,7 +482,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
             } else {
               // 공지사항을 찾을 수 없음 (다른 학교일 수 있음)
               if (__DEV__) {
-                console.log(`[ViewNoticeScreen] 공지사항을 찾을 수 없음 (다른 학교일 수 있음)`);
               }
               // 조용히 뒤로 가기 (에러 메시지 표시 안 함)
               if (navigation.canGoBack()) {
@@ -508,7 +507,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
           if (response.status === 404) {
             // 다른 학교로 넘어갔을 때 발생할 수 있는 404는 조용히 처리
             if (__DEV__) {
-              console.log(`[ViewNoticeScreen] 공지사항을 찾을 수 없음 (404) - 다른 학교일 수 있음`);
             }
             // 조용히 뒤로 가기 (에러 메시지 표시 안 함)
             if (navigation.canGoBack()) {
@@ -666,7 +664,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
-          console.warn('[ViewNoticeScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 

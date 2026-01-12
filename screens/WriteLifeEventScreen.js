@@ -443,11 +443,6 @@ export default function WriteLifeEventScreen({ navigation, route }) {
       
       const universityValue = university.toLowerCase();
       if (__DEV__) {
-        console.log('[WriteLifeEventScreen] 저장 요청:', {
-          university: universityValue,
-          isEditMode,
-          editNoticeId
-        });
       }
 
       // API 서버로 전송 (수정 모드면 PUT, 아니면 POST)
@@ -469,11 +464,6 @@ export default function WriteLifeEventScreen({ navigation, route }) {
       };
       
       if (__DEV__) {
-        console.log('[WriteLifeEventScreen] 요청 본문:', {
-          ...requestBody,
-          contentBlocks: requestBody.contentBlocks.length,
-          images: requestBody.images.length
-        });
       }
       
       const response = await fetch(apiUrl, {
@@ -521,7 +511,6 @@ export default function WriteLifeEventScreen({ navigation, route }) {
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
-          console.warn('[WriteLifeEventScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 

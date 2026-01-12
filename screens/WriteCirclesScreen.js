@@ -749,7 +749,6 @@ export default function WriteCirclesScreen({ navigation, route }) {
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
-          console.warn('[WriteCirclesScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 

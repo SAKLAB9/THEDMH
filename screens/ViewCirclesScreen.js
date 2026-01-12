@@ -778,7 +778,6 @@ export default function ViewCirclesScreen({ route, navigation }) {
       } catch (cacheError) {
         // 캐시 무효화 실패는 무시 (중요하지 않음)
         if (__DEV__) {
-          console.warn('[ViewCirclesScreen] 캐시 무효화 실패:', cacheError);
         }
       }
 

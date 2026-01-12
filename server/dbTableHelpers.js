@@ -39,7 +39,6 @@ async function normalizeUniversityCode(university, pool = null) {
   if (pool) {
     const isValid = await isValidUniversity(code, pool);
     if (!isValid) {
-      console.warn(`유효하지 않은 university 코드: ${code}`);
       return null;
     }
   }
@@ -54,7 +53,6 @@ async function normalizeUniversityCode(university, pool = null) {
  */
 async function getAllUniversities(pool) {
   if (!pool) {
-    console.warn('Database pool이 없어 학교 목록을 가져올 수 없습니다.');
     return [];
   }
   

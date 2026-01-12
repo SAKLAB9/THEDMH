@@ -669,14 +669,7 @@ export default function WritePopupScreen({ navigation, route }) {
       // 공고 블록 확인
       const announcementBlocks = updatedContentBlocks.filter(block => block.type === 'announcement');
       if (announcementBlocks.length > 0) {
-        console.log('[WritePopupScreen] 공고 블록 발견:', announcementBlocks.length, '개');
         announcementBlocks.forEach((block, idx) => {
-          console.log(`[WritePopupScreen] 공고 블록 ${idx + 1}:`, {
-            id: block.id,
-            type: block.type,
-            title: block.title,
-            content: block.content
-          });
         });
       }
       
@@ -692,7 +685,6 @@ export default function WritePopupScreen({ navigation, route }) {
         enabled: true
       };
       
-      console.log('[WritePopupScreen] 저장할 content_blocks:', updatedContentBlocks.map(b => ({ type: b.type, id: b.id })));
 
       // 팝업 생성 또는 수정
       const apiUrl = mode === 'edit' && popupId

@@ -16,7 +16,6 @@ if (USE_DATABASE) {
         rejectUnauthorized: false
       }
     });
-    console.log('[API Config] 데이터베이스 연결 성공');
   } catch (error) {
     console.error('[API Config] 데이터베이스 연결 실패:', error);
   }
@@ -25,9 +24,6 @@ if (USE_DATABASE) {
 // App Config 조회 API
 module.exports = async (req, res) => {
   try {
-    console.log('[API Config] 요청 받음');
-    console.log('[API Config] USE_DATABASE:', USE_DATABASE);
-    console.log('[API Config] pool 존재:', !!pool);
     
     // CORS 헤더 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,17 +37,14 @@ module.exports = async (req, res) => {
     if (USE_DATABASE && pool) {
       try {
         const query = 'SELECT key, value FROM app_config';
-        console.log('[API Config] 쿼리 실행:', query);
         
         const result = await pool.query(query);
-        console.log('[API Config] 조회된 레코드 수:', result.rows.length);
         
         const config = {};
         result.rows.forEach(row => {
           config[row.key] = row.value;
         });
         
-        console.log('[API Config] 반환할 config 키 목록:', Object.keys(config));
         return res.json({
           success: true,
           config: config
@@ -61,7 +54,6 @@ module.exports = async (req, res) => {
         console.error('[API Config] 에러 상세:', error.message);
         // 데이터베이스 연결 오류 시 빈 config 반환 (앱이 계속 작동하도록)
         if (error.message && (error.message.includes('Tenant') || error.message.includes('user not found') || error.message.includes('connection'))) {
-          console.warn('[API Config] 데이터베이스 연결 실패 - 빈 config 반환');
           return res.json({
             success: true,
             config: {}
@@ -74,7 +66,6 @@ module.exports = async (req, res) => {
         });
       }
     } else {
-      console.warn('[API Config] 데이터베이스 연결 없음 - 빈 config 반환');
       return res.json({
         success: true,
         config: {}

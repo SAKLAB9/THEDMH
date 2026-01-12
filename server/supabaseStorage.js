@@ -102,7 +102,6 @@ async function uploadImageToSupabase(base64Data, bucketName, filePath) {
       }
     } catch (sharpError) {
       // sharp 처리 실패 시 원본 그대로 사용
-      console.warn('이미지 리사이즈 실패, 원본 사용:', sharpError.message);
     }
 
     // Supabase Storage에 업로드
@@ -140,7 +139,6 @@ async function uploadImageToSupabase(base64Data, bucketName, filePath) {
  */
 async function deleteImageFromSupabase(bucketName, filePath) {
   if (!supabaseClient) {
-    console.warn('Supabase 클라이언트가 초기화되지 않았습니다.');
     return false;
   }
 
