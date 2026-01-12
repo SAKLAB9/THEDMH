@@ -106,7 +106,7 @@ function ImageBlock({ uri }) {
 
 export default function ViewCirclesScreen({ route, navigation }) {
   const { university } = useUniversity();
-  const { getConfig, getColorConfig } = useAppConfig();
+  const { getConfig, getConfigNumber, getColorConfig } = useAppConfig();
   const config = { getColorConfig };
   const { circleId, selectedChannel, circlePreview, forceRefresh } = route?.params || {};
   
