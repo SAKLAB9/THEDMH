@@ -1544,10 +1544,14 @@ export default function ViewBoardScreen({ route, navigation }) {
                         ? parseInt(adCategoryPosition) 
                         : null;
                       
+                      // categoryPage가 null이면 전체 탭 featured이므로 category를 "전체"로 설정
+                      // categoryPage가 있으면 해당 카테고리 탭 featured이므로 게시글의 category 사용
+                      const categoryValue = categoryPageValue === null ? '전체' : (board?.category || '전체');
+                      
                       const requestBody = {
                         contentId: postId,
                         type: 'board',
-                        category: board?.category || '전체',
+                        category: categoryValue,
                         categoryPage: categoryPageValue,
                         categoryPosition: categoryPositionValue,
                         allPage: parseInt(adAllPage) || 1,

@@ -966,6 +966,8 @@ export default function BoardScreen({ navigation, route }) {
         return;
       }
       
+      const currentPage = pageByTab[activeTab] || 1;
+      
       console.log('[BoardScreen] Featured 삽입 항목 체크:', {
         contentId: featuredItem.contentId,
         category: featuredItem.category,

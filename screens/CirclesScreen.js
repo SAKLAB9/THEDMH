@@ -1098,6 +1098,8 @@ export default function CirclesScreen({ navigation, route }) {
         return;
       }
       
+      const currentPage = pageByTab[activeTab] || 1;
+      
       // 각 탭마다 독립적인 리스트로 처리
       // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
       // "전체" 탭도 하나의 카테고리처럼 처리
