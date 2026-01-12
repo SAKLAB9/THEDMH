@@ -947,7 +947,7 @@ export default function BoardScreen({ navigation, route }) {
         const row = Math.floor((originalPosition - 1) / 2); // 0-based row
         const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
         const position = row * 2 + col; // 0-based index
-        if (position >= 0 && position < posts.length) {
+        if (position >= 0) {
           const featuredPost = allPosts.find(p => p.id === featuredItem.contentId);
           if (featuredPost) {
             featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
