@@ -1008,30 +1008,8 @@ export default function CirclesScreen({ navigation, route }) {
       return now >= start && now <= end;
     });
     
-    console.log('[CirclesScreen] Featured 체크 시작:', {
-      activeTab,
-      currentPage: pageByTab[activeTab] || 1,
-      activeFeaturedCount: activeFeatured.length,
-      pageByTab
-    });
-    
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
-      
-      console.log('[CirclesScreen] Featured 항목 체크:', {
-        contentId: featuredItem.contentId,
-        category: featuredItem.category,
-        categoryType: typeof featuredItem.category,
-        activeTab,
-        activeTabType: typeof activeTab,
-        categoryEquals: featuredItem.category === activeTab,
-        categoryPage: featuredItem.categoryPage,
-        categoryPageType: typeof featuredItem.categoryPage,
-        categoryPosition: featuredItem.categoryPosition,
-        currentPage,
-        allPage: featuredItem.allPage,
-        allPosition: featuredItem.allPosition
-      });
       
       // 각 탭마다 독립적인 리스트로 처리
       // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
@@ -1043,26 +1021,16 @@ export default function CirclesScreen({ navigation, route }) {
         && featuredItem.categoryPage === currentPage 
         && featuredItem.categoryPosition;
       
-      // 하위 호환성을 위한 전체 페이지 featured 체크 (categoryPage가 없고 allPage가 있는 경우)
-      // 이는 이전 방식으로 저장된 데이터를 위한 것
-      const isLegacyAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
-        && featuredItem.allPage 
-        && featuredItem.allPage === currentPage 
+      // 하위 호환성을 위한 전체 페이지 featured 체크
+      // allPage와 allPosition이 있고 activeTab이 "전체"이면 전체 페이지 featured로 간주
+      const isLegacyAllPageFeatured = featuredItem.allPage 
         && featuredItem.allPosition 
+        && featuredItem.allPage === currentPage 
         && activeTab === '전체';
       
-      console.log('[CirclesScreen] Featured 조건 결과:', {
-        contentId: featuredItem.contentId,
-        isTabFeatured,
-        isLegacyAllPageFeatured,
-        willAdd: isTabFeatured || isLegacyAllPageFeatured
-      });
-      
       if (isTabFeatured) {
-        console.log('[CirclesScreen] 탭 Featured 매칭됨:', featuredItem.contentId);
         featuredContentIds.add(featuredItem.contentId);
       } else if (isLegacyAllPageFeatured) {
-        console.log('[CirclesScreen] 레거시 전체 Featured 매칭됨:', featuredItem.contentId);
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -1110,11 +1078,11 @@ export default function CirclesScreen({ navigation, route }) {
         && featuredItem.categoryPage === currentPage 
         && featuredItem.categoryPosition;
       
-      // 하위 호환성을 위한 전체 페이지 featured 체크 (categoryPage가 없고 allPage가 있는 경우)
-      const isLegacyAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
-        && featuredItem.allPage 
-        && featuredItem.allPage === currentPage 
+      // 하위 호환성을 위한 전체 페이지 featured 체크
+      // allPage와 allPosition이 있고 activeTab이 "전체"이면 전체 페이지 featured로 간주
+      const isLegacyAllPageFeatured = featuredItem.allPage 
         && featuredItem.allPosition 
+        && featuredItem.allPage === currentPage 
         && activeTab === '전체';
       
       if (isTabFeatured) {
