@@ -1055,7 +1055,15 @@ export default function CirclesScreen({ navigation, route }) {
       // 카테고리 페이지 Featured (해당 카테고리에서만 표시)
       // 조건: categoryPage가 있고, 현재 페이지와 일치하고, categoryPosition이 있고, category가 activeTab과 정확히 일치해야 함
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
-        const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
+        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
+        // position 1 -> index 0 (왼쪽 첫 번째)
+        // position 2 -> index 1 (오른쪽 첫 번째)
+        // position 3 -> index 2 (왼쪽 두 번째)
+        // position 4 -> index 3 (오른쪽 두 번째)
+        const originalPosition = featuredItem.categoryPosition; // 1-based
+        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
+        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
+        const position = row * 2 + col; // 0-based index
         if (position >= 0) {
           // filteredCircles에서 찾아야 해당 카테고리의 글만 찾음
           const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId && c.category === featuredItem.category);
@@ -1068,7 +1076,11 @@ export default function CirclesScreen({ navigation, route }) {
       // 전체 페이지 Featured (카테고리 페이지에 삽입되지 않은 경우만)
       // 카테고리 featured가 아닌 경우에만 전체 페이지 featured 삽입
       else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
-        const position = featuredItem.allPosition - 1; // 1-based to 0-based
+        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
+        const originalPosition = featuredItem.allPosition; // 1-based
+        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
+        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
+        const position = row * 2 + col; // 0-based index
         if (position >= 0) {
           const featuredCircle = allCircles.find(c => c.id === featuredItem.contentId);
           if (featuredCircle) {
