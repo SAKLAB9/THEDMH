@@ -503,10 +503,10 @@ export default function BoardScreen({ navigation, route }) {
   }, [university, selectedChannel]);
 
   // university 또는 selectedChannel이 변경될 때마다 Posts 데이터 불러오기
-  // 주의: selectedChannel 변경은 위의 useEffect에서 loadPostsData(true)로 처리하므로 여기서는 제거
-  // useEffect(() => {
-  //   loadPostsData();
-  // }, [loadPostsData]);
+  // 초기 로드 (캐시 확인)
+  useEffect(() => {
+    loadPostsData();
+  }, [loadPostsData]);
 
   // Featured 데이터 로드 함수
   const loadFeaturedData = React.useCallback(async () => {
