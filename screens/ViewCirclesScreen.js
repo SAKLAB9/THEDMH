@@ -1883,23 +1883,22 @@ export default function ViewCirclesScreen({ route, navigation }) {
                   onPress={async () => {
                     try {
                       const currentUniversity = targetUniversity;
-                      // 카테고리 페이지 featured: categoryPage와 categoryPosition 사용
-                      // 전체 페이지 featured: category를 "전체"로, categoryPage와 categoryPosition 사용
-                      // allPage와 allPosition은 레거시 호환용으로만 사용
-                      const categoryPageValue = adCategoryPage && adCategoryPage.trim() !== '' && parseInt(adCategoryPage) !== 0 
-                        ? parseInt(adCategoryPage) 
-                        : (adAllPage && adAllPage.trim() !== '' ? parseInt(adAllPage) : 1); // 전체 페이지면 allPage 사용, 없으면 1
-                      const categoryPositionValue = (adCategoryPosition && adCategoryPosition.trim() !== '') 
-                        ? parseInt(adCategoryPosition) 
-                        : (adAllPosition && adAllPosition.trim() !== '' ? parseInt(adAllPosition) : 1); // 전체 페이지면 allPosition 사용, 없으면 1
-                      
-                      // 전체 페이지 featured인지 확인 (categoryPage 입력이 없고 allPage/allPosition이 있는 경우)
-                      const isAllPageFeatured = (!adCategoryPage || adCategoryPage.trim() === '' || parseInt(adCategoryPage) === 0) 
-                        && (adAllPage && adAllPage.trim() !== '') 
+                      // 전체 페이지 featured인지 확인 (allPage/allPosition이 있는 경우)
+                      // allPage와 allPosition이 있으면 무조건 전체 페이지 featured
+                      const isAllPageFeatured = (adAllPage && adAllPage.trim() !== '') 
                         && (adAllPosition && adAllPosition.trim() !== '');
                       
-                      // categoryPage가 null이거나 전체 페이지 featured면 category를 "전체"로 설정
-                      // categoryPage가 있으면 해당 카테고리 탭 featured이므로 게시글의 category 사용
+                      // 카테고리 페이지 featured: categoryPage와 categoryPosition 사용
+                      // 전체 페이지 featured: category를 "전체"로, categoryPage와 categoryPosition 사용
+                      const categoryPageValue = isAllPageFeatured 
+                        ? (adAllPage && adAllPage.trim() !== '' ? parseInt(adAllPage) : 1)
+                        : (adCategoryPage && adCategoryPage.trim() !== '' && parseInt(adCategoryPage) !== 0 ? parseInt(adCategoryPage) : null);
+                      const categoryPositionValue = isAllPageFeatured
+                        ? (adAllPosition && adAllPosition.trim() !== '' ? parseInt(adAllPosition) : 1)
+                        : (adCategoryPosition && adCategoryPosition.trim() !== '' ? parseInt(adCategoryPosition) : null);
+                      
+                      // 전체 페이지 featured면 category를 "전체"로 설정
+                      // 카테고리 페이지 featured면 게시글의 category 사용
                       const categoryValue = isAllPageFeatured ? '전체' : (circle?.category || '전체');
                       
                       const requestBody = {
