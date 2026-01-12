@@ -1012,12 +1012,25 @@ export default function CirclesScreen({ navigation, route }) {
       const currentPage = pageByTab[activeTab] || 1;
       // category_page와 all_page는 페이지 번호만 체크 (탭과 무관)
       // category_position은 해당 카테고리 탭에서만 적용
-      // all_position은 모든 탭에서 적용
-      if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
+      // all_position은 "전체" 탭에서만 적용
+      
+      // 전체 페이지 Featured를 먼저 체크 (categoryPage가 없거나 0인 경우)
+      const isAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
+        && featuredItem.allPage 
+        && featuredItem.allPage === currentPage 
+        && featuredItem.allPosition 
+        && activeTab === '전체';
+      
+      // 카테고리 페이지 Featured (categoryPage가 있는 경우)
+      const isCategoryPageFeatured = featuredItem.categoryPage 
+        && featuredItem.categoryPage !== 0 
+        && featuredItem.categoryPage === currentPage 
+        && featuredItem.categoryPosition 
+        && featuredItem.category === activeTab;
+      
+      if (isAllPageFeatured) {
         featuredContentIds.add(featuredItem.contentId);
-      }
-      // 전체 페이지 Featured: 카테고리 featured가 아닌 경우에만 "전체" 탭에서 수집
-      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition && activeTab === '전체') {
+      } else if (isCategoryPageFeatured) {
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -1053,32 +1066,21 @@ export default function CirclesScreen({ navigation, route }) {
         return;
       }
       
-      // 카테고리 페이지 Featured (해당 카테고리에서만 표시)
-      // category_page는 페이지 번호만 체크 (탭과 무관)
-      // category_position은 해당 카테고리 탭에서만 적용
-      if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
-        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
-        // position 1 -> index 0 (왼쪽 첫 번째)
-        // position 2 -> index 1 (오른쪽 첫 번째)
-        // position 3 -> index 2 (왼쪽 두 번째)
-        // position 4 -> index 3 (오른쪽 두 번째)
-        const originalPosition = featuredItem.categoryPosition; // 1-based
-        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
-        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
-        const position = row * 2 + col; // 0-based index
-        if (position >= 0) {
-          // filteredCircles에서 찾아야 해당 카테고리의 글만 찾음
-          const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId && c.category === featuredItem.category);
-          if (featuredCircle) {
-            featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
-            insertedContentIds.add(featuredItem.contentId);
-          }
-        }
-      }
-      // 전체 페이지 Featured (카테고리 페이지에 삽입되지 않은 경우만)
-      // all_page는 페이지 번호만 체크 (탭과 무관)
-      // all_position은 "전체" 탭에서만 적용
-      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition && activeTab === '전체') {
+      // 전체 페이지 Featured를 먼저 체크 (categoryPage가 없거나 0인 경우)
+      const isAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
+        && featuredItem.allPage 
+        && featuredItem.allPage === currentPage 
+        && featuredItem.allPosition 
+        && activeTab === '전체';
+      
+      // 카테고리 페이지 Featured (categoryPage가 있는 경우)
+      const isCategoryPageFeatured = featuredItem.categoryPage 
+        && featuredItem.categoryPage !== 0 
+        && featuredItem.categoryPage === currentPage 
+        && featuredItem.categoryPosition 
+        && featuredItem.category === activeTab;
+      
+      if (isAllPageFeatured) {
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
         // position 1 -> index 0 (왼쪽 첫 번째)
         // position 2 -> index 1 (오른쪽 첫 번째)
@@ -1091,6 +1093,24 @@ export default function CirclesScreen({ navigation, route }) {
         if (position >= 0) {
           // filteredCircles에서 찾아야 필터링된 데이터에서 찾음 (전체 탭 포함)
           const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId);
+          if (featuredCircle) {
+            featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
+            insertedContentIds.add(featuredItem.contentId);
+          }
+        }
+      } else if (isCategoryPageFeatured) {
+        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
+        // position 1 -> index 0 (왼쪽 첫 번째)
+        // position 2 -> index 1 (오른쪽 첫 번째)
+        // position 3 -> index 2 (왼쪽 두 번째)
+        // position 4 -> index 3 (오른쪽 두 번째)
+        const originalPosition = featuredItem.categoryPosition; // 1-based
+        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
+        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
+        const position = row * 2 + col; // 0-based index
+        if (position >= 0) {
+          // filteredCircles에서 찾아야 해당 카테고리의 글만 찾음
+          const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId && c.category === featuredItem.category);
           if (featuredCircle) {
             featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);
