@@ -216,9 +216,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
     
     // 중복 호출 방지 (호출 전에 즉시 플래그 설정)
     if (viewsIncrementedRef.current) {
-      if (__DEV__) {
-        console.log('[ViewNoticeScreen] 뷰수 증가 이미 실행됨, 중복 호출 방지');
-      }
       return;
     }
     
@@ -227,9 +224,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
     
     try {
       const universityCode = university.toLowerCase();
-      if (__DEV__) {
-        console.log('[ViewNoticeScreen] 뷰수 증가 요청:', { noticeId, universityCode });
-      }
       
       const response = await fetch(
         `${API_BASE_URL}/api/notices/${noticeId}/increment-views?university=${encodeURIComponent(universityCode)}`,
@@ -239,9 +233,6 @@ export default function ViewNoticeScreen({ route, navigation }) {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          if (__DEV__) {
-            console.log('[ViewNoticeScreen] 뷰수 증가 성공:', data.views);
-          }
           // 뷰수 업데이트 (캐시 무관)
           setNotice(prev => prev ? { ...prev, views: data.views } : prev);
         } else {
@@ -251,17 +242,7 @@ export default function ViewNoticeScreen({ route, navigation }) {
       } else {
         // 실패 시 플래그 리셋
         viewsIncrementedRef.current = false;
-        // 404 에러는 조용히 처리 (다른 학교로 넘어갔을 때 발생할 수 있음)
-        if (response.status === 404) {
-          if (__DEV__) {
-            console.log('[ViewNoticeScreen] 공지사항을 찾을 수 없음 (다른 학교일 수 있음):', { noticeId, universityCode });
-          }
-          // 조용히 처리 (에러 메시지 표시 안 함)
-        } else {
-          if (__DEV__) {
-            console.error('[ViewNoticeScreen] 뷰수 증가 실패:', response.status);
-          }
-        }
+          // 404 에러는 조용히 처리 (다른 학교로 넘어갔을 때 발생할 수 있음)
       }
     } catch (error) {
       // 실패 시 플래그 리셋

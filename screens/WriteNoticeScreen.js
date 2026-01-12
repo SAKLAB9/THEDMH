@@ -70,12 +70,6 @@ function ImageBlock({ uri }) {
 export default function WriteNoticeScreen({ navigation, route }) {
   const { university } = useUniversity();
   
-  // university 디버깅
-  useEffect(() => {
-    if (__DEV__) {
-      console.log('[WriteNoticeScreen] university:', university);
-    }
-  }, [university]);
   const { getConfig, getColorConfig, config: appConfig } = useAppConfig();
   const config = { getColorConfig };
   const uniColors = useMemo(() => getUniColors(university, config), [university, getColorConfig, appConfig]);

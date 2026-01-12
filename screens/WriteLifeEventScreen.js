@@ -69,12 +69,6 @@ function ImageBlock({ uri }) {
 export default function WriteLifeEventScreen({ navigation, route }) {
   const { university } = useUniversity();
   
-  // university 디버깅
-  useEffect(() => {
-    if (__DEV__) {
-      console.log('[WriteLifeEventScreen] university:', university);
-    }
-  }, [university]);
   
   const { getConfig, getColorConfig, config: appConfig } = useAppConfig();
   const config = { getColorConfig };

@@ -359,80 +359,82 @@ export default function ViewBoardScreen({ route, navigation }) {
         
         // 캐시 확인
         if (!forceRefresh) {
-          const cachedData = await AsyncStorage.getItem(cacheKey);
-          if (cachedData) {
-            try {
-              const { post: cachedPost, timestamp } = JSON.parse(cachedData);
-              const CACHE_DURATION = 5 * 60 * 1000; // 5분
-              
-              if (Date.now() - timestamp < CACHE_DURATION) {
-                // 캐시된 데이터가 있으면 즉시 표시
-                let parsedPost = { ...cachedPost };
-                if (parsedPost.content_blocks && typeof parsedPost.content_blocks === 'string') {
-                  try {
-                    parsedPost.content_blocks = JSON.parse(parsedPost.content_blocks);
-                  } catch (e) {
+          try {
+            const cachedData = await AsyncStorage.getItem(cacheKey);
+            if (cachedData) {
+              try {
+                const { post: cachedPost, timestamp } = JSON.parse(cachedData);
+                const CACHE_DURATION = 5 * 60 * 1000; // 5분
+                
+                if (Date.now() - timestamp < CACHE_DURATION) {
+                  // 캐시된 데이터가 있으면 즉시 표시
+                  let parsedPost = { ...cachedPost };
+                  if (parsedPost.content_blocks && typeof parsedPost.content_blocks === 'string') {
+                    try {
+                      parsedPost.content_blocks = JSON.parse(parsedPost.content_blocks);
+                    } catch (e) {
+                      parsedPost.content_blocks = [];
+                    }
+                  }
+                  if (!Array.isArray(parsedPost.content_blocks)) {
                     parsedPost.content_blocks = [];
                   }
-                }
-                if (!Array.isArray(parsedPost.content_blocks)) {
-                  parsedPost.content_blocks = [];
-                }
-                
-                // 텍스트 블록만 먼저 표시
-                const textBlocks = parsedPost.content_blocks.filter(block => block.type === 'text');
-                const postWithTextOnly = {
-                  ...parsedPost,
-                  content_blocks: textBlocks
-                };
-                setBoard(postWithTextOnly);
-                setLoading(false);
-                
-                // 이미지 블록 추가 (백그라운드에서)
-                setTimeout(() => {
-                  setBoard(parsedPost);
-                }, 0);
-                
-                // 백그라운드에서 최신 데이터 확인
-                fetch(`${API_BASE_URL}/api/posts/${postId}?university=${encodeURIComponent(universityCode)}`)
-                  .then(response => {
-                    if (response.ok) {
-                      return response.json();
-                    }
-                    return null;
-                  })
-                  .then(data => {
-                    if (data && data.success && data.post) {
-                      let updatedPost = data.post;
-                      if (updatedPost.content_blocks && typeof updatedPost.content_blocks === 'string') {
-                        try {
-                          updatedPost.content_blocks = JSON.parse(updatedPost.content_blocks);
-                        } catch (e) {
+                  
+                  // 텍스트 블록만 먼저 표시
+                  const textBlocks = parsedPost.content_blocks.filter(block => block.type === 'text');
+                  const postWithTextOnly = {
+                    ...parsedPost,
+                    content_blocks: textBlocks
+                  };
+                  setBoard(postWithTextOnly);
+                  setLoading(false);
+                  
+                  // 이미지 블록 추가 (백그라운드에서)
+                  setTimeout(() => {
+                    setBoard(parsedPost);
+                  }, 0);
+                  
+                  // 백그라운드에서 최신 데이터 확인
+                  fetch(`${API_BASE_URL}/api/posts/${postId}?university=${encodeURIComponent(universityCode)}`)
+                    .then(response => {
+                      if (response.ok) {
+                        return response.json();
+                      }
+                      return null;
+                    })
+                    .then(data => {
+                      if (data && data.success && data.post) {
+                        let updatedPost = data.post;
+                        if (updatedPost.content_blocks && typeof updatedPost.content_blocks === 'string') {
+                          try {
+                            updatedPost.content_blocks = JSON.parse(updatedPost.content_blocks);
+                          } catch (e) {
+                            updatedPost.content_blocks = [];
+                          }
+                        }
+                        if (!Array.isArray(updatedPost.content_blocks)) {
                           updatedPost.content_blocks = [];
                         }
+                        AsyncStorage.setItem(cacheKey, JSON.stringify({
+                          post: updatedPost,
+                          timestamp: Date.now()
+                        })).catch(() => {});
+                        setBoard(updatedPost);
                       }
-                      if (!Array.isArray(updatedPost.content_blocks)) {
-                        updatedPost.content_blocks = [];
-                      }
-                      AsyncStorage.setItem(cacheKey, JSON.stringify({
-                        post: updatedPost,
-                        timestamp: Date.now()
-                      })).catch(() => {});
-                      setBoard(updatedPost);
-                    }
-                  })
-                  .catch(() => {});
-                
-                // 댓글과 관심리스트 로드
-                await Promise.all([
-                  loadComments(),
-                  checkFavorite()
-                ]);
-                
-                return; // 캐시가 있으면 여기서 종료
+                    })
+                    .catch(() => {});
+                  
+                  // 댓글과 관심리스트 로드
+                  await Promise.all([
+                    loadComments(),
+                    checkFavorite()
+                  ]);
+                  
+                  return; // 캐시가 있으면 여기서 종료
+                }
+              } catch (e) {
+                // 캐시 파싱 실패 시 계속 진행
               }
-            } catch (e) {
-              // 캐시 파싱 실패 시 계속 진행
             }
           } catch (e) {
             // 캐시 읽기 오류는 무시
