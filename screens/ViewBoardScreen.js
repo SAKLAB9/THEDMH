@@ -1568,32 +1568,40 @@ export default function ViewBoardScreen({ route, navigation }) {
                   onPress={async () => {
                     try {
                       const currentUniversity = targetUniversity;
-                      // 전체 페이지 featured인지 확인 (allPage/allPosition이 있는 경우)
-                      // allPage와 allPosition이 있으면 무조건 전체 페이지 featured
-                      const isAllPageFeatured = (adAllPage && adAllPage.trim() !== '') 
-                        && (adAllPosition && adAllPosition.trim() !== '');
                       
-                      // 카테고리 페이지 featured: categoryPage와 categoryPosition 사용
-                      // 전체 페이지 featured: category를 "전체"로, categoryPage와 categoryPosition 사용
-                      const categoryPageValue = isAllPageFeatured 
-                        ? (adAllPage && adAllPage.trim() !== '' ? parseInt(adAllPage) : 1)
-                        : (adCategoryPage && adCategoryPage.trim() !== '' && parseInt(adCategoryPage) !== 0 ? parseInt(adCategoryPage) : null);
-                      const categoryPositionValue = isAllPageFeatured
-                        ? (adAllPosition && adAllPosition.trim() !== '' ? parseInt(adAllPosition) : 1)
-                        : (adCategoryPosition && adCategoryPosition.trim() !== '' ? parseInt(adCategoryPosition) : null);
+                      // Featured 작동 방식:
+                      // 1. 해당 글의 카테고리를 먼저 파악
+                      // 2. (해당카테고리, category_page, category_position) - 해당 카테고리 탭에 위치
+                      // 3. (전체, all_page, all_position) - 전체 탭에 위치
+                      // 4. 이렇게 두 곳에 동시에 적용
                       
-                      // 전체 페이지 featured면 category를 "전체"로 설정
-                      // 카테고리 페이지 featured면 게시글의 category 사용
-                      const categoryValue = isAllPageFeatured ? '전체' : (board?.category || '전체');
+                      // 해당 글의 카테고리 (항상 저장)
+                      const boardCategory = board?.category || '전체';
+                      
+                      // 카테고리 탭 위치
+                      const categoryPageValue = (adCategoryPage && adCategoryPage.trim() !== '' && parseInt(adCategoryPage) !== 0) 
+                        ? parseInt(adCategoryPage) 
+                        : null;
+                      const categoryPositionValue = (adCategoryPosition && adCategoryPosition.trim() !== '' && parseInt(adCategoryPosition) !== 0)
+                        ? parseInt(adCategoryPosition)
+                        : null;
+                      
+                      // 전체 탭 위치
+                      const allPageValue = (adAllPage && adAllPage.trim() !== '' && parseInt(adAllPage) !== 0)
+                        ? parseInt(adAllPage)
+                        : null;
+                      const allPositionValue = (adAllPosition && adAllPosition.trim() !== '' && parseInt(adAllPosition) !== 0)
+                        ? parseInt(adAllPosition)
+                        : null;
                       
                       const requestBody = {
                         contentId: postId,
                         type: 'board',
-                        category: categoryValue,
+                        category: boardCategory, // 해당 글의 카테고리 (해당 카테고리 탭에 표시)
                         categoryPage: categoryPageValue,
                         categoryPosition: categoryPositionValue,
-                        allPage: parseInt(adAllPage) || 1,
-                        allPosition: parseInt(adAllPosition) || 1,
+                        allPage: allPageValue,
+                        allPosition: allPositionValue,
                         startDate: `${adStartDate.getFullYear()}-${String(adStartDate.getMonth() + 1).padStart(2, '0')}-${String(adStartDate.getDate()).padStart(2, '0')}`,
                         endDate: `${adEndDate.getFullYear()}-${String(adEndDate.getMonth() + 1).padStart(2, '0')}-${String(adEndDate.getDate()).padStart(2, '0')}`,
                         university: currentUniversity,
