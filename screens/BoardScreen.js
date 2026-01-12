@@ -872,27 +872,28 @@ export default function BoardScreen({ navigation, route }) {
     
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
-      // category_page와 all_page는 페이지 번호만 체크 (탭과 무관)
-      // category_position은 해당 카테고리 탭에서만 적용
-      // all_position은 "전체" 탭에서만 적용
       
-      // 전체 페이지 Featured를 먼저 체크 (categoryPage가 없거나 0인 경우)
-      const isAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
+      // 각 탭마다 독립적인 리스트로 처리
+      // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
+      // "전체" 탭도 하나의 카테고리처럼 처리
+      const isTabFeatured = featuredItem.category 
+        && featuredItem.category === activeTab 
+        && featuredItem.categoryPage 
+        && featuredItem.categoryPage !== 0 
+        && featuredItem.categoryPage === currentPage 
+        && featuredItem.categoryPosition;
+      
+      // 하위 호환성을 위한 전체 페이지 featured 체크 (categoryPage가 없고 allPage가 있는 경우)
+      // 이는 이전 방식으로 저장된 데이터를 위한 것
+      const isLegacyAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
         && featuredItem.allPage 
         && featuredItem.allPage === currentPage 
         && featuredItem.allPosition 
         && activeTab === '전체';
       
-      // 카테고리 페이지 Featured (categoryPage가 있는 경우)
-      const isCategoryPageFeatured = featuredItem.categoryPage 
-        && featuredItem.categoryPage !== 0 
-        && featuredItem.categoryPage === currentPage 
-        && featuredItem.categoryPosition 
-        && featuredItem.category === activeTab;
-      
-      if (isAllPageFeatured) {
+      if (isTabFeatured) {
         featuredContentIds.add(featuredItem.contentId);
-      } else if (isCategoryPageFeatured) {
+      } else if (isLegacyAllPageFeatured) {
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -928,21 +929,42 @@ export default function BoardScreen({ navigation, route }) {
         return;
       }
       
-      // 전체 페이지 Featured를 먼저 체크 (categoryPage가 없거나 0인 경우)
-      const isAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
+      // 각 탭마다 독립적인 리스트로 처리
+      // category 필드에 탭 이름이 저장되고, categoryPage에 페이지 번호, categoryPosition에 위치가 저장됨
+      // "전체" 탭도 하나의 카테고리처럼 처리
+      const isTabFeatured = featuredItem.category 
+        && featuredItem.category === activeTab 
+        && featuredItem.categoryPage 
+        && featuredItem.categoryPage !== 0 
+        && featuredItem.categoryPage === currentPage 
+        && featuredItem.categoryPosition;
+      
+      // 하위 호환성을 위한 전체 페이지 featured 체크 (categoryPage가 없고 allPage가 있는 경우)
+      const isLegacyAllPageFeatured = (!featuredItem.categoryPage || featuredItem.categoryPage === 0 || featuredItem.categoryPage === null) 
         && featuredItem.allPage 
         && featuredItem.allPage === currentPage 
         && featuredItem.allPosition 
         && activeTab === '전체';
       
-      // 카테고리 페이지 Featured (categoryPage가 있는 경우)
-      const isCategoryPageFeatured = featuredItem.categoryPage 
-        && featuredItem.categoryPage !== 0 
-        && featuredItem.categoryPage === currentPage 
-        && featuredItem.categoryPosition 
-        && featuredItem.category === activeTab;
-      
-      if (isAllPageFeatured) {
+      if (isTabFeatured) {
+        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
+        // position 1 -> index 0 (왼쪽 첫 번째)
+        // position 2 -> index 1 (오른쪽 첫 번째)
+        // position 3 -> index 2 (왼쪽 두 번째)
+        // position 4 -> index 3 (오른쪽 두 번째)
+        const originalPosition = featuredItem.categoryPosition; // 1-based
+        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
+        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
+        const position = row * 2 + col; // 0-based index
+        if (position >= 0) {
+          // filteredPosts에서 찾아야 해당 탭의 글만 찾음
+          const featuredPost = filteredPosts.find(p => p.id === featuredItem.contentId && p.category === featuredItem.category);
+          if (featuredPost) {
+            featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
+            insertedContentIds.add(featuredItem.contentId);
+          }
+        }
+      } else if (isLegacyAllPageFeatured) {
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
         // position 1 -> index 0 (왼쪽 첫 번째)
         // position 2 -> index 1 (오른쪽 첫 번째)
@@ -955,24 +977,6 @@ export default function BoardScreen({ navigation, route }) {
         if (position >= 0) {
           // filteredPosts에서 찾아야 필터링된 데이터에서 찾음 (전체 탭 포함)
           const featuredPost = filteredPosts.find(p => p.id === featuredItem.contentId);
-          if (featuredPost) {
-            featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
-            insertedContentIds.add(featuredItem.contentId);
-          }
-        }
-      } else if (isCategoryPageFeatured) {
-        // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
-        // position 1 -> index 0 (왼쪽 첫 번째)
-        // position 2 -> index 1 (오른쪽 첫 번째)
-        // position 3 -> index 2 (왼쪽 두 번째)
-        // position 4 -> index 3 (오른쪽 두 번째)
-        const originalPosition = featuredItem.categoryPosition; // 1-based
-        const row = Math.floor((originalPosition - 1) / 2); // 0-based row
-        const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
-        const position = row * 2 + col; // 0-based index
-        if (position >= 0) {
-          // filteredPosts에서 찾아야 해당 카테고리의 글만 찾음
-          const featuredPost = filteredPosts.find(p => p.id === featuredItem.contentId && p.category === featuredItem.category);
           if (featuredPost) {
             featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);

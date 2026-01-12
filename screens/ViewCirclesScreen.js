@@ -1883,12 +1883,21 @@ export default function ViewCirclesScreen({ route, navigation }) {
                   onPress={async () => {
                     try {
                       const currentUniversity = targetUniversity;
+                      // 전체 페이지 featured만 설정하려면 categoryPage를 null로 저장
+                      // categoryPage가 비어있거나 0이면 null로, 아니면 파싱된 값 사용
+                      const categoryPageValue = adCategoryPage && adCategoryPage.trim() !== '' && parseInt(adCategoryPage) !== 0 
+                        ? parseInt(adCategoryPage) 
+                        : null;
+                      const categoryPositionValue = categoryPageValue !== null && adCategoryPosition && adCategoryPosition.trim() !== '' 
+                        ? parseInt(adCategoryPosition) 
+                        : null;
+                      
                       const requestBody = {
                         contentId: circleId,
                         type: 'circle',
                         category: circle?.category || '전체',
-                        categoryPage: parseInt(adCategoryPage) || 1,
-                        categoryPosition: parseInt(adCategoryPosition) || 1,
+                        categoryPage: categoryPageValue,
+                        categoryPosition: categoryPositionValue,
                         allPage: parseInt(adAllPage) || 1,
                         allPosition: parseInt(adAllPosition) || 1,
                         startDate: `${adStartDate.getFullYear()}-${String(adStartDate.getMonth() + 1).padStart(2, '0')}-${String(adStartDate.getDate()).padStart(2, '0')}`,
