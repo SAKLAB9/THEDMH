@@ -718,16 +718,49 @@ export default function WriteCirclesScreen({ navigation, route }) {
 
       const result = await response.json();
 
+      // 수정 모드일 때 캐시 무효화
+      if (isEditMode && editCircleId) {
+        try {
+          const universityCode = normalizedUniversity.toLowerCase();
+          const circleCacheKey = `circle_${editCircleId}_${universityCode}`;
+          const contentCacheKey = `circle_content_${editCircleId}_${universityCode}`;
+          await AsyncStorage.removeItem(circleCacheKey);
+          await AsyncStorage.removeItem(contentCacheKey);
+          
+          // 소모임 목록 캐시 무효화 (수정되었으므로)
+          const circlesCacheKey = `circles_${universityCode}`;
+          const circlesTimestampKey = `circles_timestamp_${universityCode}`;
+          await Promise.all([
+            AsyncStorage.removeItem(circlesCacheKey),
+            AsyncStorage.removeItem(circlesTimestampKey)
+          ]);
+        } catch (cacheError) {
+          // 캐시 무효화 실패는 무시 (중요하지 않음)
+          if (__DEV__) {
+            console.warn('[WriteCirclesScreen] 캐시 무효화 실패:', cacheError);
+          }
+        }
+      }
+
       Alert.alert('성공', isEditMode ? 'Circles가 수정되었습니다.' : 'Circles가 등록되었습니다.', [
         {
           text: '확인',
           onPress: () => {
-            // goBack() 사용 - CirclesScreen의 useFocusEffect에서 selectedChannel 상태를 유지함
+            if (isEditMode && editCircleId) {
+              // 수정 모드일 때 ViewCirclesScreen으로 돌아가서 강제 새로고침
+              navigation.navigate('ViewCircles', {
+                circleId: editCircleId,
+                selectedChannel: selectedChannel,
+                forceRefresh: true // 강제 새로고침 플래그
+              });
+            } else {
+              // 새로 작성한 경우 goBack() 사용 - CirclesScreen의 useFocusEffect에서 selectedChannel 상태를 유지함
               if (navigation.canGoBack()) {
                 navigation.goBack();
               } else {
                 navigation.navigate('Main');
               }
+            }
           }
         }
       ]);

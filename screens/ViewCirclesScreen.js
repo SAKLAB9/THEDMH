@@ -94,7 +94,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
   const { university } = useUniversity();
   const { getConfig, getColorConfig } = useAppConfig();
   const config = { getColorConfig };
-  const { circleId, selectedChannel, circlePreview } = route?.params || {};
+  const { circleId, selectedChannel, circlePreview, forceRefresh } = route?.params || {};
   
   // selectedChannel에 따라 university와 색상 결정
   const targetUniversity = useMemo(() => {
@@ -264,10 +264,10 @@ export default function ViewCirclesScreen({ route, navigation }) {
     React.useCallback(() => {
       loadCurrentUser();
       if (circleId) {
-        // 수정 후 돌아왔을 때 데이터 새로고침 (캐시 확인)
-        loadCircle(false);
+        // 수정 후 돌아왔을 때 데이터 새로고침 (forceRefresh가 true면 강제 새로고침)
+        loadCircle(forceRefresh === true);
       }
-    }, [loadCurrentUser, circleId, loadCircle])
+    }, [loadCurrentUser, circleId, loadCircle, forceRefresh])
   );
   
   // targetUniversity가 변경되면 데이터 초기화 (다른 학교로 넘어갔을 때)
