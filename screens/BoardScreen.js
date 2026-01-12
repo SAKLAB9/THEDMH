@@ -873,11 +873,12 @@ export default function BoardScreen({ navigation, route }) {
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
       // 카테고리 Featured: 해당 카테고리 탭에서만 수집
-      if (featuredItem.categoryPage === currentPage && featuredItem.category === activeTab) {
+      // categoryPage가 있고, 현재 페이지와 일치하고, category가 activeTab과 정확히 일치해야 함
+      if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.category === activeTab) {
         featuredContentIds.add(featuredItem.contentId);
       }
-      // 전체 페이지 Featured: 모든 탭에서 수집
-      else if (featuredItem.allPage === currentPage) {
+      // 전체 페이지 Featured: 카테고리 featured가 아닌 경우에만 모든 탭에서 수집
+      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage) {
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -914,6 +915,7 @@ export default function BoardScreen({ navigation, route }) {
       }
       
       // 카테고리 페이지 Featured (해당 카테고리에서만 표시)
+      // 조건: categoryPage가 있고, 현재 페이지와 일치하고, categoryPosition이 있고, category가 activeTab과 정확히 일치해야 함
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
         if (position >= 0) {
@@ -926,7 +928,8 @@ export default function BoardScreen({ navigation, route }) {
         }
       }
       // 전체 페이지 Featured (카테고리 페이지에 삽입되지 않은 경우만)
-      else if (featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
+      // 카테고리 featured가 아닌 경우에만 전체 페이지 featured 삽입
+      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
         const position = featuredItem.allPosition - 1; // 1-based to 0-based
         if (position >= 0) {
           const featuredPost = allPosts.find(p => p.id === featuredItem.contentId);
