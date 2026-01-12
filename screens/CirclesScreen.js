@@ -1010,13 +1010,14 @@ export default function CirclesScreen({ navigation, route }) {
     
     activeFeatured.forEach(featuredItem => {
       const currentPage = pageByTab[activeTab] || 1;
-      // 카테고리 Featured: 해당 카테고리 탭에서만 수집
-      // categoryPage가 있고, 현재 페이지와 일치하고, category가 activeTab과 정확히 일치해야 함
-      if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.category === activeTab) {
+      // category_page와 all_page는 페이지 번호만 체크 (탭과 무관)
+      // category_position은 해당 카테고리 탭에서만 적용
+      // all_position은 모든 탭에서 적용
+      if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         featuredContentIds.add(featuredItem.contentId);
       }
       // 전체 페이지 Featured: 카테고리 featured가 아닌 경우에만 모든 탭에서 수집
-      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage) {
+      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -1053,7 +1054,8 @@ export default function CirclesScreen({ navigation, route }) {
       }
       
       // 카테고리 페이지 Featured (해당 카테고리에서만 표시)
-      // 조건: categoryPage가 있고, 현재 페이지와 일치하고, categoryPosition이 있고, category가 activeTab과 정확히 일치해야 함
+      // category_page는 페이지 번호만 체크 (탭과 무관)
+      // category_position은 해당 카테고리 탭에서만 적용
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
         // position 1 -> index 0 (왼쪽 첫 번째)
@@ -1074,7 +1076,8 @@ export default function CirclesScreen({ navigation, route }) {
         }
       }
       // 전체 페이지 Featured (카테고리 페이지에 삽입되지 않은 경우만)
-      // 카테고리 featured가 아닌 경우에만 전체 페이지 featured 삽입
+      // all_page는 페이지 번호만 체크 (탭과 무관)
+      // all_position은 모든 탭에서 적용
       else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
         // position 1 -> index 0 (왼쪽 첫 번째)
