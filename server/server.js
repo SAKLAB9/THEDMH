@@ -3162,7 +3162,6 @@ app.post('/api/circles', async (req, res) => {
                   const safeId = maxId + 1;
                   await client.query(`SELECT setval($1, $2, true)`, [seqName, safeId]);
                 }
-              } else {
               }
             }
           } catch (seqError) {
