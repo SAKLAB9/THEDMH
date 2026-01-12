@@ -5922,28 +5922,50 @@ app.post('/api/reports', async (req, res) => {
     const targetId = parseInt(contentId);
 
     if (type === 'comment') {
-    if (USE_DATABASE && pool) {
+      if (USE_DATABASE && pool) {
         try {
-          const commentsTableName = getCirclesCommentsTableName(universityCode);
-          const result = await pool.query(
-            `SELECT * FROM ${commentsTableName} WHERE id = $1`,
+          // 모든 댓글 테이블에서 댓글 찾기 (circles, board)
+          let comment = null;
+          let commentsTableName = null;
+          
+          // Circles 댓글 확인
+          const circlesCommentsTableName = getCirclesCommentsTableName(universityCode);
+          const circlesResult = await pool.query(
+            `SELECT * FROM ${circlesCommentsTableName} WHERE id = $1`,
             [targetId]
           );
-      
-          if (result.rows.length === 0) {
+          
+          if (circlesResult.rows.length > 0) {
+            comment = circlesResult.rows[0];
+            commentsTableName = circlesCommentsTableName;
+          } else {
+            // Board 댓글 확인
+            const boardCommentsTableName = getBoardCommentsTableName(universityCode);
+            const boardResult = await pool.query(
+              `SELECT * FROM ${boardCommentsTableName} WHERE id = $1`,
+              [targetId]
+            );
+            
+            if (boardResult.rows.length > 0) {
+              comment = boardResult.rows[0];
+              commentsTableName = boardCommentsTableName;
+            }
+          }
+          
+          if (!comment || !commentsTableName) {
             return res.status(404).json({ error: '댓글을 찾을 수 없습니다.' });
           }
           
-          const comment = result.rows[0];
-          const currentReportCount = (comment.report_count || 0) + 1;
-          
+          // 댓글은 1번 신고하면 바로 삭제
           await pool.query(
             `DELETE FROM ${commentsTableName} WHERE id = $1`,
             [targetId]
           );
+          
           return res.json({
             success: true,
-            message: '댓글이 삭제되었습니다.'
+            message: '댓글이 삭제되었습니다.',
+            deleted: true
           });
         } catch (error) {
           if (!res.headersSent) {
@@ -6189,6 +6211,13 @@ app.post('/api/reports', async (req, res) => {
             for (const imageUrl of images) {
               if (imageUrl && imageUrl.includes('supabase.co')) {
                 await deleteImageFromSupabaseStorage(imageUrl, universityCode);
+              }
+            }
+            
+            const contentBlocks = notice.content_blocks || [];
+            for (const block of contentBlocks) {
+              if (block.type === 'image' && block.uri && block.uri.includes('supabase.co')) {
+                await deleteImageFromSupabaseStorage(block.uri, universityCode);
               }
             }
             
