@@ -939,11 +939,15 @@ export default function BoardScreen({ navigation, route }) {
       // 카테고리 featured가 아닌 경우에만 전체 페이지 featured 삽입
       else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
+        // position 1 -> index 0 (왼쪽 첫 번째)
+        // position 2 -> index 1 (오른쪽 첫 번째)
+        // position 3 -> index 2 (왼쪽 두 번째)
+        // position 4 -> index 3 (오른쪽 두 번째)
         const originalPosition = featuredItem.allPosition; // 1-based
         const row = Math.floor((originalPosition - 1) / 2); // 0-based row
         const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
         const position = row * 2 + col; // 0-based index
-        if (position >= 0) {
+        if (position >= 0 && position < posts.length) {
           const featuredPost = allPosts.find(p => p.id === featuredItem.contentId);
           if (featuredPost) {
             featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
@@ -958,8 +962,7 @@ export default function BoardScreen({ navigation, route }) {
     featuredToInsert.forEach(({ position, post }) => {
       // 이미 posts에 있는 항목은 제외 (중복 방지)
       if (!posts.some(p => (p.adId || p.id) === (post.adId || post.id))) {
-        // position을 그대로 사용 (2열 그리드: 0, 1, 2, 3, 4, 5...)
-        // position이 posts.length보다 크면 posts.length로 조정
+        // position이 posts.length보다 크면 posts.length로 조정 (배열 끝에 추가)
         const insertPosition = Math.min(position, posts.length);
         posts.splice(insertPosition, 0, post);
       }
