@@ -1533,24 +1533,52 @@ export default function CirclesScreen({ navigation, route }) {
                     
                     {/* 제목 - 공간 중간에 배치 */}
                     <View style={{ flex: 1, marginTop: 8, justifyContent: 'center', minHeight: 0 }}>
-                      <Text 
-                        className="font-bold text-gray-900" 
-                        numberOfLines={3}
-                        ellipsizeMode="tail"
-                        style={{ 
-                          lineHeight: 20, 
-                          fontSize: 16,
-                          includeFontPadding: false,
-                          textAlignVertical: 'top',
-                          flex: 1,
-                          flexShrink: 1,
-                          ...(Platform.OS === 'android' ? { 
-                            textBreakStrategy: 'highQuality',
-                          } : {})
-                        }}
-                      >
-                        {circle.title || '제목 없음'}
-                      </Text>
+                      <View className="flex-row items-center" style={{ flex: 1 }}>
+                        {circle.isAd && (
+                          <View 
+                            style={{ 
+                              borderWidth: 1,
+                              borderColor: selectedChannel === 'MIUHub' 
+                                ? miuhubColors.border
+                                : '#D1D5DB',
+                              paddingHorizontal: 4,
+                              paddingVertical: 1,
+                              borderRadius: 3,
+                              marginRight: 6,
+                            }}
+                          >
+                            <Text 
+                              style={{ 
+                                color: selectedChannel === 'MIUHub' 
+                                  ? miuhubColors.border
+                                  : '#6B7280',
+                                fontSize: 9,
+                                fontWeight: '600',
+                              }}
+                            >
+                              {getConfig('featured_label', 'Push')}
+                            </Text>
+                          </View>
+                        )}
+                        <Text 
+                          className="font-bold text-gray-900" 
+                          numberOfLines={3}
+                          ellipsizeMode="tail"
+                          style={{ 
+                            lineHeight: 20, 
+                            fontSize: 16,
+                            includeFontPadding: false,
+                            textAlignVertical: 'top',
+                            flex: 1,
+                            flexShrink: 1,
+                            ...(Platform.OS === 'android' ? { 
+                              textBreakStrategy: 'highQuality',
+                            } : {})
+                          }}
+                        >
+                          {circle.title || '제목 없음'}
+                        </Text>
+                      </View>
                     </View>
                     
                     {/* 하단 - 작성자, 하트, 뷰수 (항상 하단 고정) */}
