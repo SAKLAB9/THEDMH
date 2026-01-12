@@ -734,6 +734,31 @@ export default function ViewCirclesScreen({ route, navigation }) {
         throw new Error(errorData.error || '소모임 삭제에 실패했습니다.');
       }
 
+      // 삭제 성공 시 캐시 무효화
+      try {
+        const universityCode = normalizedUniversity;
+        
+        // 개별 circle 캐시 무효화
+        const circleCacheKey = `circle_${circleId}_${universityCode}`;
+        const circleContentCacheKey = `circle_content_${circleId}_${universityCode}`;
+        
+        // circles 목록 캐시 무효화
+        const circlesCacheKey = `circles_${universityCode}`;
+        const circlesTimestampKey = `circles_timestamp_${universityCode}`;
+        
+        await Promise.all([
+          AsyncStorage.removeItem(circleCacheKey),
+          AsyncStorage.removeItem(circleContentCacheKey),
+          AsyncStorage.removeItem(circlesCacheKey),
+          AsyncStorage.removeItem(circlesTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[ViewCirclesScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
+
       // 삭제 성공 시 즉시 circle을 null로 설정하여 주기적 새로고침 중단
       setCircle(null);
       
@@ -741,7 +766,7 @@ export default function ViewCirclesScreen({ route, navigation }) {
         {
           text: '확인',
           onPress: () => {
-            // goBack() 사용 - CirclesScreen의 useFocusEffect에서 selectedChannel 상태를 유지함
+            // goBack() 사용 - CirclesScreen의 useFocusEffect에서 캐시가 무효화되어 있으므로 자동으로 새로고침됨
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
