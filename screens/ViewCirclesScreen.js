@@ -1900,6 +1900,20 @@ export default function ViewCirclesScreen({ route, navigation }) {
                                 setCurrentFeaturedId(null);
                                 // Featured 데이터 새로고침
                                 await loadFeaturedData();
+                                
+                                // 캐시 삭제 (featured 데이터가 변경되었으므로)
+                                try {
+                                  const universityCode = targetUniversity === 'MIUHub' ? 'miuhub' : targetUniversity?.toLowerCase();
+                                  if (universityCode) {
+                                    const cacheKey = `circles_${universityCode}`;
+                                    const cacheTimestampKey = `circles_timestamp_${universityCode}`;
+                                    await AsyncStorage.removeItem(cacheKey);
+                                    await AsyncStorage.removeItem(cacheTimestampKey);
+                                  }
+                                } catch (e) {
+                                  // 캐시 삭제 실패는 무시
+                                }
+                                
                                 // featured 삭제 후 CirclesScreen으로 돌아가면서 새로고침
                                 if (navigation.canGoBack()) {
                                   navigation.navigate('Main', { screen: 'Club', params: { selectedChannel, refreshFeatured: true } });
@@ -1975,6 +1989,20 @@ export default function ViewCirclesScreen({ route, navigation }) {
                       }
                       Alert.alert('완료', '설정이 완료되었습니다.');
                       setShowAdModal(false);
+                      
+                      // 캐시 삭제 (featured 데이터가 변경되었으므로)
+                      try {
+                        const universityCode = currentUniversity === 'MIUHub' ? 'miuhub' : currentUniversity?.toLowerCase();
+                        if (universityCode) {
+                          const cacheKey = `circles_${universityCode}`;
+                          const cacheTimestampKey = `circles_timestamp_${universityCode}`;
+                          await AsyncStorage.removeItem(cacheKey);
+                          await AsyncStorage.removeItem(cacheTimestampKey);
+                        }
+                      } catch (e) {
+                        // 캐시 삭제 실패는 무시
+                      }
+                      
                       // featured 저장 후 CirclesScreen으로 돌아가면서 새로고침
                       if (navigation.canGoBack()) {
                         navigation.navigate('Main', { screen: 'Club', params: { selectedChannel, refreshFeatured: true } });

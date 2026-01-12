@@ -582,10 +582,22 @@ export default function BoardScreen({ navigation, route }) {
         };
       }
       
-      // refreshFeatured 파라미터가 있으면 (제거됨 - featured 로직 제거)
+      // refreshFeatured 파라미터가 있으면 캐시 무효화하고 데이터 새로고침
       if (route?.params?.refreshFeatured) {
         // 파라미터 제거 (다음 포커스 시 다시 실행되지 않도록)
         navigation.setParams({ refreshFeatured: undefined });
+        
+        // 캐시 삭제
+        const targetUni = currentSelectedChannel === 'MIUHub' ? 'miuhub' : (university || null);
+        if (targetUni) {
+          const universityCode = targetUni.toLowerCase();
+          const cacheKey = `posts_${universityCode}`;
+          const cacheTimestampKey = `posts_timestamp_${universityCode}`;
+          AsyncStorage.removeItem(cacheKey).catch(() => {});
+          AsyncStorage.removeItem(cacheTimestampKey).catch(() => {});
+          // 데이터 새로고침
+          loadPostsData(true);
+        }
       }
       
       // 화면 포커스 시 config 새로고침 (캐시 무시)
