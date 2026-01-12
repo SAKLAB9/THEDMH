@@ -1107,13 +1107,12 @@ export default function HomeScreen({ navigation }) {
                       
                       // 매핑에 없으면 config 탭 이름들을 직접 비교
                       if (!mappedTab || !mappedTab.trim()) {
-                        // 각 탭 이름을 정규화하여 비교
-                        if (tab1 && tab1.trim().toLowerCase() === normalizedCategory) {
-                          mappedTab = tab1;
-                        } else if (tab2 && tab2.trim().toLowerCase() === normalizedCategory) {
-                          mappedTab = tab2;
-                        } else if (tab3 && tab3.trim().toLowerCase() === normalizedCategory) {
-                          mappedTab = tab3;
+                        // 각 탭 이름을 정규화하여 비교 (lifeEventTabs에서 '전체' 제외)
+                        for (const tab of configTabs) {
+                          if (tab && tab.trim().toLowerCase() === normalizedCategory) {
+                            mappedTab = tab;
+                            break;
+                          }
                         }
                       }
                       
