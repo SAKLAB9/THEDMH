@@ -26,14 +26,19 @@ export default function HomeScreen({ navigation }) {
   }), [uniColors]);
   
   // 공지사항 탭 (useMemo로 감싸서 config 변경 시 재생성)
+  // 전체는 하드코딩, 나머지는 notice_tab숫자 형식으로 config에서 동적으로 가져옴
   const noticeTabs = useMemo(() => {
     const tabs = ['전체'];
-    const tab1 = getConfig('notice_tab1');
-    const tab2 = getConfig('notice_tab2');
-    const tab3 = getConfig('notice_tab3');
-    if (tab1) tabs.push(tab1);
-    if (tab2) tabs.push(tab2);
-    if (tab3) tabs.push(tab3);
+    // notice_tab1부터 순차적으로 확인 (최대 10개까지)
+    for (let i = 1; i <= 10; i++) {
+      const tab = getConfig(`notice_tab${i}`);
+      if (tab) {
+        tabs.push(tab);
+      } else {
+        // 빈 값이 나오면 더 이상 없으므로 중단
+        break;
+      }
+    }
     return tabs;
   }, [getConfig, appConfig, configLoading]);
   
@@ -41,14 +46,19 @@ export default function HomeScreen({ navigation }) {
   const [pageByTab, setPageByTab] = useState({});
   
   // 경조사 탭 (useMemo로 감싸서 config 변경 시 재생성)
+  // 전체는 하드코딩, 나머지는 life_event_tab숫자 형식으로 config에서 동적으로 가져옴
   const lifeEventTabs = useMemo(() => {
     const tabs = ['전체'];
-    const tab1 = getConfig('life_event_tab1');
-    const tab2 = getConfig('life_event_tab2');
-    const tab3 = getConfig('life_event_tab3');
-    if (tab1) tabs.push(tab1);
-    if (tab2) tabs.push(tab2);
-    if (tab3) tabs.push(tab3);
+    // life_event_tab1부터 순차적으로 확인 (최대 10개까지)
+    for (let i = 1; i <= 10; i++) {
+      const tab = getConfig(`life_event_tab${i}`);
+      if (tab) {
+        tabs.push(tab);
+      } else {
+        // 빈 값이 나오면 더 이상 없으므로 중단
+        break;
+      }
+    }
     return tabs;
   }, [getConfig, appConfig]);
   
@@ -841,7 +851,11 @@ export default function HomeScreen({ navigation }) {
               📣 Events & Notices
             </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('WriteNotice', { category: activeTab === '전체' ? getConfig('notice_tab1') : activeTab })}
+              onPress={() => {
+                // activeTab이 '전체'면 첫 번째 탭 사용, 아니면 activeTab 사용
+                const firstTab = noticeTabs.length > 1 ? noticeTabs[1] : '';
+                navigation.navigate('WriteNotice', { category: activeTab === '전체' ? firstTab : activeTab });
+              }}
               className="border rounded items-center justify-center"
               style={{ 
                 borderColor: colors.primary,
@@ -1075,17 +1089,17 @@ export default function HomeScreen({ navigation }) {
                     if (categoryIndex === -1) {
                       const normalizedCategory = lifeEvent.category.trim().toLowerCase();
                       
-                      // config에서 가져온 탭 이름들을 정규화하여 비교
-                      const tab1 = getConfig('life_event_tab1');
-                      const tab2 = getConfig('life_event_tab2');
-                      const tab3 = getConfig('life_event_tab3');
+                      // config에서 가져온 탭 이름들을 동적으로 가져와서 매핑
+                      // lifeEventTabs에서 '전체'를 제외한 탭들 사용
+                      const configTabs = lifeEventTabs.filter(tab => tab !== '전체');
                       
                       // 알려진 매핑: 데이터베이스에 저장된 영문 값과 config 탭 이름 매핑
+                      // 동적으로 config에서 가져온 탭 순서대로 매핑
                       const categoryMapping = {
-                        'business': tab1,
-                        'biz': tab1, // 'biz'도 tab1으로 매핑
-                        'obituary': tab2,
-                        'wedding': tab3
+                        'business': configTabs[0] || '',
+                        'biz': configTabs[0] || '', // 'biz'도 첫 번째 탭으로 매핑
+                        'obituary': configTabs[1] || '',
+                        'wedding': configTabs[2] || ''
                       };
                       
                       // 매핑에서 찾기
