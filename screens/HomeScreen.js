@@ -106,7 +106,7 @@ export default function HomeScreen({ navigation }) {
   // Admin 모달 슬롯 이미지 파일명들 가져오기 (의존성 배열용)
   const adminSlotImageNames = [];
   for (let i = 1; i <= adminSlotsCount; i++) {
-    adminSlotImageNames.push(getConfig(`login_admin_slot_${i}_image`, ''));
+    adminSlotImageNames.push(getConfig(`login_admin_slot_${i}`, ''));
   }
 
   // Supabase Storage에서 Admin 모달 이미지 URL 가져오기 (LoginScreen과 동일한 방식 - 캐싱 적용)
@@ -117,7 +117,7 @@ export default function HomeScreen({ navigation }) {
       // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= adminSlotsCount; i++) {
-        const imageName = getConfig(`login_admin_slot_${i}_image`, '');
+        const imageName = getConfig(`login_admin_slot_${i}`, '');
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
@@ -1311,7 +1311,7 @@ export default function HomeScreen({ navigation }) {
                 }}>
                   {adminSlotImages.map((imageSource, index) => {
                     // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                    const imageName = getConfig(`login_admin_slot_${index + 1}_image`, '');
+                    const imageName = getConfig(`login_admin_slot_${index + 1}`, '');
                     let universityCode = null; // users 테이블에 저장할 소문자 코드
                     let universityDisplayName = null; // 표시용 display name
                     if (imageName) {

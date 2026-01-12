@@ -404,7 +404,7 @@ export default function LoginScreen() {
       // 모든 이미지 파일명 수집 (EMPTY 값 제외)
       const imageNames = [];
       for (let i = 1; i <= slotsCount; i++) {
-        const imageName = getConfig(`login_admin_slot_${i}_image`, '');
+        const imageName = getConfig(`login_admin_slot_${i}`, '');
         // EMPTY 값과 빈 문자열 필터링
         if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
           imageNames.push(imageName);
@@ -998,7 +998,7 @@ export default function LoginScreen() {
                   }}>
                     {adminSlotImages.map((slotData, index) => {
                       // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                      const imageName = slotData.imageName || getConfig(`login_admin_slot_${index + 1}_image`, '');
+                      const imageName = slotData.imageName || getConfig(`login_admin_slot_${index + 1}`, '');
                       const imageSource = slotData.imageUrl;
                       let universityCode = null; // users 테이블에 저장할 소문자 코드
                       let universityDisplayName = null; // 표시용 display name
