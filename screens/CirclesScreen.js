@@ -1027,7 +1027,8 @@ export default function CirclesScreen({ navigation, route }) {
       result.splice(insertIndex, 0, circle);
     });
 
-    return result;
+    // Featured 항목 포함 총 개수가 itemsPerPage를 초과하지 않도록 제한
+    return result.slice(0, itemsPerPage);
   }, [circles, filteredCircles, activeTab, currentPage, selectedChannel]);
   
   const finalCircles = circlesWithFeatured;

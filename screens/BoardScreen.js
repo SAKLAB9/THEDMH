@@ -889,7 +889,8 @@ export default function BoardScreen({ navigation, route }) {
       result.splice(insertIndex, 0, post);
     });
 
-    return result;
+    // Featured 항목 포함 총 개수가 itemsPerPage를 초과하지 않도록 제한
+    return result.slice(0, itemsPerPage);
   }, [posts, filteredPosts, activeTab, currentPage, selectedChannel]);
   
   const finalPosts = postsWithFeatured;
