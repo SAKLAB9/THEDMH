@@ -17,16 +17,16 @@ function ImageBlock({ uri }) {
   const maxImageWidth = screenWidth - contentPadding;
   const [imageSize, setImageSize] = useState({ width: maxImageWidth, height: 200 });
 
-  // 이미지 URI를 절대 경로로 변환
+  // 이미지 URI를 절대 경로로 변환 및 경로 수정
   const getImageUri = (uri) => {
-    if (!uri) return uri;
+    if (!uri) return null;
     
     // data: URL은 그대로 반환
     if (uri.startsWith('data:')) {
       return uri;
     }
     
-    // Supabase Storage URL인 경우 경로 수정
+    // Supabase Storage URL인 경우 경로 수정 및 이미지 최적화
     if (uri.includes('supabase.co/storage/v1/object/public/images/')) {
       // /images/nyu/images/ -> /images/nyu/ 로 수정 (중복된 /images/ 제거)
       // 또는 /images/nyu/board_images/ -> /images/nyu/ 로 수정
@@ -37,6 +37,19 @@ function ImageBlock({ uri }) {
       
       // 슬래시 중복 제거 (// -> /) - 하지만 https://는 유지
       fixedUri = fixedUri.replace(/([^:])\/+/g, '$1/');
+      
+      // 이미지 최적화 파라미터 추가
+      // 모바일 화면에 맞춰 400px로 설정 (매우 빠른 로딩)
+      // 일반 모바일 폭(375-414px)과 비슷하지만 충분히 선명함
+      const optimizedWidth = 400;
+      const optimizedQuality = 75;
+      
+      // 기존 쿼리 파라미터가 있으면 &로 추가, 없으면 ?로 시작
+      if (fixedUri.includes('?')) {
+        fixedUri += `&width=${optimizedWidth}&quality=${optimizedQuality}`;
+      } else {
+        fixedUri += `?width=${optimizedWidth}&quality=${optimizedQuality}`;
+      }
       
       return fixedUri;
     }
@@ -50,6 +63,7 @@ function ImageBlock({ uri }) {
     if (uri.startsWith('/')) {
       return `${API_BASE_URL}${uri}`;
     }
+    
     // 그 외의 경우
     return `${API_BASE_URL}/${uri}`;
   };
