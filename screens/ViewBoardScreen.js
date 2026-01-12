@@ -195,15 +195,19 @@ export default function ViewBoardScreen({ route, navigation }) {
     }
   }, [postId, checkFavorite]);
 
-  // 화면이 포커스될 때마다 currentUser와 관심리스트 다시 로드
+  // 초기 로드 (캐시 사용)
+  useEffect(() => {
+    if (postId && targetUniversity) {
+      loadBoard(false); // 캐시 확인 후 로드
+    }
+  }, [postId, targetUniversity, loadBoard]);
+
+  // 화면이 포커스될 때마다 currentUser만 새로고침
+  // 게시글 데이터는 캐시를 사용하므로 useFocusEffect에서 새로 로드하지 않음
   useFocusEffect(
     React.useCallback(() => {
       loadCurrentUser();
-      if (postId) {
-        // 수정 후 돌아왔을 때 데이터 새로고침
-        loadBoard();
-      }
-    }, [loadCurrentUser, postId, loadBoard])
+    }, [loadCurrentUser])
   );
 
   // 토스트 메시지 표시
@@ -333,14 +337,110 @@ export default function ViewBoardScreen({ route, navigation }) {
   }, [postId, selectedChannel]);
 
   // 게시글 데이터 로드 함수
-  const loadBoard = React.useCallback(async () => {
+  const loadBoard = React.useCallback(async (forceRefresh = false) => {
       if (!postId || !targetUniversity || !targetUniversity.trim()) {
         return;
       }
 
-      setLoading(true);
       try {
         const universityCode = targetUniversity.toLowerCase();
+        const cacheKey = `board_${postId}_${universityCode}`;
+        const contentCacheKey = `board_content_${postId}_${universityCode}`;
+        
+        // 강제 새로고침이면 캐시 무효화
+        if (forceRefresh) {
+          try {
+            await AsyncStorage.removeItem(cacheKey);
+            await AsyncStorage.removeItem(contentCacheKey);
+          } catch (e) {
+            // 캐시 삭제 실패는 무시
+          }
+        }
+        
+        // 캐시 확인
+        if (!forceRefresh) {
+          const cachedData = await AsyncStorage.getItem(cacheKey);
+          if (cachedData) {
+            try {
+              const { post: cachedPost, timestamp } = JSON.parse(cachedData);
+              const CACHE_DURATION = 5 * 60 * 1000; // 5분
+              
+              if (Date.now() - timestamp < CACHE_DURATION) {
+                // 캐시된 데이터가 있으면 즉시 표시
+                let parsedPost = { ...cachedPost };
+                if (parsedPost.content_blocks && typeof parsedPost.content_blocks === 'string') {
+                  try {
+                    parsedPost.content_blocks = JSON.parse(parsedPost.content_blocks);
+                  } catch (e) {
+                    parsedPost.content_blocks = [];
+                  }
+                }
+                if (!Array.isArray(parsedPost.content_blocks)) {
+                  parsedPost.content_blocks = [];
+                }
+                
+                // 텍스트 블록만 먼저 표시
+                const textBlocks = parsedPost.content_blocks.filter(block => block.type === 'text');
+                const postWithTextOnly = {
+                  ...parsedPost,
+                  content_blocks: textBlocks
+                };
+                setBoard(postWithTextOnly);
+                setLoading(false);
+                
+                // 이미지 블록 추가 (백그라운드에서)
+                setTimeout(() => {
+                  setBoard(parsedPost);
+                }, 0);
+                
+                // 백그라운드에서 최신 데이터 확인
+                fetch(`${API_BASE_URL}/api/posts/${postId}?university=${encodeURIComponent(universityCode)}`)
+                  .then(response => {
+                    if (response.ok) {
+                      return response.json();
+                    }
+                    return null;
+                  })
+                  .then(data => {
+                    if (data && data.success && data.post) {
+                      let updatedPost = data.post;
+                      if (updatedPost.content_blocks && typeof updatedPost.content_blocks === 'string') {
+                        try {
+                          updatedPost.content_blocks = JSON.parse(updatedPost.content_blocks);
+                        } catch (e) {
+                          updatedPost.content_blocks = [];
+                        }
+                      }
+                      if (!Array.isArray(updatedPost.content_blocks)) {
+                        updatedPost.content_blocks = [];
+                      }
+                      AsyncStorage.setItem(cacheKey, JSON.stringify({
+                        post: updatedPost,
+                        timestamp: Date.now()
+                      })).catch(() => {});
+                      setBoard(updatedPost);
+                    }
+                  })
+                  .catch(() => {});
+                
+                // 댓글과 관심리스트 로드
+                await Promise.all([
+                  loadComments(),
+                  checkFavorite()
+                ]);
+                
+                return; // 캐시가 있으면 여기서 종료
+              }
+            } catch (e) {
+              // 캐시 파싱 실패 시 계속 진행
+            }
+          } catch (e) {
+            // 캐시 읽기 오류는 무시
+          }
+        }
+        
+        // 캐시가 없거나 만료되었으면 API 호출
+        setLoading(true);
         const response = await fetch(`${API_BASE_URL}/api/posts/${postId}?university=${encodeURIComponent(universityCode)}`);
         
         if (response.ok) {
@@ -363,6 +463,12 @@ export default function ViewBoardScreen({ route, navigation }) {
               if (!Array.isArray(fullPost.content_blocks)) {
                 fullPost.content_blocks = [];
               }
+              
+              // 캐시 저장
+              AsyncStorage.setItem(cacheKey, JSON.stringify({
+                post: fullPost,
+                timestamp: Date.now()
+              })).catch(() => {});
               
               // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
               if (fullPost.content_blocks && Array.isArray(fullPost.content_blocks)) {
