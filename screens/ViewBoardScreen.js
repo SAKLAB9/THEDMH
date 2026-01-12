@@ -203,6 +203,15 @@ export default function ViewBoardScreen({ route, navigation }) {
   }, [postId, targetUniversity, loadBoard]);
 
   // 화면이 포커스될 때마다 currentUser만 새로고침
+  // 화면 포커스 시 관심리스트 다시 확인 (BoardScreen에서 변경된 경우 동기화)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (postId) {
+        checkFavorite();
+      }
+    }, [postId, checkFavorite])
+  );
+
   // 게시글 데이터는 캐시를 사용하므로 useFocusEffect에서 새로 로드하지 않음
   useFocusEffect(
     React.useCallback(() => {

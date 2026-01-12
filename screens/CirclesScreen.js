@@ -631,6 +631,9 @@ export default function CirclesScreen({ navigation, route }) {
         }
       }
       
+      // 화면 포커스 시 관심리스트 새로고침 (ViewCirclesScreen에서 변경된 경우 동기화)
+      loadFavoriteCircles();
+      
       // 화면 포커스 시 config 새로고침 (캐시 무시)
       // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
       if (university) {

@@ -273,6 +273,15 @@ export default function ViewCirclesScreen({ route, navigation }) {
     }
   }, [circleId, targetUniversity, loadCircle, incrementViews]);
   
+  // 화면 포커스 시 관심리스트 다시 확인 (CirclesScreen에서 변경된 경우 동기화)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (circleId) {
+        checkFavorite();
+      }
+    }, [circleId, checkFavorite])
+  );
+
   // 화면이 포커스될 때마다 currentUser와 관심리스트 다시 로드
   useFocusEffect(
     React.useCallback(() => {
