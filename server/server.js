@@ -258,7 +258,7 @@ if (USE_DATABASE) {
       // 데이터베이스 연결 후 정적 파일 경로 등록
       registerStaticPaths();
       
-      // pool이 준비된 후에 삭제 함수 등록 (raffle, featured)
+      // pool이 준비된 후에 삭제 함수 등록 (raffle, featured, circles)
       console.log('[서버 시작] 만료된 raffle 삭제 함수 등록');
       deleteExpiredRaffles();
       setInterval(deleteExpiredRaffles, 60 * 1000);
@@ -270,6 +270,12 @@ if (USE_DATABASE) {
       // Featured는 일 단위이므로 1시간마다 체크 (자정 이후 최대 1시간 내에 삭제)
       setInterval(deleteExpiredFeatured, 60 * 60 * 1000); // 1시간마다
       console.log('[서버 시작] 만료된 featured 삭제 함수 등록 완료, 1시간마다 실행');
+      
+      console.log('[서버 시작] 만료된 circles 삭제 함수 등록');
+      deleteExpiredCircles();
+      // Circles는 일 단위이므로 1시간마다 체크 (자정 이후 최대 1시간 내에 삭제)
+      setInterval(deleteExpiredCircles, 60 * 60 * 1000); // 1시간마다
+      console.log('[서버 시작] 만료된 circles 삭제 함수 등록 완료, 1시간마다 실행');
     })
     .catch((error) => {
       console.error('[서버 시작] 데이터베이스 연결 실패:', error.message);
@@ -6671,6 +6677,83 @@ async function deleteExpiredFeatured() {
   }
 }
 
+
+async function deleteExpiredCircles() {
+  if (!USE_DATABASE || !pool) return;
+  
+  try {
+    const universities = await getAllUniversities(pool);
+    
+    for (const universityCode of universities) {
+      try {
+        const tableName = getCirclesTableName(universityCode);
+        if (!tableName) continue;
+        
+        const result = await pool.query(
+          `SELECT * FROM ${tableName} WHERE event_date IS NOT NULL ORDER BY created_at DESC`
+        );
+        
+        const now = new Date();
+        
+        for (const row of result.rows) {
+          try {
+            if (!row.event_date) continue;
+            
+            let eventDate = null;
+            if (row.event_date instanceof Date) {
+              eventDate = row.event_date;
+            } else if (typeof row.event_date === 'string') {
+              eventDate = new Date(row.event_date);
+            } else {
+              continue;
+            }
+            
+            // event_date의 날짜만 비교 (시간은 23:59:59로 설정)
+            const eventDateEndOfDay = new Date(eventDate);
+            eventDateEndOfDay.setHours(23, 59, 59, 999);
+            
+            // 현재 시간이 event_date의 23:59:59를 지났으면 삭제
+            if (now.getTime() > eventDateEndOfDay.getTime()) {
+              // 관련 이미지 파일 삭제
+              const images = row.images || [];
+              const contentBlocks = typeof row.content_blocks === 'string' 
+                ? JSON.parse(row.content_blocks) 
+                : (row.content_blocks || []);
+              
+              // images 배열의 이미지 삭제
+              for (const imageUrl of images) {
+                if (imageUrl) {
+                  await deleteCircleImageFile(imageUrl);
+                }
+              }
+              
+              // content_blocks의 이미지 삭제
+              for (const block of contentBlocks) {
+                if (block.type === 'image' && block.uri) {
+                  await deleteCircleImageFile(block.uri);
+                }
+              }
+              
+              // 소모임 삭제 (CASCADE로 댓글도 자동 삭제됨)
+              await pool.query(
+                `DELETE FROM ${tableName} WHERE id = $1`,
+                [row.id]
+              );
+              console.log(`[Circles 삭제] ${universityCode} - ID ${row.id} 삭제됨 (event_date: ${eventDate.toISOString()})`);
+            }
+          } catch (e) {
+            // 개별 항목 처리 실패해도 계속 진행
+            console.error(`[Circles 삭제] ${universityCode} - ID ${row.id} 처리 오류:`, e.message);
+          }
+        }
+      } catch (error) {
+        console.error(`[Circles 삭제] ${universityCode} 오류:`, error.message);
+      }
+    }
+  } catch (error) {
+    console.error('[Circles 삭제 오류]', error);
+  }
+}
 
 // 삭제 함수는 pool이 준비된 후에 등록됨 (위의 pool.query().then() 내부)
 
