@@ -153,8 +153,6 @@ export default function CirclesScreen({ navigation, route }) {
   const miuhubColors = getUniColors('miuhub', config);
   // SelectUniScreen의 슬롯 설정 재사용
   const slotsCount = getConfigNumber('select_uni_slots_count');
-  const slotWidth = 100;
-  const slotHeight = 100;
   const slotGap = 24;
   const slotBorderWidth = 2;
   const slotBorderColor = '#d1d5db';
@@ -167,6 +165,12 @@ export default function CirclesScreen({ navigation, route }) {
   const modalPaddingRight = 24;
   const modalWidthPercent = 90;
   const modalMaxWidth = 400;
+  
+  // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
+  const isMoreThan6 = slotsCount > 6;
+  const slotWidth = isMoreThan6 ? 80 : 100;
+  const slotHeight = isMoreThan6 ? 80 : 100;
+  const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
 
   // Partners 모달 이미지 URL 캐시
   const [partnersImageUrls, setPartnersImageUrls] = useState({});
@@ -307,11 +311,23 @@ export default function CirclesScreen({ navigation, route }) {
     }
   }
 
-  // Partners 모달 높이 계산 (SelectUniScreen과 동일한 로직)
+  // Partners 모달 높이 계산 (6개 기준 높이를 한도로)
   const calculatePartnersModalHeight = () => {
-    const rows = Math.ceil(slotsCount / 3); // 3열 그리드 (SelectUniScreen과 동일)
+    const titleHeight = 48; // 제목 높이 (추정)
+    
+    // 6개 기준 높이 계산 (2열, 3행)
+    const baseRows = 3; // 6개 = 2열 * 3행
+    const baseSlotHeight = 100;
+    const baseSlotsHeight = baseRows * baseSlotHeight + (baseRows - 1) * slotGap;
+    const baseHeight = titleHeight + baseSlotsHeight + modalPaddingTop + modalPaddingBottom + 100;
+    
+    // 실제 슬롯 개수에 따른 높이 계산
+    const rows = Math.ceil(slotsCount / slotsPerRow);
     const slotsHeight = rows * slotHeight + (rows - 1) * slotGap;
-    return slotsHeight + modalPaddingTop + modalPaddingBottom + 100; // 타이틀과 여백 포함 (SelectUniScreen과 동일)
+    const actualHeight = titleHeight + slotsHeight + modalPaddingTop + modalPaddingBottom + 100;
+    
+    // 6개 기준 높이를 한도로 사용
+    return Math.min(actualHeight, baseHeight);
   };
   
   const regions = [
