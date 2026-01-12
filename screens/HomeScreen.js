@@ -215,22 +215,21 @@ export default function HomeScreen({ navigation }) {
   const adminModalWidthPercent = 90;
   const adminModalMaxWidth = 400;
   
-  // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯 필터링)
+  // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯도 포함하되 디자인 표시)
   const adminSlotImages = useMemo(() => {
     if (!adminSlotsCount || adminSlotsCount <= 0) return [];
     
     const slots = [];
     for (let i = 1; i <= adminSlotsCount; i++) {
       const imageName = getConfig(`login_admin_slot_${i}`, '');
-      // EMPTY 값과 빈 문자열 필터링
-      if (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') {
-        const imageUrl = adminImageUrls[imageName.trim()] || null;
-        slots.push({
-          slotNumber: i,
-          imageName: imageName.trim(),
-          imageUrl: imageUrl,
-        });
-      }
+      // EMPTY는 필터링하지만, 빈 슬롯도 포함 (디자인 표시)
+      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName.trim() : null;
+      const imageUrl = validImageName ? (adminImageUrls[validImageName] || null) : null;
+      slots.push({
+        slotNumber: i,
+        imageName: validImageName,
+        imageUrl: imageUrl,
+      });
     }
     return slots;
   }, [adminSlotsCount, getConfig, adminImageUrls]);
