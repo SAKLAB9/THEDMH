@@ -969,6 +969,69 @@ export default function CirclesScreen({ navigation, route }) {
   const endIndex = startIndex + itemsPerPage;
   let circles = filteredCircles.slice(startIndex, endIndex);
 
+  // Featured 삽입 로직
+  // 작동 방식:
+  // 1. 해당 글의 카테고리를 먼저 파악
+  // 2. (해당카테고리, category_page, category_position) - 해당 카테고리 탭에 위치
+  // 3. (전체, all_page, all_position) - 전체 탭에 위치
+  // 4. 이렇게 두 곳에 동시에 적용
+  const circlesWithFeatured = useMemo(() => {
+    if (selectedChannel !== 'MIUHub' || !circles || circles.length === 0) {
+      return circles;
+    }
+
+    // Featured 항목 찾기
+    const featuredItems = [];
+    const featuredIds = new Set();
+    
+    filteredCircles.forEach(circle => {
+      if (circle.isAd && circle.featured) {
+        const { categoryPage, categoryPosition, allPage, allPosition } = circle.featured;
+        const circleCategory = circle.category || '전체';
+        
+        // 해당 카테고리 탭에 적용되는지 확인
+        const isCategoryMatch = activeTab === circleCategory 
+          && categoryPage !== null 
+          && categoryPosition !== null
+          && categoryPage === currentPage;
+        
+        // 전체 탭에 적용되는지 확인
+        const isAllMatch = activeTab === '전체'
+          && allPage !== null
+          && allPosition !== null
+          && allPage === currentPage;
+        
+        if (isCategoryMatch || isAllMatch) {
+          const targetPosition = isCategoryMatch ? categoryPosition : allPosition;
+          featuredItems.push({
+            circle,
+            position: targetPosition
+          });
+          featuredIds.add(circle.id);
+        }
+      }
+    });
+
+    // Featured 항목을 위치에 맞게 삽입
+    if (featuredItems.length === 0) {
+      return circles;
+    }
+
+    // 원본 circles에서 featured 항목 제거 (중복 방지)
+    const circlesWithoutFeatured = circles.filter(circle => !featuredIds.has(circle.id));
+    
+    // Featured 항목을 위치에 맞게 삽입
+    const result = [...circlesWithoutFeatured];
+    featuredItems.forEach(({ circle, position }) => {
+      const insertIndex = Math.min(position - 1, result.length);
+      result.splice(insertIndex, 0, circle);
+    });
+
+    return result;
+  }, [circles, filteredCircles, activeTab, currentPage, selectedChannel]);
+  
+  const finalCircles = circlesWithFeatured;
+
   // 날짜 포맷 함수
   const formatDate = (dateString) => {
     if (!dateString) return '날짜미정';
@@ -1410,7 +1473,7 @@ export default function CirclesScreen({ navigation, route }) {
           {/* Circles 리스트 - 2열 그리드 */}
           <View style={{ flex: 1, minHeight: 500 }}>
             <View className="flex-row flex-wrap" style={{ justifyContent: 'space-between' }}>
-              {circles.map((circle, index) => {
+              {finalCircles.map((circle, index) => {
                 const isFavorite = favoriteCircles.includes(parseInt(circle.id));
                 return (
                   <View

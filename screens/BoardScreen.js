@@ -831,6 +831,69 @@ export default function BoardScreen({ navigation, route }) {
   const endIndex = startIndex + itemsPerPage;
   let posts = filteredPosts.slice(startIndex, endIndex);
 
+  // Featured 삽입 로직
+  // 작동 방식:
+  // 1. 해당 글의 카테고리를 먼저 파악
+  // 2. (해당카테고리, category_page, category_position) - 해당 카테고리 탭에 위치
+  // 3. (전체, all_page, all_position) - 전체 탭에 위치
+  // 4. 이렇게 두 곳에 동시에 적용
+  const postsWithFeatured = useMemo(() => {
+    if (selectedChannel !== 'MIUHub' || !posts || posts.length === 0) {
+      return posts;
+    }
+
+    // Featured 항목 찾기
+    const featuredItems = [];
+    const featuredIds = new Set();
+    
+    filteredPosts.forEach(post => {
+      if (post.isAd && post.featured) {
+        const { categoryPage, categoryPosition, allPage, allPosition } = post.featured;
+        const postCategory = post.category || '전체';
+        
+        // 해당 카테고리 탭에 적용되는지 확인
+        const isCategoryMatch = activeTab === postCategory 
+          && categoryPage !== null 
+          && categoryPosition !== null
+          && categoryPage === currentPage;
+        
+        // 전체 탭에 적용되는지 확인
+        const isAllMatch = activeTab === '전체'
+          && allPage !== null
+          && allPosition !== null
+          && allPage === currentPage;
+        
+        if (isCategoryMatch || isAllMatch) {
+          const targetPosition = isCategoryMatch ? categoryPosition : allPosition;
+          featuredItems.push({
+            post,
+            position: targetPosition
+          });
+          featuredIds.add(post.id);
+        }
+      }
+    });
+
+    // Featured 항목을 위치에 맞게 삽입
+    if (featuredItems.length === 0) {
+      return posts;
+    }
+
+    // 원본 posts에서 featured 항목 제거 (중복 방지)
+    const postsWithoutFeatured = posts.filter(post => !featuredIds.has(post.id));
+    
+    // Featured 항목을 위치에 맞게 삽입
+    const result = [...postsWithoutFeatured];
+    featuredItems.forEach(({ post, position }) => {
+      const insertIndex = Math.min(position - 1, result.length);
+      result.splice(insertIndex, 0, post);
+    });
+
+    return result;
+  }, [posts, filteredPosts, activeTab, currentPage, selectedChannel]);
+  
+  const finalPosts = postsWithFeatured;
+
   // 날짜 포맷 함수
   const formatDate = (dateString) => {
     if (!dateString) return '날짜미정';
@@ -1143,12 +1206,12 @@ export default function BoardScreen({ navigation, route }) {
 
           {/* 게시글 리스트 - 경조사와 동일한 스타일 */}
           <View style={{ flex: 1 }}>
-            {posts.map((post, index) => {
+            {finalPosts.map((post, index) => {
                 const isFavorite = favoritePosts.includes(parseInt(post.id));
                 return (
                   <TouchableOpacity 
                     key={post.adId || post.id} 
-                    className={`bg-gray-50 rounded-lg ${index < posts.length - 1 ? 'mb-3' : ''}`}
+                    className={`bg-gray-50 rounded-lg ${index < finalPosts.length - 1 ? 'mb-3' : ''}`}
                     style={{ padding: 16 }}
                     onPress={() => navigation.navigate('ViewBoard', { postId: post.id, selectedChannel })}
                   >
