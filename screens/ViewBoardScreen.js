@@ -330,25 +330,79 @@ export default function ViewBoardScreen({ route, navigation }) {
         const response = await fetch(`${API_BASE_URL}/api/posts/${postId}?university=${encodeURIComponent(universityCode)}`);
         
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.post) {
-            setBoard(data.post);
-            
-            // 댓글과 관심리스트를 병렬로 로드 (성능 최적화)
-            await Promise.all([
-              loadComments(),
-              checkFavorite()
-            ]);
-          } else {
-            Alert.alert('오류', '게시글을 찾을 수 없습니다.');
-            if (navigation.canGoBack()) {
+          const responseText = await response.text();
+          
+          // 텍스트만 먼저 파싱해서 즉시 표시
+          try {
+            const data = JSON.parse(responseText);
+            if (data.success && data.post) {
+              let fullPost = { ...data.post };
+              
+              // content_blocks가 JSON 문자열인 경우 파싱
+              if (fullPost.content_blocks && typeof fullPost.content_blocks === 'string') {
+                try {
+                  fullPost.content_blocks = JSON.parse(fullPost.content_blocks);
+                } catch (e) {
+                  fullPost.content_blocks = [];
+                }
+              }
+              if (!Array.isArray(fullPost.content_blocks)) {
+                fullPost.content_blocks = [];
+              }
+              
+              // content_blocks가 문자열이면 텍스트 블록만 먼저 추출
+              if (fullPost.content_blocks && Array.isArray(fullPost.content_blocks)) {
+                // 텍스트 블록만 먼저 표시
+                const textBlocks = fullPost.content_blocks.filter(block => block.type === 'text');
+                const postWithTextOnly = {
+                  ...fullPost,
+                  content_blocks: textBlocks
+                };
+                setBoard(postWithTextOnly);
+                
+                // 이미지 블록 추가 (백그라운드에서)
+                setTimeout(() => {
+                  setBoard(fullPost);
+                }, 0);
+              } else {
+                setBoard(fullPost);
+              }
+              
+              // 댓글과 관심리스트를 병렬로 로드 (성능 최적화)
+              await Promise.all([
+                loadComments(),
+                checkFavorite()
+              ]);
+            } else {
+              Alert.alert('오류', '게시글을 찾을 수 없습니다.');
               if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Main');
+                if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Main');
+              }
+              } else {
+                navigation.navigate('Main');
+              }
             }
-            } else {
-              navigation.navigate('Main');
+          } catch (parseError) {
+            // JSON 파싱 실패 시 기존 방식으로 시도
+            try {
+              const data = JSON.parse(responseText);
+              if (data.success && data.post) {
+                setBoard(data.post);
+                await Promise.all([
+                  loadComments(),
+                  checkFavorite()
+                ]);
+              }
+            } catch (e) {
+              Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Main');
+              }
             }
           }
         } else {
