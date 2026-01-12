@@ -1016,8 +1016,8 @@ export default function CirclesScreen({ navigation, route }) {
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         featuredContentIds.add(featuredItem.contentId);
       }
-      // 전체 페이지 Featured: 카테고리 featured가 아닌 경우에만 모든 탭에서 수집
-      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
+      // 전체 페이지 Featured: 카테고리 featured가 아닌 경우에만 "전체" 탭에서 수집
+      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition && activeTab === '전체') {
         featuredContentIds.add(featuredItem.contentId);
       }
     });
@@ -1077,8 +1077,8 @@ export default function CirclesScreen({ navigation, route }) {
       }
       // 전체 페이지 Featured (카테고리 페이지에 삽입되지 않은 경우만)
       // all_page는 페이지 번호만 체크 (탭과 무관)
-      // all_position은 모든 탭에서 적용
-      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition) {
+      // all_position은 "전체" 탭에서만 적용
+      else if (!featuredItem.categoryPage && featuredItem.allPage && featuredItem.allPage === currentPage && featuredItem.allPosition && activeTab === '전체') {
         // 2열 그리드: 왼쪽 열 먼저, 그 다음 오른쪽 열
         // position 1 -> index 0 (왼쪽 첫 번째)
         // position 2 -> index 1 (오른쪽 첫 번째)
