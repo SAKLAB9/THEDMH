@@ -2717,10 +2717,11 @@ app.put('/api/life-events/:id', async (req, res) => {
           return block;
         }));
 
-        // 새로운 이미지 URL 수집 (실제 사용되는 이미지만 수집)
-        const newImageUrls = new Set();
-
-        // images 배열에서 새로운 이미지 저장 및 수집 (빈 배열도 유효한 값으로 처리)
+        // 새로운 이미지 URL 수집 (전달된 images 배열과 contentBlocks에서 실제 사용되는 이미지만)
+        const newImageUrls = [];
+        
+        // images 배열 처리 (빈 배열도 유효한 값으로 처리)
+        // 클라이언트에서 전달된 images 배열을 그대로 사용 (없으면 빈 배열)
         const finalImages = Array.isArray(images) ? images : [];
         for (let i = 0; i < finalImages.length; i++) {
           const imageData = finalImages[i];
@@ -2730,34 +2731,36 @@ app.put('/api/life-events/:id', async (req, res) => {
             const filename = `lifeevent_${timestamp}_${i}.jpg`;
             try {
               const imageUrl = await saveImage(imageData, filename, universityCode);
-              newImageUrls.add(imageUrl);
+              newImageUrls.push(imageUrl);
             } catch (error) {
               console.error(`[경조사 수정] 이미지 저장 실패:`, error);
             }
           } else if (imageData && imageData.startsWith('http')) {
             // 이미 업로드된 이미지 URL
-            newImageUrls.add(imageData);
+            newImageUrls.push(imageData);
           }
         }
-
-        // contentBlocks의 이미지 URL 수집
+        
+        // contentBlocks의 이미지 URL도 추가
         updatedContentBlocks.forEach(block => {
-          if (block.type === 'image' && block.uri) {
-            newImageUrls.add(block.uri);
+          if (block.type === 'image' && block.uri && block.uri.startsWith('http')) {
+            if (!newImageUrls.includes(block.uri)) {
+              newImageUrls.push(block.uri);
+            }
           }
         });
 
         // 삭제된 이미지 찾기 (storage 삭제는 나중에 처리)
         const deletedImageUrls = [];
         oldImageUrls.forEach(url => {
-          if (!newImageUrls.has(url)) {
+          if (!newImageUrls.includes(url)) {
             deletedImageUrls.push(url);
             console.log(`[경조사 수정] 삭제할 이미지 (나중에 처리): ${url}`);
           }
         });
 
         // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
-        const savedImageUrls = Array.from(newImageUrls);
+        const savedImageUrls = newImageUrls;
 
         // 경조사 업데이트
         const result = await pool.query(
