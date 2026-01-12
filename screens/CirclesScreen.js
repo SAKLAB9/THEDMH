@@ -133,7 +133,7 @@ export default function CirclesScreen({ navigation, route }) {
   const [showPartnersModal, setShowPartnersModal] = useState(false);
   
   // Partners 모달 자동 닫기 타이머
-  const partnersAutoCloseSeconds = getConfigNumber('partners_modal_auto_close_seconds', 1) * 1000;
+  const partnersAutoCloseSeconds = getConfigNumber('partners_modal_auto_close_seconds') * 1000;
   useEffect(() => {
     let timer;
     if (showPartnersModal) {

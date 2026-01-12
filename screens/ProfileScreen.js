@@ -599,7 +599,7 @@ export default function ProfileScreen() {
                   onPress={async () => {
                     if (!currentRaffle) {
                       // Raffle이 없으면 1부터 100까지 랜덤 숫자 생성 (저장 안됨)
-                      const maxNumber = getConfigNumber('raffle_max_number', 100);
+                      const maxNumber = getConfigNumber('raffle_max_number');
                       const randomNumber = Math.floor(Math.random() * maxNumber) + 1;
                       setRaffleNumber(randomNumber);
                       return;

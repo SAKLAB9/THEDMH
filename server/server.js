@@ -5558,7 +5558,15 @@ app.post('/api/raffles/:id/participate', async (req, res) => {
         }
         
         const raffle = raffleResult.rows[0];
-        const maxNumber = raffle.raffle_max_number || 100;
+        let maxNumber = raffle.raffle_max_number;
+        if (maxNumber === null || maxNumber === undefined) {
+          // config에서 가져오기
+          const configResult = await pool.query(
+            `SELECT value FROM app_config WHERE key = $1`,
+            ['raffle_max_number']
+          );
+          maxNumber = configResult.rows[0] ? parseInt(configResult.rows[0].value) : null;
+        }
         
         // participants 컬럼 파싱
         let participants = [];
