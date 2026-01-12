@@ -394,6 +394,31 @@ export default function ViewBoardScreen({ route, navigation }) {
         throw new Error(errorData.error || '게시글 삭제에 실패했습니다.');
       }
 
+      // 삭제 성공 시 캐시 무효화
+      try {
+        const universityCode = normalizedUniversity;
+        
+        // 개별 게시글 캐시 무효화
+        const postCacheKey = `post_${postId}_${universityCode}`;
+        const postContentCacheKey = `post_content_${postId}_${universityCode}`;
+        
+        // 게시글 목록 캐시 무효화
+        const postsCacheKey = `posts_${universityCode}`;
+        const postsTimestampKey = `posts_timestamp_${universityCode}`;
+        
+        await Promise.all([
+          AsyncStorage.removeItem(postCacheKey),
+          AsyncStorage.removeItem(postContentCacheKey),
+          AsyncStorage.removeItem(postsCacheKey),
+          AsyncStorage.removeItem(postsTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[ViewBoardScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
+
       // 삭제 성공 시 즉시 board를 null로 설정하여 주기적 새로고침 중단
       setBoard(null);
 
@@ -401,7 +426,7 @@ export default function ViewBoardScreen({ route, navigation }) {
         {
           text: '확인',
           onPress: () => {
-            // goBack() 사용 - BoardScreen의 useFocusEffect에서 selectedChannel 상태를 유지함
+            // goBack() 사용 - BoardScreen의 useFocusEffect에서 캐시가 무효화되어 있으므로 자동으로 새로고침됨
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {

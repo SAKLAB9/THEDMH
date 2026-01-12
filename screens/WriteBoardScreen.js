@@ -460,6 +460,33 @@ export default function WriteBoardScreen({ navigation, route }) {
 
       const result = await response.json();
 
+      // 저장 성공 시 캐시 무효화 (공지사항과 동일하게)
+      try {
+        const universityCode = normalizedUniversity;
+        
+        // 수정 모드인 경우 해당 게시글의 캐시 무효화
+        if (isEditMode && editBoardId) {
+          const postCacheKey = `post_${editBoardId}_${universityCode}`;
+          const postContentCacheKey = `post_content_${editBoardId}_${universityCode}`;
+          await AsyncStorage.removeItem(postCacheKey);
+          await AsyncStorage.removeItem(postContentCacheKey);
+        }
+        
+        // 게시글 목록 캐시 무효화 (새 글이 추가되거나 수정되었으므로)
+        // BoardScreen은 현재 캐시를 사용하지 않지만, 일관성을 위해 무효화
+        const postsCacheKey = `posts_${universityCode}`;
+        const postsTimestampKey = `posts_timestamp_${universityCode}`;
+        await Promise.all([
+          AsyncStorage.removeItem(postsCacheKey),
+          AsyncStorage.removeItem(postsTimestampKey)
+        ]);
+      } catch (cacheError) {
+        // 캐시 무효화 실패는 무시 (중요하지 않음)
+        if (__DEV__) {
+          console.warn('[WriteBoardScreen] 캐시 무효화 실패:', cacheError);
+        }
+      }
+
       Alert.alert(
         '성공',
         isEditMode 
