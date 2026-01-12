@@ -838,16 +838,19 @@ export default function BoardScreen({ navigation, route }) {
   // 3. (전체, all_page, all_position) - 전체 탭에 위치
   // 4. 이렇게 두 곳에 동시에 적용
   const postsWithFeatured = useMemo(() => {
-    if (selectedChannel !== 'MIUHub' || !posts || posts.length === 0) {
+    if (selectedChannel !== 'MIUHub') {
       return posts;
     }
 
-    // Featured 항목 찾기
+    // Featured 항목 찾기 (전체 리스트에서)
     const featuredItems = [];
-    const featuredIds = new Set();
+    const allFeaturedIds = new Set(); // 모든 featured 항목 ID (원래 자리에서 제거용)
     
     filteredPosts.forEach(post => {
       if (post.isAd && post.featured) {
+        // 모든 featured 항목은 원래 자리에서 제거
+        allFeaturedIds.add(post.id);
+        
         const { categoryPage, categoryPosition, allPage, allPosition } = post.featured;
         const postCategory = post.category || '전체';
         
@@ -863,26 +866,25 @@ export default function BoardScreen({ navigation, route }) {
           && allPosition !== null
           && allPage === currentPage;
         
+        // 현재 페이지에 표시되어야 하는 featured 항목만 추가
         if (isCategoryMatch || isAllMatch) {
           const targetPosition = isCategoryMatch ? categoryPosition : allPosition;
           featuredItems.push({
             post,
             position: targetPosition
           });
-          featuredIds.add(post.id);
         }
       }
     });
 
+    // 원본 posts에서 모든 featured 항목 제거 (원래 자리에서 안 보이게)
+    const postsWithoutFeatured = posts.filter(post => !allFeaturedIds.has(post.id));
+
     // Featured 항목을 위치에 맞게 삽입
     if (featuredItems.length === 0) {
-      return posts;
+      return postsWithoutFeatured;
     }
-
-    // 원본 posts에서 featured 항목 제거 (중복 방지)
-    const postsWithoutFeatured = posts.filter(post => !featuredIds.has(post.id));
     
-    // Featured 항목을 위치에 맞게 삽입
     const result = [...postsWithoutFeatured];
     featuredItems.forEach(({ post, position }) => {
       const insertIndex = Math.min(position - 1, result.length);
@@ -891,7 +893,7 @@ export default function BoardScreen({ navigation, route }) {
 
     // Featured 항목 포함 총 개수가 itemsPerPage를 초과하지 않도록 제한
     return result.slice(0, itemsPerPage);
-  }, [posts, filteredPosts, activeTab, currentPage, selectedChannel]);
+  }, [posts, filteredPosts, activeTab, currentPage, selectedChannel, itemsPerPage]);
   
   const finalPosts = postsWithFeatured;
 

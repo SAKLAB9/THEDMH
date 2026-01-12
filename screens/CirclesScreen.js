@@ -976,16 +976,19 @@ export default function CirclesScreen({ navigation, route }) {
   // 3. (전체, all_page, all_position) - 전체 탭에 위치
   // 4. 이렇게 두 곳에 동시에 적용
   const circlesWithFeatured = useMemo(() => {
-    if (selectedChannel !== 'MIUHub' || !circles || circles.length === 0) {
+    if (selectedChannel !== 'MIUHub') {
       return circles;
     }
 
-    // Featured 항목 찾기
+    // Featured 항목 찾기 (전체 리스트에서)
     const featuredItems = [];
-    const featuredIds = new Set();
+    const allFeaturedIds = new Set(); // 모든 featured 항목 ID (원래 자리에서 제거용)
     
     filteredCircles.forEach(circle => {
       if (circle.isAd && circle.featured) {
+        // 모든 featured 항목은 원래 자리에서 제거
+        allFeaturedIds.add(circle.id);
+        
         const { categoryPage, categoryPosition, allPage, allPosition } = circle.featured;
         const circleCategory = circle.category || '전체';
         
@@ -1001,26 +1004,25 @@ export default function CirclesScreen({ navigation, route }) {
           && allPosition !== null
           && allPage === currentPage;
         
+        // 현재 페이지에 표시되어야 하는 featured 항목만 추가
         if (isCategoryMatch || isAllMatch) {
           const targetPosition = isCategoryMatch ? categoryPosition : allPosition;
           featuredItems.push({
             circle,
             position: targetPosition
           });
-          featuredIds.add(circle.id);
         }
       }
     });
 
+    // 원본 circles에서 모든 featured 항목 제거 (원래 자리에서 안 보이게)
+    const circlesWithoutFeatured = circles.filter(circle => !allFeaturedIds.has(circle.id));
+
     // Featured 항목을 위치에 맞게 삽입
     if (featuredItems.length === 0) {
-      return circles;
+      return circlesWithoutFeatured;
     }
-
-    // 원본 circles에서 featured 항목 제거 (중복 방지)
-    const circlesWithoutFeatured = circles.filter(circle => !featuredIds.has(circle.id));
     
-    // Featured 항목을 위치에 맞게 삽입
     const result = [...circlesWithoutFeatured];
     featuredItems.forEach(({ circle, position }) => {
       const insertIndex = Math.min(position - 1, result.length);
@@ -1029,7 +1031,7 @@ export default function CirclesScreen({ navigation, route }) {
 
     // Featured 항목 포함 총 개수가 itemsPerPage를 초과하지 않도록 제한
     return result.slice(0, itemsPerPage);
-  }, [circles, filteredCircles, activeTab, currentPage, selectedChannel]);
+  }, [circles, filteredCircles, activeTab, currentPage, selectedChannel, itemsPerPage]);
   
   const finalCircles = circlesWithFeatured;
 
