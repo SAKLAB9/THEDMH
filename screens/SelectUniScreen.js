@@ -101,11 +101,11 @@ export default function SelectUniScreen() {
   const modalMaxWidth = 400;
 
   // app_config에서 슬롯 개수 가져오기
-  const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : 0);
+  const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : null);
 
   // 슬롯 데이터: app_config에서 각 슬롯의 이미지 파일명 가져오기
   const slotData = useMemo(() => {
-    if (configLoading || slotsCount === 0) {
+    if (configLoading || !slotsCount || slotsCount === 0) {
       return [];
     }
     

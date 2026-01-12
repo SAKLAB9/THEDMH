@@ -144,7 +144,7 @@ export default function BoardScreen({ navigation, route }) {
   // Partners 모달 설정 (MIUHub 전용) - SelectUniScreen의 설정 재사용
   const miuhubColors = getUniColors('miuhub', config);
   // SelectUniScreen의 슬롯 설정 재사용
-  const slotsCount = getConfigNumber('select_uni_slots_count', 4);
+  const slotsCount = getConfigNumber('select_uni_slots_count');
   const slotWidth = 100;
   const slotHeight = 100;
   const slotGap = 24;
