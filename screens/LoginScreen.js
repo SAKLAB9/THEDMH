@@ -513,6 +513,26 @@ export default function LoginScreen() {
     checkAutoLogin();
   }, [fontsLoaded, navigation, updateUniversity]);
 
+  // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯도 포함하되 디자인 표시)
+  // 모든 hooks는 early return 전에 호출해야 함
+  const adminSlotImages = useMemo(() => {
+    if (!adminSlotsCount || adminSlotsCount <= 0) return [];
+    
+    const slots = [];
+    for (let i = 1; i <= adminSlotsCount; i++) {
+      const imageName = getConfig(`login_admin_slot_${i}`, '');
+      // EMPTY는 필터링하지만, 빈 슬롯도 포함 (디자인 표시)
+      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName.trim() : null;
+      const imageUrl = validImageName ? (adminImageUrls[validImageName] || null) : null;
+      slots.push({
+        slotNumber: i,
+        imageName: validImageName,
+        imageUrl: imageUrl,
+      });
+    }
+    return slots;
+  }, [adminSlotsCount, getConfig, adminImageUrls]);
+
   // 폰트가 로드되지 않았으면 기본 폰트 사용
   if (!fontsLoaded) {
     return null; // 또는 로딩 화면
@@ -533,25 +553,6 @@ export default function LoginScreen() {
   const adminModalPaddingRight = 24;
   const adminModalWidthPercent = 90;
   const adminModalMaxWidth = 400;
-
-  // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯도 포함하되 디자인 표시)
-  const adminSlotImages = useMemo(() => {
-    if (!adminSlotsCount || adminSlotsCount <= 0) return [];
-    
-    const slots = [];
-    for (let i = 1; i <= adminSlotsCount; i++) {
-      const imageName = getConfig(`login_admin_slot_${i}`, '');
-      // EMPTY는 필터링하지만, 빈 슬롯도 포함 (디자인 표시)
-      const validImageName = (imageName && imageName !== 'EMPTY' && imageName.trim() !== '') ? imageName.trim() : null;
-      const imageUrl = validImageName ? (adminImageUrls[validImageName] || null) : null;
-      slots.push({
-        slotNumber: i,
-        imageName: validImageName,
-        imageUrl: imageUrl,
-      });
-    }
-    return slots;
-  }, [adminSlotsCount, getConfig, adminImageUrls]);
 
   // Admin 모달 높이 계산 (슬롯 개수에 따라)
   const calculateAdminModalHeight = () => {
