@@ -2420,11 +2420,7 @@ app.post('/api/life-events/:id/increment-views', async (req, res) => {
 // 경조사 등록 API
 app.post('/api/life-events', async (req, res) => {
   try {
-    
     const { title, contentBlocks, textContent, images, category, nickname, author, url, university } = req.body;
-
-      reqBodyUniversity: req.body?.university
-    });
 
     if (!title || !contentBlocks || !category) {
       return res.status(400).json({ error: '필수 필드가 누락되었습니다.' });
