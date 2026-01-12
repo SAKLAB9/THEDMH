@@ -1322,9 +1322,10 @@ export default function HomeScreen({ navigation }) {
                   rowGap: adminSlotGap,
                   width: '100%',
                 }}>
-                  {adminSlotImages.map((imageSource, index) => {
+                  {adminSlotImages.map((slot) => {
                     // 아이콘 파일명은 항상 {소문자학교이름}-icon.png 형식 (예: cornell-icon.png, nyu-icon.png)
-                    const imageName = getConfig(`login_admin_slot_${index + 1}_image`, '');
+                    const imageName = slot.imageName;
+                    const imageSource = slot.imageUrl;
                     let universityCode = null; // users 테이블에 저장할 소문자 코드
                     let universityDisplayName = null; // 표시용 display name
                     if (imageName) {
