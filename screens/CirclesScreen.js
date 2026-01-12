@@ -540,14 +540,17 @@ export default function CirclesScreen({ navigation, route }) {
   }, [loadCirclesData]);
 
   // Featured 데이터 로드 함수
-  const loadFeaturedData = React.useCallback(async () => {
+  const loadFeaturedData = React.useCallback(async (forceRefresh = false) => {
     if (selectedChannel !== 'MIUHub') {
       setFeatured([]);
       return;
     }
 
     try {
-      const featuredResponse = await fetch(`${API_BASE_URL}/api/featured?university=miuhub&type=circle`);
+      // 캐시 무시하고 항상 최신 데이터 가져오기
+      const featuredResponse = await fetch(`${API_BASE_URL}/api/featured?university=miuhub&type=circle`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (featuredResponse.ok) {
         const featuredData = await featuredResponse.json();
         if (featuredData.success && featuredData.featured) {

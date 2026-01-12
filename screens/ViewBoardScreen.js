@@ -1513,6 +1513,10 @@ export default function ViewBoardScreen({ route, navigation }) {
                                 setCurrentFeaturedId(null);
                                 // Featured 데이터 새로고침
                                 await loadFeaturedData();
+                                // featured 삭제 후 BoardScreen으로 돌아가면서 새로고침
+                                if (navigation.canGoBack()) {
+                                  navigation.navigate('Main', { screen: 'Board', params: { selectedChannel, refreshFeatured: true } });
+                                }
                               } catch (error) {
                                 Alert.alert('오류', error.message || '삭제 중 오류가 발생했습니다.');
                               }
