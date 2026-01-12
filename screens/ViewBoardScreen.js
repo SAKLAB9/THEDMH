@@ -1392,6 +1392,13 @@ export default function ViewBoardScreen({ route, navigation }) {
             </View>
             
             <ScrollView>
+              {/* 
+                Board Featured 위치 시스템 정의:
+                - 한 페이지에 있는 글의 개수: board_items_per_page (config에서 가져옴, 하드코딩 X)
+                - 페이지마다 board_items_per_page 개수만큼의 자리가 있음
+                - 위치는 페이지번호와 그 페이지 내에서의 상단부터 1부터 커지는 숫자
+                - 예: board_items_per_page가 8이면, 페이지 1에는 위치 1~8, 페이지 2에는 위치 1~8, ...
+              */}
               <Text className="text-sm font-semibold mb-2">카테고리 페이지</Text>
               <View className="flex-row mb-4">
                 <View className="flex-1 mr-2">
@@ -1404,12 +1411,21 @@ export default function ViewBoardScreen({ route, navigation }) {
                   />
                 </View>
                 <View className="flex-1 ml-2">
-                  <Text className="text-xs text-gray-600 mb-1">위치</Text>
+                  <Text className="text-xs text-gray-600 mb-1">
+                    위치 (1~{getConfigNumber('board_items_per_page') || '?'})
+                  </Text>
                   <TextInput
                     value={adCategoryPosition}
-                    onChangeText={setAdCategoryPosition}
+                    onChangeText={(text) => {
+                      const itemsPerPage = getConfigNumber('board_items_per_page');
+                      const num = parseInt(text);
+                      if (text === '' || (!isNaN(num) && num >= 1 && (!itemsPerPage || num <= itemsPerPage))) {
+                        setAdCategoryPosition(text);
+                      }
+                    }}
                     keyboardType="numeric"
                     className="border border-gray-300 rounded px-3 py-2"
+                    placeholder={`1~${getConfigNumber('board_items_per_page') || '?'}`}
                   />
                 </View>
               </View>
@@ -1426,12 +1442,21 @@ export default function ViewBoardScreen({ route, navigation }) {
                   />
                 </View>
                 <View className="flex-1 ml-2">
-                  <Text className="text-xs text-gray-600 mb-1">위치</Text>
+                  <Text className="text-xs text-gray-600 mb-1">
+                    위치 (1~{getConfigNumber('board_items_per_page') || '?'})
+                  </Text>
                   <TextInput
                     value={adAllPosition}
-                    onChangeText={setAdAllPosition}
+                    onChangeText={(text) => {
+                      const itemsPerPage = getConfigNumber('board_items_per_page');
+                      const num = parseInt(text);
+                      if (text === '' || (!isNaN(num) && num >= 1 && (!itemsPerPage || num <= itemsPerPage))) {
+                        setAdAllPosition(text);
+                      }
+                    }}
                     keyboardType="numeric"
                     className="border border-gray-300 rounded px-3 py-2"
+                    placeholder={`1~${getConfigNumber('board_items_per_page') || '?'}`}
                   />
                 </View>
               </View>

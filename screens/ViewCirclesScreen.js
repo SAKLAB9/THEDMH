@@ -1740,6 +1740,19 @@ export default function ViewCirclesScreen({ route, navigation }) {
             </View>
             
             <ScrollView>
+              {/* 
+                Circles Featured 위치 시스템 정의:
+                - 한 페이지에 들어가는 포스트 수: circles_items_per_page (config에서 가져옴, 하드코딩 X)
+                - 한 줄에 2개씩 (정해져있음)
+                - 위치 정보:
+                  1 2
+                  3 4
+                  5 6
+                  ...
+                - 모든 페이지마다 circles_items_per_page 개수만큼의 자리가 있음
+                - 위치는 페이지번호와 자리번호로 정의
+                - 예: circles_items_per_page가 6이면, 페이지 1에는 위치 1~6, 페이지 2에는 위치 1~6, ...
+              */}
               <Text className="text-sm font-semibold mb-2">카테고리 페이지</Text>
               <View className="flex-row mb-4">
                 <View className="flex-1 mr-2">
@@ -1752,12 +1765,21 @@ export default function ViewCirclesScreen({ route, navigation }) {
                   />
                 </View>
                 <View className="flex-1 ml-2">
-                  <Text className="text-xs text-gray-600 mb-1">위치</Text>
+                  <Text className="text-xs text-gray-600 mb-1">
+                    위치 (1~{getConfigNumber('circles_items_per_page') || '?'})
+                  </Text>
                   <TextInput
                     value={adCategoryPosition}
-                    onChangeText={setAdCategoryPosition}
+                    onChangeText={(text) => {
+                      const itemsPerPage = getConfigNumber('circles_items_per_page');
+                      const num = parseInt(text);
+                      if (text === '' || (!isNaN(num) && num >= 1 && (!itemsPerPage || num <= itemsPerPage))) {
+                        setAdCategoryPosition(text);
+                      }
+                    }}
                     keyboardType="numeric"
                     className="border border-gray-300 rounded px-3 py-2"
+                    placeholder={`1~${getConfigNumber('circles_items_per_page') || '?'}`}
                   />
                 </View>
               </View>
@@ -1774,12 +1796,21 @@ export default function ViewCirclesScreen({ route, navigation }) {
                   />
                 </View>
                 <View className="flex-1 ml-2">
-                  <Text className="text-xs text-gray-600 mb-1">위치</Text>
+                  <Text className="text-xs text-gray-600 mb-1">
+                    위치 (1~{getConfigNumber('circles_items_per_page') || '?'})
+                  </Text>
                   <TextInput
                     value={adAllPosition}
-                    onChangeText={setAdAllPosition}
+                    onChangeText={(text) => {
+                      const itemsPerPage = getConfigNumber('circles_items_per_page');
+                      const num = parseInt(text);
+                      if (text === '' || (!isNaN(num) && num >= 1 && (!itemsPerPage || num <= itemsPerPage))) {
+                        setAdAllPosition(text);
+                      }
+                    }}
                     keyboardType="numeric"
                     className="border border-gray-300 rounded px-3 py-2"
+                    placeholder={`1~${getConfigNumber('circles_items_per_page') || '?'}`}
                   />
                 </View>
               </View>
