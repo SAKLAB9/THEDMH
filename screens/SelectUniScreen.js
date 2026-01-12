@@ -85,8 +85,6 @@ export default function SelectUniScreen() {
   }
 
   // 모달 슬롯 설정
-  const slotWidth = 100;
-  const slotHeight = 100;
   const slotGap = 24;
   const slotBorderWidth = 2;
   const slotBorderColor = '#d1d5db';
@@ -102,6 +100,12 @@ export default function SelectUniScreen() {
 
   // app_config에서 슬롯 개수 가져오기
   const slotsCount = configLoading ? 0 : (appConfig['select_uni_slots_count'] ? parseInt(appConfig['select_uni_slots_count'], 10) : null);
+  
+  // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
+  const isMoreThan6 = slotsCount > 6;
+  const slotWidth = isMoreThan6 ? 80 : 100;
+  const slotHeight = isMoreThan6 ? 80 : 100;
+  const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
 
   // 슬롯 데이터: app_config에서 각 슬롯의 이미지 파일명 가져오기
   const slotData = useMemo(() => {
@@ -293,11 +297,23 @@ export default function SelectUniScreen() {
     }));
   }, [slotData, imageUrls]);
 
-  // 모달 높이 계산 (슬롯 개수에 따라, 2열 그리드)
+  // 모달 높이 계산 (6개 기준 높이를 한도로)
   const calculateModalHeight = () => {
-    const rows = Math.ceil(slotsCount / 2);
+    const titleHeight = 48; // 제목 높이 (추정)
+    
+    // 6개 기준 높이 계산 (2열, 3행)
+    const baseRows = 3; // 6개 = 2열 * 3행
+    const baseSlotHeight = 100;
+    const baseSlotsHeight = baseRows * baseSlotHeight + (baseRows - 1) * slotGap;
+    const baseHeight = titleHeight + baseSlotsHeight + modalPaddingTop + modalPaddingBottom + 100;
+    
+    // 실제 슬롯 개수에 따른 높이 계산
+    const rows = Math.ceil(slotsCount / slotsPerRow);
     const slotsHeight = rows * slotHeight + (rows - 1) * slotGap;
-    return slotsHeight + modalPaddingTop + modalPaddingBottom + 100;
+    const actualHeight = titleHeight + slotsHeight + modalPaddingTop + modalPaddingBottom + 100;
+    
+    // 6개 기준 높이를 한도로 사용
+    return Math.min(actualHeight, baseHeight);
   };
 
   const allAgreed = agreePrivacy && agreeTerms;

@@ -534,8 +534,6 @@ export default function LoginScreen() {
   }
 
   // Config에서 Admin 모달 슬롯 설정 가져오기 (나머지)
-  const adminSlotWidth = 100;
-  const adminSlotHeight = 100;
   const adminSlotGap = 24;
   const adminSlotBorderWidth = 2;
   const adminSlotBorderColor = '#d1d5db';
@@ -549,14 +547,30 @@ export default function LoginScreen() {
   const adminModalWidthPercent = 90;
   const adminModalMaxWidth = 400;
 
-  // Admin 모달 높이 계산 (슬롯 개수에 따라)
+  // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
+  const isMoreThan6 = adminSlotsCount > 6;
+  const adminSlotWidth = isMoreThan6 ? 80 : 100;
+  const adminSlotHeight = isMoreThan6 ? 80 : 100;
+  const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
+
+  // Admin 모달 높이 계산 (6개 기준 높이를 한도로)
   const calculateAdminModalHeight = () => {
     const titleHeight = 48; // 제목 높이
     const titleMarginBottom = 24; // 제목 하단 마진
-    const slotsPerRow = 2; // 한 줄에 2개
+    
+    // 6개 기준 높이 계산 (2열, 3행)
+    const baseRows = 3; // 6개 = 2열 * 3행
+    const baseSlotHeight = 100;
+    const baseSlotsHeight = baseRows * baseSlotHeight + (baseRows - 1) * adminSlotGap;
+    const baseHeight = titleHeight + titleMarginBottom + baseSlotsHeight + adminModalPaddingTop + adminModalPaddingBottom;
+    
+    // 실제 슬롯 개수에 따른 높이 계산
     const rows = Math.ceil(adminSlotsCount / slotsPerRow);
     const slotsHeight = rows * adminSlotHeight + (rows - 1) * adminSlotGap;
-    return titleHeight + titleMarginBottom + slotsHeight + adminModalPaddingTop + adminModalPaddingBottom;
+    const actualHeight = titleHeight + titleMarginBottom + slotsHeight + adminModalPaddingTop + adminModalPaddingBottom;
+    
+    // 6개 기준 높이를 한도로 사용
+    return Math.min(actualHeight, baseHeight);
   };
 
   const handleLogin = async () => {

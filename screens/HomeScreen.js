@@ -210,8 +210,6 @@ export default function HomeScreen({ navigation }) {
     loadAdminImageUrls();
   }, [adminSlotsCount, adminSlotImageNames.join(','), getConfig]);
 
-  const adminSlotWidth = 100;
-  const adminSlotHeight = 100;
   const adminSlotGap = 24;
   const adminSlotBorderWidth = 2;
   const adminSlotBorderColor = '#d1d5db';
@@ -224,6 +222,12 @@ export default function HomeScreen({ navigation }) {
   const adminModalPaddingRight = 24;
   const adminModalWidthPercent = 90;
   const adminModalMaxWidth = 400;
+  
+  // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
+  const isMoreThan6 = adminSlotsCount > 6;
+  const adminSlotWidth = isMoreThan6 ? 80 : 100;
+  const adminSlotHeight = isMoreThan6 ? 80 : 100;
+  const slotsPerRow = 3; // 항상 3열
   
   // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯도 포함하되 디자인 표시)
   const adminSlotImages = useMemo(() => {
@@ -244,14 +248,24 @@ export default function HomeScreen({ navigation }) {
     return slots;
   }, [adminSlotsCount, getConfig, adminImageUrls]);
   
-  // 모달 높이 계산
+  // 모달 높이 계산 (6개 기준 높이를 한도로)
   const calculateAdminModalHeight = () => {
     const titleHeight = 30;
     const titleMarginBottom = 24;
-    const slotsPerRow = 3;
+    
+    // 6개 기준 높이 계산 (3열, 2행)
+    const baseRows = 2; // 6개 = 3열 * 2행
+    const baseSlotHeight = 100;
+    const baseSlotsHeight = baseRows * baseSlotHeight + (baseRows - 1) * adminSlotGap;
+    const baseHeight = titleHeight + titleMarginBottom + baseSlotsHeight + adminModalPaddingTop + adminModalPaddingBottom;
+    
+    // 실제 슬롯 개수에 따른 높이 계산
     const rows = Math.ceil(adminSlotsCount / slotsPerRow);
     const slotsHeight = rows * adminSlotHeight + (rows - 1) * adminSlotGap;
-    return titleHeight + titleMarginBottom + slotsHeight + adminModalPaddingTop + adminModalPaddingBottom;
+    const actualHeight = titleHeight + titleMarginBottom + slotsHeight + adminModalPaddingTop + adminModalPaddingBottom;
+    
+    // 6개 기준 높이를 한도로 사용
+    return Math.min(actualHeight, baseHeight);
   };
 
   // 로그인 상태 확인
