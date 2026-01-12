@@ -3765,27 +3765,13 @@ app.put('/api/circles/:id', async (req, res) => {
     // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
     const savedImageUrls = newImageUrls;
 
-    const existingContentBlocks = typeof oldContentBlocks === 'string' 
-      ? JSON.parse(oldContentBlocks) 
-      : oldContentBlocks;
-    const existingBlockIds = new Set(existingContentBlocks.map(block => block.id).filter(id => id));
-
-    const mergedContentBlocks = [...existingContentBlocks];
-    updatedContentBlocks.forEach(newBlock => {
-      if (newBlock.id && existingBlockIds.has(newBlock.id)) {
-        const existingIndex = mergedContentBlocks.findIndex(b => b.id === newBlock.id);
-        if (existingIndex !== -1) {
-          mergedContentBlocks[existingIndex] = newBlock;
-        }
-      } else if (newBlock.id && !existingBlockIds.has(newBlock.id)) {
-        // 새로운 블록 추가
-        mergedContentBlocks.push(newBlock);
-      }
-    });
+    // contentBlocks는 클라이언트에서 전달받은 그대로 사용 (공지사항과 동일)
+    // 삭제된 블록은 클라이언트에서 제거되어 전달되므로, updatedContentBlocks를 그대로 저장
+    const finalContentBlocks = updatedContentBlocks;
     
     // 최종 이미지 배열 (전달된 상태 그대로 저장, 빈 배열도 유효)
     const finalImages = savedImageUrls;
-    console.log(`[Circles PUT] ${universityCode} - 최종 images 배열 개수: ${finalImages.length}`);
+    console.log(`[Circles PUT] ${universityCode} - 최종 images 배열 개수: ${finalImages.length}, content_blocks 개수: ${finalContentBlocks.length}`);
 
     if (USE_DATABASE) {
       try {
