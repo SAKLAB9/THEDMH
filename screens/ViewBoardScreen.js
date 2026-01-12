@@ -1560,6 +1560,10 @@ export default function ViewBoardScreen({ route, navigation }) {
                       }
                       Alert.alert('완료', '설정이 완료되었습니다.');
                       setShowAdModal(false);
+                      // featured 저장 후 BoardScreen으로 돌아가면서 새로고침
+                      if (navigation.canGoBack()) {
+                        navigation.navigate('Board', { selectedChannel, refreshFeatured: true });
+                      }
                     } catch (error) {
                       console.error('광고 저장 오류:', error);
                       Alert.alert('오류', error.message || '설정 저장에 실패했습니다.');

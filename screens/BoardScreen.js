@@ -611,6 +611,13 @@ export default function BoardScreen({ navigation, route }) {
         };
       }
       
+      // refreshFeatured 파라미터가 있으면 featured 데이터 새로고침
+      if (route?.params?.refreshFeatured) {
+        loadFeaturedData();
+        // 파라미터 제거 (다음 포커스 시 다시 실행되지 않도록)
+        navigation.setParams({ refreshFeatured: undefined });
+      }
+      
       // 화면 포커스 시 config 새로고침 (캐시 무시)
       // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
       if (university) {
