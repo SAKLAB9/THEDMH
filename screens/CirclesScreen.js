@@ -1086,7 +1086,8 @@ export default function CirclesScreen({ navigation, route }) {
         const col = (originalPosition - 1) % 2; // 0 = left, 1 = right
         const position = row * 2 + col; // 0-based index
         if (position >= 0) {
-          const featuredCircle = allCircles.find(c => c.id === featuredItem.contentId);
+          // filteredCircles에서 찾아야 필터링된 데이터에서 찾음 (전체 탭 포함)
+          const featuredCircle = filteredCircles.find(c => c.id === featuredItem.contentId);
           if (featuredCircle) {
             featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);
