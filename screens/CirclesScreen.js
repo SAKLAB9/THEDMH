@@ -1096,7 +1096,8 @@ export default function CirclesScreen({ navigation, route }) {
     featuredToInsert.forEach(({ position, circle }) => {
       // 이미 circles에 있는 항목은 제외 (중복 방지)
       if (!circles.some(c => (c.adId || c.id) === (circle.adId || circle.id))) {
-        // position이 circles.length보다 크면 circles.length로 조정 (배열 끝에 추가)
+        // position을 그대로 사용 (2열 그리드: 0, 1, 2, 3, 4, 5...)
+        // position이 circles.length보다 크면 circles.length로 조정
         const insertPosition = Math.min(position, circles.length);
         circles.splice(insertPosition, 0, circle);
       }

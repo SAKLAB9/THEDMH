@@ -958,7 +958,8 @@ export default function BoardScreen({ navigation, route }) {
     featuredToInsert.forEach(({ position, post }) => {
       // 이미 posts에 있는 항목은 제외 (중복 방지)
       if (!posts.some(p => (p.adId || p.id) === (post.adId || post.id))) {
-        // position이 posts.length보다 크면 posts.length로 조정 (배열 끝에 추가)
+        // position을 그대로 사용 (2열 그리드: 0, 1, 2, 3, 4, 5...)
+        // position이 posts.length보다 크면 posts.length로 조정
         const insertPosition = Math.min(position, posts.length);
         posts.splice(insertPosition, 0, post);
       }
