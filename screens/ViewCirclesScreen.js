@@ -1741,17 +1741,25 @@ export default function ViewCirclesScreen({ route, navigation }) {
             
             <ScrollView>
               {/* 
-                Circles Featured 위치 시스템 정의:
+                Circles Featured 위치 시스템 정의 (좌표: 탭이름, 페이지번호, 글순번):
+                - 전체 탭 포함 총 5개 탭 (전체 + circles_tab1~4)
+                - 각 탭마다 독립적인 페이지와 글 순번이 있음
+                - 좌표: (탭이름, 페이지번호, 글순번) = (category, categoryPage, categoryPosition)
                 - 한 페이지에 들어가는 포스트 수: circles_items_per_page (config에서 가져옴, 하드코딩 X)
                 - 한 줄에 2개씩 (정해져있음)
-                - 위치 정보:
+                - 위치 정보 (글순번):
                   1 2
                   3 4
                   5 6
                   ...
-                - 모든 페이지마다 circles_items_per_page 개수만큼의 자리가 있음
-                - 위치는 페이지번호와 자리번호로 정의
-                - 예: circles_items_per_page가 6이면, 페이지 1에는 위치 1~6, 페이지 2에는 위치 1~6, ...
+                - 각 탭의 각 페이지마다 circles_items_per_page 개수만큼의 자리가 있음
+                - 글순번은 그 페이지 내에서의 상단부터 1부터 커지는 숫자
+                - 예: circles_items_per_page가 6이면,
+                  - "전체" 탭 페이지 1: 위치 1~6
+                  - "전체" 탭 페이지 2: 위치 1~6
+                  - "운동" 탭 페이지 1: 위치 1~6
+                  - "운동" 탭 페이지 2: 위치 1~6
+                  - ...
               */}
               <Text className="text-sm font-semibold mb-2">카테고리 페이지</Text>
               <View className="flex-row mb-4">

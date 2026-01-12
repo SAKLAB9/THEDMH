@@ -1393,11 +1393,19 @@ export default function ViewBoardScreen({ route, navigation }) {
             
             <ScrollView>
               {/* 
-                Board Featured 위치 시스템 정의:
+                Board Featured 위치 시스템 정의 (좌표: 탭이름, 페이지번호, 글순번):
+                - 전체 탭 포함 총 5개 탭 (전체 + board_tab1~4)
+                - 각 탭마다 독립적인 페이지와 글 순번이 있음
+                - 좌표: (탭이름, 페이지번호, 글순번) = (category, categoryPage, categoryPosition)
                 - 한 페이지에 있는 글의 개수: board_items_per_page (config에서 가져옴, 하드코딩 X)
-                - 페이지마다 board_items_per_page 개수만큼의 자리가 있음
-                - 위치는 페이지번호와 그 페이지 내에서의 상단부터 1부터 커지는 숫자
-                - 예: board_items_per_page가 8이면, 페이지 1에는 위치 1~8, 페이지 2에는 위치 1~8, ...
+                - 각 탭의 각 페이지마다 board_items_per_page 개수만큼의 자리가 있음
+                - 글순번은 그 페이지 내에서의 상단부터 1부터 커지는 숫자
+                - 예: board_items_per_page가 8이면, 
+                  - "전체" 탭 페이지 1: 위치 1~8
+                  - "전체" 탭 페이지 2: 위치 1~8
+                  - "커리어" 탭 페이지 1: 위치 1~8
+                  - "커리어" 탭 페이지 2: 위치 1~8
+                  - ...
               */}
               <Text className="text-sm font-semibold mb-2">카테고리 페이지</Text>
               <View className="flex-row mb-4">
