@@ -97,8 +97,8 @@ export default function HomeScreen({ navigation }) {
   const [adminImageUrls, setAdminImageUrls] = useState({});
   
   const [logoImageUrl, setLogoImageUrl] = useState(null); // 로고 이미지 URL
-  const noticesItemsPerPage = getConfigNumber('home_notices_items_per_page', 3);
-  const lifeEventsItemsPerPage = getConfigNumber('home_life_events_items_per_page', 3);
+  const noticesItemsPerPage = getConfigNumber('home_notices_items_per_page');
+  const lifeEventsItemsPerPage = getConfigNumber('home_life_events_items_per_page');
   
   // 관리자 모달 설정 (LoginScreen과 동일)
   const adminSlotsCount = getConfigNumber('login_admin_slots_count', 3);

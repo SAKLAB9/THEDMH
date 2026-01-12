@@ -117,7 +117,7 @@ export default function CirclesScreen({ navigation, route }) {
       return prevTab;
     });
   }, [tabs]);
-  const itemsPerPage = getConfigNumber('circles_items_per_page', 6); // 2열 그리드이므로 6개씩 (3행 x 2열)
+  const itemsPerPage = getConfigNumber('circles_items_per_page');
   const [savedCircles, setSavedCircles] = useState([]);
   const [favoriteCircles, setFavoriteCircles] = useState([]);
   const [toastMessage, setToastMessage] = useState('');

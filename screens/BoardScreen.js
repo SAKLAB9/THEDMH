@@ -113,7 +113,7 @@ export default function BoardScreen({ navigation, route }) {
       setActiveTab('전체');
     }
   }, [tabs, activeTab]);
-  const itemsPerPage = getConfigNumber('board_items_per_page', 10);
+  const itemsPerPage = getConfigNumber('board_items_per_page');
   const [savedPosts, setSavedPosts] = useState([]);
   const [favoritePosts, setFavoritePosts] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
