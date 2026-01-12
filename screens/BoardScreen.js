@@ -907,12 +907,13 @@ export default function BoardScreen({ navigation, route }) {
         return;
       }
       
-      // 카테고리 페이지 Featured
+      // 카테고리 페이지 Featured (해당 카테고리에서만 표시)
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
         if (position >= 0) {
           const featuredPost = allPosts.find(p => p.id === featuredItem.contentId);
-          if (featuredPost) {
+          // 글의 category가 featuredItem.category와 일치하는지 확인
+          if (featuredPost && featuredPost.category === featuredItem.category) {
             featuredToInsert.push({ position, post: { ...featuredPost, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);
           }

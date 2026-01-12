@@ -1045,12 +1045,13 @@ export default function CirclesScreen({ navigation, route }) {
         return;
       }
       
-      // 카테고리 페이지 Featured
+      // 카테고리 페이지 Featured (해당 카테고리에서만 표시)
       if (featuredItem.categoryPage && featuredItem.categoryPage === currentPage && featuredItem.categoryPosition && featuredItem.category === activeTab) {
         const position = featuredItem.categoryPosition - 1; // 1-based to 0-based
         if (position >= 0) {
           const featuredCircle = allCircles.find(c => c.id === featuredItem.contentId);
-          if (featuredCircle) {
+          // 글의 category가 featuredItem.category와 일치하는지 확인
+          if (featuredCircle && featuredCircle.category === featuredItem.category) {
             featuredToInsert.push({ position, circle: { ...featuredCircle, isAd: true, adId: `featured-${featuredItem.id}` } });
             insertedContentIds.add(featuredItem.contentId);
           }
