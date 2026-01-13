@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Alert, Modal, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Alert, Modal, Image, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -160,9 +160,20 @@ export default function BoardScreen({ navigation, route }) {
   
   // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
   const isMoreThan6 = slotsCount > 6;
-  const slotWidth = isMoreThan6 ? 80 : 100;
-  const slotHeight = isMoreThan6 ? 80 : 100;
   const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
+  
+  // 모달의 실제 사용 가능한 너비 계산 (패딩 제외)
+  const screenWidth = Dimensions.get('window').width;
+  const modalContentWidth = Math.min(
+    screenWidth * (modalWidthPercent / 100),
+    modalMaxWidth
+  ) - modalPaddingLeft - modalPaddingRight;
+  
+  // slotsPerRow에 맞게 슬롯 너비 계산
+  const totalGapWidth = (slotsPerRow - 1) * slotGap;
+  const calculatedSlotWidth = (modalContentWidth - totalGapWidth) / slotsPerRow;
+  const slotWidth = isMoreThan6 ? Math.min(Math.max(calculatedSlotWidth, 70), 100) : Math.min(Math.max(calculatedSlotWidth, 90), 120);
+  const slotHeight = slotWidth; // 정사각형 유지
 
   // Partners 모달 이미지 URL 캐시
   const [partnersImageUrls, setPartnersImageUrls] = useState({});
@@ -290,7 +301,7 @@ export default function BoardScreen({ navigation, route }) {
     };
     
     loadPartnersImageUrls();
-  }, [slotsCount, partnersSlotImageNamesString, getConfig]);
+  }, [slotsCount, partnersSlotImageNamesString, getConfig, slotWidth, slotHeight]);
 
   // Partners 모달 슬롯 이미지 배열 생성 (모두 Supabase Storage에서 로드)
   const slotImages = [];

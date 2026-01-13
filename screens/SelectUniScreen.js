@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Modal, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Modal, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
@@ -103,9 +103,20 @@ export default function SelectUniScreen() {
   
   // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
   const isMoreThan6 = slotsCount > 6;
-  const slotWidth = isMoreThan6 ? 80 : 100;
-  const slotHeight = isMoreThan6 ? 80 : 100;
   const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
+  
+  // 모달의 실제 사용 가능한 너비 계산 (패딩 제외)
+  const screenWidth = Dimensions.get('window').width;
+  const modalContentWidth = Math.min(
+    screenWidth * (modalWidthPercent / 100),
+    modalMaxWidth
+  ) - modalPaddingLeft - modalPaddingRight;
+  
+  // slotsPerRow에 맞게 슬롯 너비 계산
+  const totalGapWidth = (slotsPerRow - 1) * slotGap;
+  const calculatedSlotWidth = (modalContentWidth - totalGapWidth) / slotsPerRow;
+  const slotWidth = isMoreThan6 ? Math.min(Math.max(calculatedSlotWidth, 70), 100) : Math.min(Math.max(calculatedSlotWidth, 90), 120);
+  const slotHeight = slotWidth; // 정사각형 유지
 
   // 슬롯 데이터: app_config에서 각 슬롯의 이미지 파일명 가져오기
   const slotData = useMemo(() => {
@@ -237,7 +248,7 @@ export default function SelectUniScreen() {
     };
     
     loadSlotImages();
-  }, [fontsLoaded, configLoading, slotData]);
+  }, [fontsLoaded, configLoading, slotData, slotWidth, slotHeight]);
 
   // Supabase Storage에서 메인 아이콘 이미지 URL 가져오기 (LoginScreen과 동일한 방식)
   useEffect(() => {

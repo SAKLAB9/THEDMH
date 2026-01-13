@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Modal, Alert, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
@@ -485,7 +485,7 @@ export default function LoginScreen() {
     };
     
     loadAdminImageUrls();
-  }, [fontsLoaded, configLoading, getConfig, getConfigNumber, config]);
+  }, [fontsLoaded, configLoading, getConfig, getConfigNumber, config, adminSlotWidth, adminSlotHeight]);
 
   // 자동 로그인 체크 (앱 시작 시) - 모든 hooks는 early return 전에 호출해야 함
   useEffect(() => {
@@ -554,9 +554,20 @@ export default function LoginScreen() {
 
   // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
   const isMoreThan6 = adminSlotsCount > 6;
-  const adminSlotWidth = isMoreThan6 ? 80 : 100;
-  const adminSlotHeight = isMoreThan6 ? 80 : 100;
   const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
+  
+  // 모달의 실제 사용 가능한 너비 계산 (패딩 제외)
+  const screenWidth = Dimensions.get('window').width;
+  const modalContentWidth = Math.min(
+    screenWidth * (adminModalWidthPercent / 100),
+    adminModalMaxWidth
+  ) - adminModalPaddingLeft - adminModalPaddingRight;
+  
+  // slotsPerRow에 맞게 슬롯 너비 계산
+  const totalGapWidth = (slotsPerRow - 1) * adminSlotGap;
+  const calculatedSlotWidth = (modalContentWidth - totalGapWidth) / slotsPerRow;
+  const adminSlotWidth = isMoreThan6 ? Math.min(Math.max(calculatedSlotWidth, 70), 100) : Math.min(Math.max(calculatedSlotWidth, 90), 120);
+  const adminSlotHeight = adminSlotWidth; // 정사각형 유지
 
   // Admin 모달 높이 계산 (6개 기준 높이를 한도로)
   const calculateAdminModalHeight = () => {

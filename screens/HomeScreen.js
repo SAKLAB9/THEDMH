@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView, Modal, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -209,7 +209,7 @@ export default function HomeScreen({ navigation }) {
     };
     
     loadAdminImageUrls();
-  }, [adminSlotsCount, adminSlotImageNames.join(','), getConfig]);
+  }, [adminSlotsCount, adminSlotImageNames.join(','), getConfig, adminSlotWidth, adminSlotHeight]);
 
   const adminSlotGap = 24;
   const adminSlotBorderWidth = 2;
@@ -226,9 +226,20 @@ export default function HomeScreen({ navigation }) {
   
   // 슬롯이 6개 초과면 아이콘 크기 줄이고 3열로 변경
   const isMoreThan6 = adminSlotsCount > 6;
-  const adminSlotWidth = isMoreThan6 ? 80 : 100;
-  const adminSlotHeight = isMoreThan6 ? 80 : 100;
-  const slotsPerRow = 3; // 항상 3열
+  const slotsPerRow = isMoreThan6 ? 3 : 2; // 6개 초과면 3열, 아니면 2열
+  
+  // 모달의 실제 사용 가능한 너비 계산 (패딩 제외)
+  const screenWidth = Dimensions.get('window').width;
+  const modalContentWidth = Math.min(
+    screenWidth * (adminModalWidthPercent / 100),
+    adminModalMaxWidth
+  ) - adminModalPaddingLeft - adminModalPaddingRight;
+  
+  // slotsPerRow에 맞게 슬롯 너비 계산
+  const totalGapWidth = (slotsPerRow - 1) * adminSlotGap;
+  const calculatedSlotWidth = (modalContentWidth - totalGapWidth) / slotsPerRow;
+  const adminSlotWidth = isMoreThan6 ? Math.min(Math.max(calculatedSlotWidth, 70), 100) : Math.min(Math.max(calculatedSlotWidth, 90), 120);
+  const adminSlotHeight = adminSlotWidth; // 정사각형 유지
   
   // Admin 모달 슬롯 이미지 배열 생성 (SelectUniScreen 방식: 빈 슬롯도 포함하되 디자인 표시)
   const adminSlotImages = useMemo(() => {
