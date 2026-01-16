@@ -6467,6 +6467,186 @@ app.post('/api/add-url-to-notices', async (req, res) => {
   }
 });
 
+/**
+ * 학교별 테이블 자동 생성 함수 (SAK의 generate-icon.html과 동일한 구조)
+ * @param {string} schoolPrefix - 학교 코드 (소문자, 예: 'cornell', 'nyu')
+ * @param {object} pool - PostgreSQL connection pool
+ */
+async function createSchoolTables(schoolPrefix, pool) {
+  if (!schoolPrefix || !pool) return;
+  
+  try {
+    // 1. 게시판 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_board_posts (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_blocks JSONB,
+        text_content TEXT,
+        images TEXT[],
+        category TEXT,
+        nickname TEXT,
+        author TEXT DEFAULT '관리자',
+        url TEXT,
+        views INTEGER DEFAULT 0,
+        report_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // 2. 소모임 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_circles (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_blocks JSONB,
+        text_content TEXT,
+        images TEXT[],
+        category TEXT,
+        keywords TEXT,
+        region TEXT,
+        event_date DATE,
+        location TEXT,
+        participants TEXT,
+        fee TEXT,
+        author TEXT DEFAULT '관리자',
+        url TEXT,
+        contact TEXT,
+        account_number TEXT,
+        views INTEGER DEFAULT 0,
+        report_count INTEGER DEFAULT 0,
+        is_closed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // 3. 공지사항 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_notices (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_blocks JSONB,
+        text_content TEXT,
+        images TEXT[],
+        category TEXT,
+        author TEXT DEFAULT '관리자',
+        url TEXT,
+        views INTEGER DEFAULT 0,
+        nickname TEXT,
+        report_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // 4. 경조사 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_life_events (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_blocks JSONB,
+        text_content TEXT,
+        images TEXT[],
+        category TEXT,
+        author TEXT DEFAULT '관리자',
+        url TEXT,
+        views INTEGER DEFAULT 0,
+        report_count INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // 5. 게시판 댓글 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_board_comments (
+        id INTEGER PRIMARY KEY,
+        post_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        author TEXT DEFAULT '관리자',
+        parent_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (post_id) REFERENCES ${schoolPrefix}_board_posts(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // 6. 소모임 댓글 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_circles_comments (
+        id INTEGER PRIMARY KEY,
+        post_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        author TEXT DEFAULT '관리자',
+        parent_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        FOREIGN KEY (post_id) REFERENCES ${schoolPrefix}_circles(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // 7. 추첨 테이블
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${schoolPrefix}_raffles (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_blocks JSONB,
+        text_content TEXT,
+        images TEXT[],
+        category TEXT,
+        author TEXT DEFAULT '관리자',
+        password TEXT,
+        start_date DATE,
+        end_date DATE,
+        raffle_date DATE,
+        raffle_start_time VARCHAR(20),
+        raffle_end_time VARCHAR(20),
+        raffle_max_number INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    
+    // 인덱스 생성 (성능 향상)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_board_posts_category 
+      ON ${schoolPrefix}_board_posts(category)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_board_posts_created_at 
+      ON ${schoolPrefix}_board_posts(created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_circles_category 
+      ON ${schoolPrefix}_circles(category)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_circles_created_at 
+      ON ${schoolPrefix}_circles(created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_notices_created_at 
+      ON ${schoolPrefix}_notices(created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_life_events_created_at 
+      ON ${schoolPrefix}_life_events(created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_board_comments_post_id 
+      ON ${schoolPrefix}_board_comments(post_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_circles_comments_post_id 
+      ON ${schoolPrefix}_circles_comments(post_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_${schoolPrefix}_raffles_created_at 
+      ON ${schoolPrefix}_raffles(created_at DESC)
+    `);
+    
+    console.log(`[테이블 생성] ${schoolPrefix.toUpperCase()} 학교 테이블 생성 완료`);
+  } catch (error) {
+    console.error(`[테이블 생성 오류] ${schoolPrefix}:`, error.message);
+    // 테이블 생성 실패해도 계속 진행 (이미 존재할 수 있음)
+  }
+}
+
 // App Config 업데이트 API
 app.put('/api/config', async (req, res) => {
   try {
@@ -6486,6 +6666,22 @@ app.put('/api/config', async (req, res) => {
            RETURNING *`,
           [key, value]
         );
+        
+        // 학교 색상 정보가 저장될 때 테이블 자동 생성
+        // key 패턴: {schoolPrefix}_primary_color, {schoolPrefix}_border_color, {schoolPrefix}_button_text_color, {schoolPrefix}_display_name
+        const keyParts = key.split('_');
+        if (keyParts.length >= 2) {
+          const potentialSchoolPrefix = keyParts[0].toLowerCase();
+          
+          // miuhub는 제외 (MIUHub는 메인 앱)
+          if (potentialSchoolPrefix !== 'miuhub' && potentialSchoolPrefix.length > 0) {
+            // display_name이 저장될 때만 테이블 생성 (학교 생성 완료 시점)
+            if (key.endsWith('_display_name')) {
+              await createSchoolTables(potentialSchoolPrefix, pool);
+            }
+          }
+        }
+        
         res.json({
           success: true,
           config: result.rows[0]

@@ -123,6 +123,10 @@ export default function BoardScreen({ navigation, route }) {
   const [contentSearch, setContentSearch] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showPartnersModal, setShowPartnersModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null); // 현재 사용자 (admin 체크용)
+  const [showMiuhubSettings, setShowMiuhubSettings] = useState(false); // MIUHub 설정 모달
+  const [miuhubToggleEnabled, setMiuhubToggleEnabled] = useState(true); // MIUHub 선택 버튼 표시 여부 (기본값: true)
+  const [logoImageUrl, setLogoImageUrl] = useState(null); // 로고 이미지 URL
 
   // Partners 모달 자동 닫기 타이머
   const partnersAutoCloseSeconds = getConfigNumber('partners_modal_auto_close_seconds') * 1000;
@@ -576,6 +580,94 @@ export default function BoardScreen({ navigation, route }) {
     }
   }, [showPartnersModal]);
   
+  // 로그인 상태 확인
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const currentUserId = await AsyncStorage.getItem('currentUserId');
+        setCurrentUser(currentUserId);
+      } catch (error) {
+        setCurrentUser(null);
+      }
+    };
+
+    checkLoginStatus();
+  }, []);
+
+  // MIUHub 토글 설정 로드
+  useEffect(() => {
+    const loadMiuhubToggle = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('board_miuhub_toggle_enabled');
+        if (saved !== null) {
+          setMiuhubToggleEnabled(saved === 'true');
+        }
+      } catch (error) {
+        // 기본값 사용 (true)
+      }
+    };
+
+    loadMiuhubToggle();
+  }, []);
+
+  // 로고 이미지 로드 (HomeScreen과 동일) - miuhubToggleEnabled가 false일 때만 로드
+  useEffect(() => {
+    if (!university || miuhubToggleEnabled) return; // miuhubToggleEnabled가 true면 로고 불필요
+
+    const loadLogoImage = async () => {
+      try {
+        const universityCode = university.toLowerCase();
+        const logoImageName = getConfig(`${universityCode}_logo_image`) || `${universityCode}.png`;
+        
+        if (!logoImageName) {
+          setLogoImageUrl(null);
+          return;
+        }
+
+        // 캐시 키 생성
+        const cacheKey = `logo_url_${universityCode}_${logoImageName}`;
+        
+        try {
+          // 캐시에서 먼저 확인
+          const cachedLogoUrl = await AsyncStorage.getItem(cacheKey);
+          if (cachedLogoUrl) {
+            setLogoImageUrl({ uri: cachedLogoUrl });
+            return;
+          }
+        } catch (cacheError) {
+          // 캐시 읽기 오류는 무시
+        }
+
+        if (!supabase) {
+          setLogoImageUrl(null);
+          return;
+        }
+
+        const filePath = `assets/${logoImageName}`;
+        const { data: urlData, error: urlError } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
+
+        if (urlError || !urlData?.publicUrl) {
+          setLogoImageUrl(null);
+          return;
+        }
+
+        // 로고 크기에 맞춰 압축
+        const logoSize = 256;
+        const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
+
+        // 캐시에 저장
+        await AsyncStorage.setItem(cacheKey, optimizedUrl);
+        setLogoImageUrl({ uri: optimizedUrl });
+      } catch (error) {
+        setLogoImageUrl(null);
+      }
+    };
+
+    loadLogoImage();
+  }, [university, miuhubToggleEnabled, getConfig, supabase]);
+
   useFocusEffect(
     React.useCallback(() => {
       let isMounted = true;
@@ -1010,110 +1102,146 @@ export default function BoardScreen({ navigation, route }) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.primary }}>
     <ScrollView className="flex-1" style={{ backgroundColor: colors.primary }} showsVerticalScrollIndicator={false}>
-      {/* 채널 전환 버튼과 하트 버튼이 있는 흰색 박스 */}
-      <View className="bg-white px-5 justify-end" style={{ height: 130, paddingBottom: 20 }}>
-        {/* 알약 모양 채널 전환 버튼과 하트 버튼 */}
-        <View className="flex-row items-center justify-between">
-          <View style={{ flex: 1 }} />
-          {/* 알약 모양 채널 전환 버튼 - 가운데 */}
-        <View
-          style={{
-            flexDirection: 'row',
-            backgroundColor: '#F3F4F6',
-            borderRadius: 25,
-            padding: 4,
-            width: 200,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => {
-              setSelectedChannel(university);
-              setPageByTab(prev => ({
-                ...prev,
-                [activeTab]: 1,
-              }));
-            }}
-            style={{
-              flex: 1,
-              backgroundColor: selectedChannel !== 'MIUHub' ? colors.primary : 'transparent',
-                borderTopLeftRadius: 20,
-                borderBottomLeftRadius: 20,
-                borderTopRightRadius: 0,
-                borderBottomRightRadius: 0,
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text
-              style={{
-                color: selectedChannel !== 'MIUHub'
-                  ? colors.buttonTextColor
-                  : '#666666',
-                fontSize: 14,
-                fontWeight: selectedChannel !== 'MIUHub' ? '600' : '400',
-              }}
-            >
-              {university || ''}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              // MIUHub 선택과 동시에 데이터 로드 시작 (selectedChannel 변경 시 useEffect에서 자동으로 loadPostsData 호출됨)
-              setSelectedChannel('MIUHub');
-              setPageByTab(prev => ({
-                ...prev,
-                [activeTab]: 1,
-              }));
-              // 모달은 별도로 열기 (데이터 로드와 동시에)
-              setShowPartnersModal(true);
-            }}
-            style={{
-              flex: 1,
-              backgroundColor: selectedChannel === 'MIUHub' ? colors.primary : 'transparent',
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                borderTopRightRadius: 20,
-                borderBottomRightRadius: 20,
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text
-              style={{
-                color: selectedChannel === 'MIUHub' ? colors.buttonTextColor : '#666666',
-                fontSize: 14,
-                fontWeight: selectedChannel === 'MIUHub' ? '600' : '400',
-              }}
-            >
-              {getConfig('circles_miuhub', 'MIUHub')}
-            </Text>
-          </TouchableOpacity>
+      {/* 로고 또는 채널 전환 버튼이 있는 흰색 박스 */}
+      <View className="bg-white px-5 items-center justify-end" style={{ height: 130, paddingBottom: 10, position: 'relative' }}>
+        {/* miuhubToggleEnabled가 false일 때는 로고만 표시 (HomeScreen처럼) */}
+        {!miuhubToggleEnabled && logoImageUrl ? (
+          <Image
+            source={logoImageUrl}
+            style={{ width: 256, height: 60 }}
+            resizeMode="contain"
+            cache="force-cache"
+          />
+        ) : null}
+        
+        {/* miuhubToggleEnabled가 true일 때는 채널 전환 버튼 표시 */}
+        {miuhubToggleEnabled && (
+          <View className="w-full" style={{ paddingBottom: 10 }}>
+            {/* 알약 모양 채널 전환 버튼과 하트 버튼 */}
+            <View className="flex-row items-center justify-between">
+              <View style={{ flex: 1 }} />
+              {/* 알약 모양 채널 전환 버튼 - 가운데 */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#F3F4F6',
+                  borderRadius: 25,
+                  padding: 4,
+                  width: 200,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedChannel(university);
+                    setPageByTab(prev => ({
+                      ...prev,
+                      [activeTab]: 1,
+                    }));
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: selectedChannel !== 'MIUHub' ? colors.primary : 'transparent',
+                      borderTopLeftRadius: 20,
+                      borderBottomLeftRadius: 20,
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: selectedChannel !== 'MIUHub'
+                        ? colors.buttonTextColor
+                        : '#666666',
+                      fontSize: 14,
+                      fontWeight: selectedChannel !== 'MIUHub' ? '600' : '400',
+                    }}
+                  >
+                    {university || ''}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    // MIUHub 선택과 동시에 데이터 로드 시작 (selectedChannel 변경 시 useEffect에서 자동으로 loadPostsData 호출됨)
+                    setSelectedChannel('MIUHub');
+                    setPageByTab(prev => ({
+                      ...prev,
+                      [activeTab]: 1,
+                    }));
+                    // 모달은 별도로 열기 (데이터 로드와 동시에)
+                    setShowPartnersModal(true);
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: selectedChannel === 'MIUHub' ? colors.primary : 'transparent',
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderTopRightRadius: 20,
+                      borderBottomRightRadius: 20,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: selectedChannel === 'MIUHub' ? colors.buttonTextColor : '#666666',
+                      fontSize: 14,
+                      fontWeight: selectedChannel === 'MIUHub' ? '600' : '400',
+                    }}
+                  >
+                    {getConfig('circles_miuhub', 'MIUHub')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {/* 관심리스트 필터 버튼 - 맨 오른쪽 */}
+              <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowFavoritesOnly(!showFavoritesOnly);
+                    setPageByTab(prev => ({
+                      ...prev,
+                      [activeTab]: 1,
+                    }));
+                  }}
+                  style={{
+                    padding: 4,
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={{ fontSize: 18 }}>
+                    {showFavoritesOnly ? '🤍' : '❤️'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-          {/* 관심리스트 필터 버튼 - 맨 오른쪽 */}
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <TouchableOpacity
-              onPress={() => {
-                setShowFavoritesOnly(!showFavoritesOnly);
-                setPageByTab(prev => ({
-                  ...prev,
-                  [activeTab]: 1,
-                }));
-              }}
-              style={{
-                padding: 4,
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={{ fontSize: 18 }}>
-                {showFavoritesOnly ? '🤍' : '❤️'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
+        
+        {/* admin일 때만 오른쪽 상단 설정 아이콘 표시 */}
+        {currentUser === 'admin' && (
+          <TouchableOpacity
+            onPress={() => setShowMiuhubSettings(true)}
+            style={{
+              position: 'absolute',
+              right: getConfigNumber('popup_admin_settings_icon_position_right', 20),
+              top: '50%',
+              transform: [{ translateY: -15 }],
+              padding: getConfigNumber('popup_admin_settings_icon_padding', 8),
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons 
+              name={getConfig('popup_admin_settings_icon_name', 'settings-outline')} 
+              size={getConfigNumber('popup_admin_settings_icon_size', 24)} 
+              color={getConfig('popup_admin_settings_icon_color', '#000000')} 
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Circles 영역 - 홈 화면과 같은 스타일 */}
@@ -1552,6 +1680,87 @@ export default function BoardScreen({ navigation, route }) {
             <Ionicons name="mail-outline" size={28} color={miuhubColors.primary} />
           </TouchableOpacity>
         </View>
+      </Modal>
+
+      {/* MIUHub 설정 모달 (admin 전용) */}
+      <Modal
+        visible={showMiuhubSettings}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMiuhubSettings(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowMiuhubSettings(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl p-6"
+            style={{ width: '90%', maxWidth: 400 }}
+          >
+            <Text className="text-xl font-bold mb-6 text-center" style={{ color: colors.primary }}>
+              설정
+            </Text>
+            
+            {/* MIUHub 토글 */}
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-base font-semibold" style={{ color: '#333' }}>
+                {getConfig('circles_miuhub', 'MIUHub')}
+              </Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  const newValue = !miuhubToggleEnabled;
+                  setMiuhubToggleEnabled(newValue);
+                  await AsyncStorage.setItem('board_miuhub_toggle_enabled', String(newValue));
+                  
+                  // off일 때는 selectedChannel을 university로 설정
+                  if (!newValue && selectedChannel === 'MIUHub') {
+                    setSelectedChannel(university);
+                  }
+                }}
+                style={{
+                  width: 50,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: miuhubToggleEnabled ? colors.primary : '#d1d5db',
+                  justifyContent: 'center',
+                  paddingHorizontal: 2,
+                }}
+              >
+                <View
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: 'white',
+                    transform: [{ translateX: miuhubToggleEnabled ? 20 : 0 }],
+                  }}
+                />
+              </TouchableOpacity>
+            </View>
+            
+            <Text className="text-sm text-gray-600 mb-6">
+              {miuhubToggleEnabled 
+                ? '학교와 MIUHub를 선택할 수 있습니다.' 
+                : '학교 로고만 표시됩니다.'}
+            </Text>
+            
+            <TouchableOpacity
+              onPress={() => setShowMiuhubSettings(false)}
+              className="py-3 rounded-lg items-center"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Text className="text-white text-base font-semibold">확인</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* 토스트 메시지 */}
