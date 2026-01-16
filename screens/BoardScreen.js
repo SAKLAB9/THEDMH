@@ -1100,24 +1100,22 @@ export default function BoardScreen({ navigation, route }) {
     <View style={{ flex: 1, backgroundColor: colors.primary }}>
     <ScrollView className="flex-1" style={{ backgroundColor: colors.primary }} showsVerticalScrollIndicator={false}>
       {/* 로고 또는 채널 전환 버튼이 있는 흰색 박스 */}
-      <View className="bg-white px-5 items-center justify-end" style={{ height: 130, paddingBottom: 10, position: 'relative' }}>
-        {/* miuhubToggleEnabled가 false일 때는 로고만 표시 (HomeScreen처럼) */}
-        {!miuhubToggleEnabled && logoImageUrl ? (
-          <Image
-            source={logoImageUrl}
-            style={{ width: 256, height: 60 }}
-            resizeMode="contain"
-            cache="force-cache"
-          />
-        ) : null}
-        
-        {/* miuhubToggleEnabled가 true일 때는 채널 전환 버튼 표시 */}
-        {miuhubToggleEnabled && (
-          <View className="w-full" style={{ paddingBottom: 10 }}>
-            {/* 알약 모양 채널 전환 버튼과 하트 버튼 */}
-            <View className="flex-row items-center justify-between">
-              <View style={{ flex: 1 }} />
-              {/* 알약 모양 채널 전환 버튼 - 가운데 */}
+      <View className="bg-white px-5 justify-end" style={{ height: 130, paddingBottom: 10, position: 'relative' }}>
+        <View className="flex-row items-center justify-between w-full" style={{ paddingBottom: 10 }}>
+          {/* 왼쪽: 로고 또는 채널 전환 버튼 */}
+          <View style={{ flex: 1 }}>
+            {/* miuhubToggleEnabled가 false일 때는 로고만 표시 (HomeScreen처럼) */}
+            {!miuhubToggleEnabled && logoImageUrl ? (
+              <Image
+                source={logoImageUrl}
+                style={{ width: 256, height: 60 }}
+                resizeMode="contain"
+                cache="force-cache"
+              />
+            ) : null}
+            
+            {/* miuhubToggleEnabled가 true일 때는 채널 전환 버튼 표시 */}
+            {miuhubToggleEnabled && (
               <View
                 style={{
                   flexDirection: 'row',
@@ -1195,29 +1193,30 @@ export default function BoardScreen({ navigation, route }) {
                   </Text>
                 </TouchableOpacity>
               </View>
-              {/* 관심리스트 필터 버튼 - 맨 오른쪽 */}
-              <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowFavoritesOnly(!showFavoritesOnly);
-                    setPageByTab(prev => ({
-                      ...prev,
-                      [activeTab]: 1,
-                    }));
-                  }}
-                  style={{
-                    padding: 4,
-                  }}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text style={{ fontSize: 18 }}>
-                    {showFavoritesOnly ? '🤍' : '❤️'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            )}
           </View>
-        )}
+          
+          {/* 오른쪽: 관심리스트 필터 버튼 - 항상 표시 */}
+          <View style={{ alignItems: 'flex-end' }}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowFavoritesOnly(!showFavoritesOnly);
+                setPageByTab(prev => ({
+                  ...prev,
+                  [activeTab]: 1,
+                }));
+              }}
+              style={{
+                padding: 4,
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={{ fontSize: 18 }}>
+                {showFavoritesOnly ? '🤍' : '❤️'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         
         {/* admin일 때만 오른쪽 상단 설정 아이콘 표시 */}
         {currentUser === 'admin' && (
@@ -1750,7 +1749,18 @@ export default function BoardScreen({ navigation, route }) {
             </Text>
             
             <TouchableOpacity
-              onPress={() => setShowMiuhubSettings(false)}
+              onPress={async () => {
+                setShowMiuhubSettings(false);
+                // 설정이 변경되었을 수 있으므로 다시 로드
+                try {
+                  const saved = await AsyncStorage.getItem('board_miuhub_toggle_enabled');
+                  if (saved !== null) {
+                    setMiuhubToggleEnabled(saved === 'true');
+                  }
+                } catch (error) {
+                  // 기본값 사용 (true)
+                }
+              }}
               className="py-3 rounded-lg items-center"
               style={{ backgroundColor: colors.primary }}
             >
