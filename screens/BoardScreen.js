@@ -617,49 +617,33 @@ export default function BoardScreen({ navigation, route }) {
     const loadLogoImage = async () => {
       try {
         const universityCode = university.toLowerCase();
-        const logoImageName = getConfig(`${universityCode}_logo_image`) || `${universityCode}.png`;
         
-        if (!logoImageName) {
-          setLogoImageUrl(null);
-          return;
-        }
-
-        // 캐시 키 생성
-        const cacheKey = `logo_url_${universityCode}_${logoImageName}`;
+        // HomeScreen과 동일한 로직: display_name이 있으면 그것을 사용
+        const universityLower = university.toLowerCase();
+        const displayName = getConfig(`${universityLower}_display_name`, '');
+        const universityDisplayName = displayName || university;
         
-        try {
-          // 캐시에서 먼저 확인
-          const cachedLogoUrl = await AsyncStorage.getItem(cacheKey);
-          if (cachedLogoUrl) {
-            setLogoImageUrl({ uri: cachedLogoUrl });
-            return;
-          }
-        } catch (cacheError) {
-          // 캐시 읽기 오류는 무시
-        }
+        // 이미지 파일명 생성 (예: Cornell.png) - HomeScreen과 동일
+        const imageFileName = `${universityDisplayName}.png`;
 
         if (!supabase) {
           setLogoImageUrl(null);
           return;
         }
 
-        const filePath = `assets/${logoImageName}`;
-        const { data: urlData, error: urlError } = supabase.storage
+        const filePath = `assets/${imageFileName}`;
+        const { data: urlData } = supabase.storage
           .from('images')
           .getPublicUrl(filePath);
-
-        if (urlError || !urlData?.publicUrl) {
+          
+        if (urlData?.publicUrl) {
+          // 로고 이미지 크기에 맞춰 압축 (HomeScreen과 동일: 300x300)
+          const logoSize = 300;
+          const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
+          setLogoImageUrl({ uri: optimizedUrl });
+        } else {
           setLogoImageUrl(null);
-          return;
         }
-
-        // 로고 크기에 맞춰 압축
-        const logoSize = 256;
-        const optimizedUrl = `${urlData.publicUrl}?width=${logoSize}&height=${logoSize}`;
-
-        // 캐시에 저장
-        await AsyncStorage.setItem(cacheKey, optimizedUrl);
-        setLogoImageUrl({ uri: optimizedUrl });
       } catch (error) {
         setLogoImageUrl(null);
       }
@@ -721,6 +705,19 @@ export default function BoardScreen({ navigation, route }) {
       
       // 화면 포커스 시 관심리스트 새로고침 (ViewBoardScreen에서 변경된 경우 동기화)
       loadFavoritePosts();
+      
+      // 화면 포커스 시 MIUHub 토글 설정 다시 로드
+      const reloadMiuhubToggle = async () => {
+        try {
+          const saved = await AsyncStorage.getItem('board_miuhub_toggle_enabled');
+          if (saved !== null) {
+            setMiuhubToggleEnabled(saved === 'true');
+          }
+        } catch (error) {
+          // 기본값 사용 (true)
+        }
+      };
+      reloadMiuhubToggle();
       
       // 화면 포커스 시 config 새로고침 (캐시 무시)
       // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
