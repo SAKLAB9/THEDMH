@@ -1212,25 +1212,25 @@ export default function CirclesScreen({ navigation, route }) {
     <View style={{ flex: 1, backgroundColor: colors.primary }}>
     <ScrollView className="flex-1" style={{ backgroundColor: colors.primary }} showsVerticalScrollIndicator={false}>
       {/* 로고 또는 채널 전환 버튼이 있는 흰색 박스 */}
-      <View className="bg-white px-5 justify-end" style={{ height: 130, paddingBottom: 10, position: 'relative' }}>
-        <View className="flex-row items-center justify-between w-full" style={{ paddingBottom: 10 }}>
-          {/* 왼쪽: 빈 공간 */}
-          <View style={{ flex: 1 }} />
-          
-          {/* 가운데: 로고 또는 채널 전환 버튼 */}
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            {/* miuhubToggleEnabled가 false일 때는 로고만 표시 (HomeScreen처럼) */}
-            {!miuhubToggleEnabled && logoImageUrl ? (
-              <Image
-                source={logoImageUrl}
-                style={{ width: 256, height: 60 }}
-                resizeMode="contain"
-                cache="force-cache"
-              />
-            ) : null}
+      <View className="bg-white px-5 items-center justify-end" style={{ height: 130, paddingBottom: 10, position: 'relative' }}>
+        {/* miuhubToggleEnabled가 false일 때는 로고만 표시 (HomeScreen처럼) */}
+        {!miuhubToggleEnabled && logoImageUrl ? (
+          <Image
+            source={logoImageUrl}
+            style={{ width: 256, height: 60 }}
+            resizeMode="contain"
+            cache="force-cache"
+          />
+        ) : null}
+        
+        {/* miuhubToggleEnabled가 true일 때는 채널 전환 버튼 표시 */}
+        {miuhubToggleEnabled && (
+          <View className="flex-row items-center justify-between w-full">
+            {/* 왼쪽: 빈 공간 */}
+            <View style={{ flex: 1 }} />
             
-            {/* miuhubToggleEnabled가 true일 때는 채널 전환 버튼 표시 */}
-            {miuhubToggleEnabled && (
+            {/* 가운데: 채널 전환 버튼 */}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               <View
                 style={{
                   flexDirection: 'row',
@@ -1308,30 +1308,30 @@ export default function CirclesScreen({ navigation, route }) {
                   </Text>
                 </TouchableOpacity>
               </View>
-            )}
+            </View>
+            
+            {/* 오른쪽: 관심리스트 필터 버튼 - 항상 표시 */}
+            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowFavoritesOnly(!showFavoritesOnly);
+                  setPageByTab(prev => ({
+                    ...prev,
+                    [activeTab]: 1,
+                  }));
+                }}
+                style={{
+                  padding: 4,
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={{ fontSize: 18 }}>
+                  {showFavoritesOnly ? '🤍' : '❤️'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          
-          {/* 오른쪽: 관심리스트 필터 버튼 - 항상 표시 */}
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <TouchableOpacity
-              onPress={() => {
-                setShowFavoritesOnly(!showFavoritesOnly);
-                setPageByTab(prev => ({
-                  ...prev,
-                  [activeTab]: 1,
-                }));
-              }}
-              style={{
-                padding: 4,
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={{ fontSize: 18 }}>
-                {showFavoritesOnly ? '🤍' : '❤️'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
         
       </View>
 
