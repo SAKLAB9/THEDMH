@@ -12,7 +12,7 @@ import GlobalPopup from '../components/GlobalPopup';
 
 export default function BoardScreen({ navigation, route }) {
   const { university } = useUniversity();
-  const { getConfig, getConfigNumber, getColorConfig, config: appConfig, loadConfig } = useAppConfig();
+  const { getConfig, getConfigNumber, getConfigBool, getColorConfig, config: appConfig, loadConfig } = useAppConfig();
   const config = { getColorConfig };
   
   // selectedChannel에 따라 색상 결정
@@ -594,21 +594,11 @@ export default function BoardScreen({ navigation, route }) {
     checkLoginStatus();
   }, []);
 
-  // MIUHub 토글 설정 로드
+  // MIUHub 토글 설정 로드 (app_config 테이블에서 읽기)
   useEffect(() => {
-    const loadMiuhubToggle = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('board_miuhub_toggle_enabled');
-        if (saved !== null) {
-          setMiuhubToggleEnabled(saved === 'true');
-        }
-      } catch (error) {
-        // 기본값 사용 (true)
-      }
-    };
-
-    loadMiuhubToggle();
-  }, []);
+    const enabled = getConfigBool('board_miuhub_toggle_enabled', true);
+    setMiuhubToggleEnabled(enabled);
+  }, [getConfigBool, appConfig]);
 
   // 로고 이미지 로드 (HomeScreen과 동일) - miuhubToggleEnabled가 false일 때만 로드
   useEffect(() => {
@@ -706,18 +696,9 @@ export default function BoardScreen({ navigation, route }) {
       // 화면 포커스 시 관심리스트 새로고침 (ViewBoardScreen에서 변경된 경우 동기화)
       loadFavoritePosts();
       
-      // 화면 포커스 시 MIUHub 토글 설정 다시 로드
-      const reloadMiuhubToggle = async () => {
-        try {
-          const saved = await AsyncStorage.getItem('board_miuhub_toggle_enabled');
-          if (saved !== null) {
-            setMiuhubToggleEnabled(saved === 'true');
-          }
-        } catch (error) {
-          // 기본값 사용 (true)
-        }
-      };
-      reloadMiuhubToggle();
+      // 화면 포커스 시 MIUHub 토글 설정 다시 로드 (app_config에서)
+      const enabled = getConfigBool('board_miuhub_toggle_enabled', true);
+      setMiuhubToggleEnabled(enabled);
       
       // 화면 포커스 시 config 새로고침 (캐시 무시)
       // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
@@ -1717,7 +1698,27 @@ export default function BoardScreen({ navigation, route }) {
                 onPress={async () => {
                   const newValue = !miuhubToggleEnabled;
                   setMiuhubToggleEnabled(newValue);
-                  await AsyncStorage.setItem('board_miuhub_toggle_enabled', String(newValue));
+                  
+                  // 서버에 설정 저장 (모든 사용자에게 일괄 적용)
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/api/config`, {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        key: 'board_miuhub_toggle_enabled',
+                        value: String(newValue)
+                      })
+                    });
+                    
+                    if (response.ok) {
+                      // 설정 저장 성공 시 config 다시 로드하여 즉시 반영
+                      await loadConfig(null, true);
+                    }
+                  } catch (error) {
+                    console.error('설정 저장 실패:', error);
+                  }
                   
                   // off일 때는 selectedChannel을 university로 설정
                   if (!newValue && selectedChannel === 'MIUHub') {
@@ -1754,15 +1755,10 @@ export default function BoardScreen({ navigation, route }) {
             <TouchableOpacity
               onPress={async () => {
                 setShowMiuhubSettings(false);
-                // 설정이 변경되었을 수 있으므로 다시 로드
-                try {
-                  const saved = await AsyncStorage.getItem('board_miuhub_toggle_enabled');
-                  if (saved !== null) {
-                    setMiuhubToggleEnabled(saved === 'true');
-                  }
-                } catch (error) {
-                  // 기본값 사용 (true)
-                }
+                // 설정이 변경되었을 수 있으므로 config 다시 로드
+                await loadConfig(null, true);
+                const enabled = getConfigBool('board_miuhub_toggle_enabled', true);
+                setMiuhubToggleEnabled(enabled);
               }}
               className="py-3 rounded-lg items-center"
               style={{ backgroundColor: colors.primary }}
