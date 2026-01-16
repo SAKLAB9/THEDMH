@@ -131,8 +131,6 @@ export default function CirclesScreen({ navigation, route }) {
   const [showSortPicker, setShowSortPicker] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showPartnersModal, setShowPartnersModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null); // 현재 사용자 (admin 체크용)
-  const [showMiuhubSettings, setShowMiuhubSettings] = useState(false); // MIUHub 설정 모달
   const [miuhubToggleEnabled, setMiuhubToggleEnabled] = useState(true); // MIUHub 선택 버튼 표시 여부 (기본값: true)
   const [logoImageUrl, setLogoImageUrl] = useState(null); // 로고 이미지 URL
   
@@ -595,24 +593,16 @@ export default function CirclesScreen({ navigation, route }) {
     loadFavoriteCircles();
   }, [loadFavoriteCircles]);
 
-  // 로그인 상태 확인
-  useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const currentUserId = await AsyncStorage.getItem('currentUserId');
-        setCurrentUser(currentUserId);
-      } catch (error) {
-        setCurrentUser(null);
-      }
-    };
-
-    checkLoginStatus();
-  }, []);
 
   // MIUHub 토글 설정 로드 (app_config 테이블에서 읽기)
+  // 초기 로드 시에만 실행 (사용자가 직접 변경한 값은 유지)
+  const hasInitialized = useRef(false);
   useEffect(() => {
-    const enabled = getConfigBool('circles_miuhub_toggle_enabled', true);
-    setMiuhubToggleEnabled(enabled);
+    if (!hasInitialized.current) {
+      const enabled = getConfigBool('circles_miuhub_toggle_enabled', true);
+      setMiuhubToggleEnabled(enabled);
+      hasInitialized.current = true;
+    }
   }, [getConfigBool, appConfig]);
 
   // 로고 이미지 로드 (HomeScreen과 동일) - miuhubToggleEnabled가 false일 때만 로드
@@ -728,8 +718,11 @@ export default function CirclesScreen({ navigation, route }) {
       loadFavoriteCircles();
       
       // 화면 포커스 시 MIUHub 토글 설정 다시 로드 (app_config에서)
-      const enabled = getConfigBool('circles_miuhub_toggle_enabled', true);
-      setMiuhubToggleEnabled(enabled);
+      // 단, 초기화가 완료된 후에만 실행 (사용자가 직접 변경한 값은 유지)
+      if (hasInitialized.current) {
+        const enabled = getConfigBool('circles_miuhub_toggle_enabled', true);
+        setMiuhubToggleEnabled(enabled);
+      }
       
       // 화면 포커스 시 config 새로고침 (캐시 무시)
       // university를 직접 사용하여 admin으로 학교 변경 시 즉시 반영되도록 함
@@ -1340,26 +1333,6 @@ export default function CirclesScreen({ navigation, route }) {
           </View>
         </View>
         
-        {/* admin일 때만 오른쪽 상단 설정 아이콘 표시 */}
-        {currentUser === 'admin' && (
-          <TouchableOpacity
-            onPress={() => setShowMiuhubSettings(true)}
-            style={{
-              position: 'absolute',
-              right: getConfigNumber('popup_admin_settings_icon_position_right', 20),
-              top: '50%',
-              transform: [{ translateY: -15 }],
-              padding: getConfigNumber('popup_admin_settings_icon_padding', 8),
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons 
-              name={getConfig('popup_admin_settings_icon_name', 'settings-outline')} 
-              size={getConfigNumber('popup_admin_settings_icon_size', 24)} 
-              color={getConfig('popup_admin_settings_icon_color', '#000000')} 
-            />
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Circles 영역 - 홈 화면과 같은 스타일 */}
@@ -2031,113 +2004,6 @@ export default function CirclesScreen({ navigation, route }) {
             <Ionicons name="mail-outline" size={28} color={miuhubColors.primary} />
           </TouchableOpacity>
         </View>
-      </Modal>
-
-      {/* MIUHub 설정 모달 (admin 전용) */}
-      <Modal
-        visible={showMiuhubSettings}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowMiuhubSettings(false)}
-      >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-          activeOpacity={1}
-          onPress={() => setShowMiuhubSettings(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl p-6"
-            style={{ width: '90%', maxWidth: 400 }}
-          >
-            <Text className="text-xl font-bold mb-6 text-center" style={{ color: colors.primary }}>
-              설정
-            </Text>
-            
-            {/* MIUHub 토글 */}
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-base font-semibold" style={{ color: '#333' }}>
-                {getConfig('circles_miuhub', 'MIUHub')}
-              </Text>
-              <TouchableOpacity
-                onPress={async () => {
-                  const newValue = !miuhubToggleEnabled;
-                  setMiuhubToggleEnabled(newValue);
-                  
-                  // 서버에 설정 저장 (모든 사용자에게 일괄 적용)
-                  try {
-                    const response = await fetch(`${API_BASE_URL}/api/config`, {
-                      method: 'PUT',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        key: 'circles_miuhub_toggle_enabled',
-                        value: String(newValue)
-                      })
-                    });
-                    
-                    if (response.ok) {
-                      // 설정 저장 성공 시 config 다시 로드하여 즉시 반영
-                      await loadConfig(null, true);
-                    }
-                  } catch (error) {
-                    console.error('설정 저장 실패:', error);
-                  }
-                  
-                  // off일 때는 selectedChannel을 university로 설정
-                  if (!newValue && selectedChannel === 'MIUHub') {
-                    setSelectedChannel(university);
-                  }
-                }}
-                style={{
-                  width: 50,
-                  height: 30,
-                  borderRadius: 15,
-                  backgroundColor: miuhubToggleEnabled ? colors.primary : '#d1d5db',
-                  justifyContent: 'center',
-                  paddingHorizontal: 2,
-                }}
-              >
-                <View
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: 'white',
-                    transform: [{ translateX: miuhubToggleEnabled ? 20 : 0 }],
-                  }}
-                />
-              </TouchableOpacity>
-            </View>
-            
-            <Text className="text-sm text-gray-600 mb-6">
-              {miuhubToggleEnabled 
-                ? '학교와 MIUHub를 선택할 수 있습니다.' 
-                : '학교 로고만 표시됩니다.'}
-            </Text>
-            
-            <TouchableOpacity
-              onPress={async () => {
-                setShowMiuhubSettings(false);
-                // 설정이 변경되었을 수 있으므로 config 다시 로드
-                await loadConfig(null, true);
-                const enabled = getConfigBool('circles_miuhub_toggle_enabled', true);
-                setMiuhubToggleEnabled(enabled);
-              }}
-              className="py-3 rounded-lg items-center"
-              style={{ backgroundColor: colors.primary }}
-            >
-              <Text className="text-white text-base font-semibold">확인</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
       </Modal>
 
       {/* 토스트 메시지 */}
